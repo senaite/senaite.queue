@@ -19,18 +19,18 @@ The asynchronous creation of Sample is not supported yet.
 Screenshots
 ===========
 
-Storage facilities
-------------------
+Queued analyses
+---------------
 
 .. image:: https://raw.githubusercontent.com/senaite/senaite.queue/master/static/queued_analyses.png
    :alt: Queued analyses
    :width: 760px
    :align: center
 
-Containers and sample containers
---------------------------------
+Queued worksheet
+----------------
 
-.. image:: https://raw.githubusercontent.com/senaite/senaite.storage/master/static/queued_worksheet.png
+.. image:: https://raw.githubusercontent.com/senaite/senaite.queue/master/static/queued_worksheet.png
    :alt: Queued worksheet
    :width: 760px
    :align: center
