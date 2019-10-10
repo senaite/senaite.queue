@@ -1,0 +1,266 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    xmlns:five="http://namespaces.zope.org/five"
+    xmlns:cmf="http://namespaces.zope.org/cmf"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    xmlns:i18n="http://namespaces.zope.org/i18n"
+    i18n_domain="senaite.queue">
+
+  <five:registerPackage package="." initialize=".initialize"/>
+
+  <!-- Register Translations -->
+  <i18n:registerTranslations directory="locales" />
+
+  <!-- Needed for "BIKA: Manage Bika" permission -->
+  <include package="bika.lims" file="permissions.zcml" />
+
+  <include package=".monkeys"/>
+
+  <!-- Static resource directory -->
+  <browser:resourceDirectory
+    name="senaite.queue.static"
+    directory="static"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer"/>
+
+  <!-- Package includes -->
+  <include package=".monkeys"/>
+
+  <!-- Installation profile -->
+  <genericsetup:registerProfile
+      name="default"
+      title="SENAITE QUEUE"
+      directory="profiles/default"
+      description="Asynchronous tasks add-on for SENAITE"
+      pre_handler="senaite.queue.setuphandlers.pre_install"
+      post_handler="senaite.queue.setuphandlers.post_install"
+      provides="Products.GenericSetup.interfaces.EXTENSION" />
+
+  <!-- Queue dispatcher -->
+  <browser:page
+    for="*"
+    name="queue_dispatcher"
+    class=".views.dispatcher.QueueDispatcherView"
+    permission="senaite.core.permissions.ManageBika"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+
+  <!-- Queue consumer -->
+  <browser:page
+    for="*"
+    name="queue_consumer"
+    class=".views.consumer.QueueConsumerView"
+    permission="zope2.View"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+
+
+  <!-- Garbage collector for Queued Worksheets + Analyses. Looks for worksheets
+  marked with IQueued, assigns the remaining analyses to them and removes the
+  IQueued interface from the Worksheet -->
+  <browser:page
+    for="*"
+    name="queue_gc"
+    class=".views.gc.QueueGCView"
+    permission="senaite.core.permissions.ManageBika"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+
+  <!-- Analyses in queue: Worksheet -->
+  <browser:viewlet
+    for="bika.lims.interfaces.IWorksheet"
+    name="senaite.queue.worksheet_analyses_queue_viewlet"
+    class=".viewlets.QueuedAnalysesViewlet"
+    manager="plone.app.layout.viewlets.interfaces.IAboveContent"
+    template="templates/queued_analyses_viewlet.pt"
+    permission="zope2.View"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer"
+  />
+
+  <!-- Analyses in queue: Sample -->
+  <browser:viewlet
+    for="bika.lims.interfaces.IAnalysisRequest"
+    name="senaite.queue.worksheet_analyses_sample_queue_viewlet"
+    class=".viewlets.QueuedAnalysesSampleViewlet"
+    manager="plone.app.layout.viewlets.interfaces.IAboveContent"
+    template="templates/queued_analyses_sample_viewlet.pt"
+    permission="zope2.View"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer"
+  />
+
+  <!-- When a Worksheet is created and the worksheet is marked with IQueued,
+  redirect to the Worksheet listing -->
+  <browser:page
+    for="bika.lims.interfaces.IWorksheetFolder"
+    name="worksheet_add"
+    class=".views.worksheet.AddWorksheetQueueView"
+    permission="zope.Public"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+
+  <!-- Indexers for async processing of analyses -->
+  <adapter name="is_queued" factory=".indexers.is_queued"/>
+
+  <!-- Adapter for analyses assignment queue task -->
+  <adapter
+    name="task_assign_analyses"
+    factory=".adapters.QueuedAssignAnalysesTaskAdapter"
+    provides="senaite.queue.interfaces.IQueuedTaskAdapter"
+    for="bika.lims.interfaces.IWorksheet" />
+
+  <!-- Adapter for analyses action queue task -->
+  <adapter
+    name="task_action_submit"
+    factory=".adapters.QueuedActionTaskAdapter"
+    provides="senaite.queue.interfaces.IQueuedTaskAdapter"
+    for="bika.lims.interfaces.IWorksheet" />
+
+  <!-- Adapter for analyses action queue task -->
+  <adapter
+    name="task_action_unassign"
+    factory=".adapters.QueuedActionTaskAdapter"
+    provides="senaite.queue.interfaces.IQueuedTaskAdapter"
+    for="bika.lims.interfaces.IWorksheet" />
+
+  <!-- Adapter for analyses action queue task -->
+  <adapter
+    name="task_action_retract"
+    factory=".adapters.QueuedActionTaskAdapter"
+    provides="senaite.queue.interfaces.IQueuedTaskAdapter"
+    for="bika.lims.interfaces.IWorksheet" />
+
+  <!-- Adapter for analyses action queue task -->
+  <adapter
+    name="task_action_reject"
+    factory=".adapters.QueuedActionTaskAdapter"
+    provides="senaite.queue.interfaces.IQueuedTaskAdapter"
+    for="bika.lims.interfaces.IWorksheet" />
+
+  <!-- Adapter for analyses action queue task -->
+  <adapter
+    name="task_action_verify"
+    factory=".adapters.QueuedActionTaskAdapter"
+    provides="senaite.queue.interfaces.IQueuedTaskAdapter"
+    for="bika.lims.interfaces.IWorksheet" />
+
+  <!-- Worksheet: "unassign"
+  Submits the analyses from a worksheet by using a queue -->
+  <adapter
+    name="workflow_action_unassign"
+    for="bika.lims.interfaces.IWorksheet
+         senaite.queue.interfaces.ISenaiteQueueLayer"
+    factory=".adapters.WorkflowActionGenericQueueAdapter"
+    provides="bika.lims.interfaces.IWorkflowActionAdapter"
+    permission="zope.Public" />
+
+  <!-- Worksheet: "submit"
+  Submits the analyses from a worksheet by using a queue -->
+  <adapter
+    name="workflow_action_submit"
+    for="bika.lims.interfaces.IWorksheet
+         senaite.queue.interfaces.ISenaiteQueueLayer"
+    factory=".adapters.WorkflowActionGenericQueueAdapter"
+    provides="bika.lims.interfaces.IWorkflowActionAdapter"
+    permission="zope.Public" />
+
+  <!-- Worksheet: "reject"
+  Reject the analyses from a worksheet by using a queue -->
+  <adapter
+    name="workflow_action_reject"
+    for="bika.lims.interfaces.IWorksheet
+         senaite.queue.interfaces.ISenaiteQueueLayer"
+    factory=".adapters.WorkflowActionGenericQueueAdapter"
+    provides="bika.lims.interfaces.IWorkflowActionAdapter"
+    permission="zope.Public" />
+
+  <!-- Worksheet: "retract"
+  Reject the analyses from a worksheet by using a queue -->
+  <adapter
+    name="workflow_action_retract"
+    for="bika.lims.interfaces.IWorksheet
+         senaite.queue.interfaces.ISenaiteQueueLayer"
+    factory=".adapters.WorkflowActionGenericQueueAdapter"
+    provides="bika.lims.interfaces.IWorkflowActionAdapter"
+    permission="zope.Public" />
+
+  <!-- Worksheet: "verify"
+  Verify the analyses from a worksheet by using a queue -->
+  <adapter
+    name="workflow_action_verify"
+    for="bika.lims.interfaces.IWorksheet
+         senaite.queue.interfaces.ISenaiteQueueLayer"
+    factory=".adapters.WorkflowActionGenericQueueAdapter"
+    provides="bika.lims.interfaces.IWorkflowActionAdapter"
+    permission="zope.Public" />
+
+
+  <!-- Queued analyses: Add Analyses view from inside Worksheet.
+  Analyses that are labeled with IQueued are not displayed -->
+  <subscriber
+    for="bika.lims.browser.worksheet.views.AddAnalysesView
+         bika.lims.interfaces.IWorksheet"
+    provides="senaite.core.listing.interfaces.IListingViewAdapter"
+    factory=".listing.QueuedAddAnalysesViewAdapter"/>
+
+
+  <!-- Queued analyses: Add Blank view from inside Worksheet.
+  If Worksheet is marked with IQueued, display analyses as disabled -->
+  <subscriber
+    for="bika.lims.browser.worksheet.views.AddBlankView
+         bika.lims.interfaces.IWorksheet"
+    provides="senaite.core.listing.interfaces.IListingViewAdapter"
+    factory=".listing.QueuedWorksheetAnalysesViewAdapter"/>
+
+  <!-- Queued analyses: Add Control view from inside Worksheet.
+  If Worksheet is marked with IQueued, display analyses as disabled -->
+  <subscriber
+    for="bika.lims.browser.worksheet.views.AddControlView
+         bika.lims.interfaces.IWorksheet"
+    provides="senaite.core.listing.interfaces.IListingViewAdapter"
+    factory=".listing.QueuedWorksheetAnalysesViewAdapter"/>
+
+  <!-- Queued analyses: Add Dulicate view from inside Worksheet.
+  If Worksheet is marked with IQueued, display analyses as disabled -->
+  <subscriber
+    for="bika.lims.browser.worksheet.views.AddDuplicateView
+         bika.lims.interfaces.IWorksheet"
+    provides="senaite.core.listing.interfaces.IListingViewAdapter"
+    factory=".listing.QueuedWorksheetAnalysesViewAdapter"/>
+
+  <!-- Queued analyses: Generic Analyses View.
+  Analyses that are labeled with IQueued are disabled in listing -->
+  <subscriber
+    for="bika.lims.browser.analyses.view.AnalysesView
+         zope.interface.Interface"
+    provides="senaite.core.listing.interfaces.IListingViewAdapter"
+    factory=".listing.QueuedAnalysesViewAdapter"/>
+
+  <!-- Queued analyses: Analyses from inside Worksheet.
+  Analyses that are labeled with IQueued are disabled in listing -->
+  <subscriber
+    for="bika.lims.browser.worksheet.views.AnalysesView
+         bika.lims.interfaces.IWorksheet"
+    provides="senaite.core.listing.interfaces.IListingViewAdapter"
+    factory=".listing.QueuedWorksheetAnalysesViewAdapter"/>
+
+  <!-- Queued analyses: Manage Analyses view from inside Analysis Request.
+  Analyses that are labeled with IQueued are disabled in listing -->
+  <subscriber
+    for="bika.lims.browser.analysisrequest.manage_results.AnalysisRequestManageResultsView
+         bika.lims.interfaces.IAnalysisRequest"
+    provides="senaite.core.listing.interfaces.IListingViewAdapter"
+    factory=".listing.QueuedAnalysesViewAdapter"/>
+
+  <!-- Queued analyses: Add Analyses view from inside Analysis Request.
+  Analyses that are labeled with IQueued are disabled in listing -->
+  <subscriber
+    for="bika.lims.browser.analysisrequest.manage_analyses.AnalysisRequestAnalysesView
+         bika.lims.interfaces.IAnalysisRequest"
+    provides="senaite.core.listing.interfaces.IListingViewAdapter"
+    factory=".listing.QueuedSampleAnalysisServicesViewAdapter"/>
+
+  <!-- Queued worksheets: Worksheets listing.
+  Worksheets that are labeled with IQueued are disabled in listing -->
+  <subscriber
+    for="bika.lims.browser.worksheet.views.folder.FolderView
+         bika.lims.interfaces.IWorksheetFolder"
+    provides="senaite.core.listing.interfaces.IListingViewAdapter"
+    factory=".listing.QueuedWorksheetsViewAdapter"/>
+
+</configure>

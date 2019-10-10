@@ -1,0 +1,22 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:monkey="http://namespaces.plone.org/monkey"
+    i18n_domain="senaite.queue">
+
+  <!-- Monkey patch for asynchronous assignment of Worksheet Template -->
+  <monkey:patch
+     description=""
+     class="bika.lims.content.worksheet.Worksheet"
+     original="_apply_worksheet_template_routine_analyses"
+     replacement=".content.worksheet._apply_worksheet_template_routine_analyses"
+  />
+
+  <!-- Monkey patch for asynchronous assignment of analyses -->
+  <monkey:patch
+     description=""
+     class="bika.lims.content.worksheet.Worksheet"
+     original="addAnalyses"
+     replacement=".content.worksheet.addAnalyses"
+  />
+
+</configure>
