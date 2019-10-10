@@ -1,7 +1,7 @@
 About
 =====
 
-This is an **EXPERIMENTAL PACKAGE**, use at your own risk
+This is an **EXPERIMENTAL PACKAGE, NOT READY FOR USE**
 
 This package enables asynchronous tasks in Senaite to better handle concurrent
 actions and processes when senaite's workload is high, especially for instances
