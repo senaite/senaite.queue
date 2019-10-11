@@ -24,34 +24,36 @@ users registered in Plone's root (e.g. `admin`).
 
 Add a new client in your buildout:
 
-```
-# Reserved user queued tasks
-queue-user-name=queue_daemon
-queue-user-password=queue_daemon
+    # Reserved user queued tasks
+    queue-user-name=queue_daemon
+    queue-user-password=queue_daemon
 
-parts =
-    ....
-    client_queue
-```
+    parts =
+        ....
+        client_queue
+
 
 and configure the client properly:
 
-```
-[client6_worker]
-# Client reserved as a worker for async tasks
-<= client_base
-recipe = plone.recipe.zope2instance
-http-address = 127.0.0.1:8088
-zope-conf-additional =
-# Queue tasks dispatcher
-    <clock-server>
-       method /senaite/queue_dispatcher
-       period 10
-       user ${buildout:queue-user-name}
-       password ${buildout:queue-user-password}
-       host localhost:8086
+    [client6_worker]
+    # Client reserved as a worker for async tasks
+    <= client_base
+    recipe = plone.recipe.zope2instance
+    http-address = 127.0.0.1:8088
+    zope-conf-additional =
+    # Queue tasks dispatcher
+        <clock-server>
+           method /senaite/queue_dispatcher
+           period 10
+           user ${buildout:queue-user-name}
+           password ${buildout:queue-user-password}
+           host localhost:8086
     </clock-server>
-```
+
+For the changes to take effect you need to re-run buildout from your console::
+
+   $ bin/buildout
+
 
 Screenshots
 ===========
