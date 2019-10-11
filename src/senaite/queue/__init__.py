@@ -25,7 +25,11 @@ from Products.Archetypes.atapi import process_types
 from Products.CMFCore.permissions import AddPortalContent
 from Products.CMFCore.utils import ContentInit
 from senaite.queue.config import CHUNK_SIZES
+from senaite.queue.interfaces import IQueueDispatcher
 from zope.i18nmessageid import MessageFactory
+from zope.component._api import queryUtility
+
+
 PRODUCT_NAME = "senaite.queue"
 PROFILE_ID = "profile-{}:default".format(PRODUCT_NAME)
 
@@ -55,13 +59,19 @@ def initialize(context):
                     ).initialize(context)
 
 
-# TODO Move the stuff below outside of senaite.queue.__init__
+# TODO Move the stuff below outside from senaite.queue.__init__
 
 def is_queue_enabled():
     """Returns whether the queue is active for current instance or not.
     """
-    # TODO: conditional stuff here
-    return True
+    return get_queue_utility() is not None
+
+
+def get_queue_utility():
+    """
+    Returns the queue utility
+    """
+    return queryUtility(IQueueDispatcher)
 
 
 def get_chunk_size(task_name):

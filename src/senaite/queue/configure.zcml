@@ -36,7 +36,24 @@
       post_handler="senaite.queue.setuphandlers.post_install"
       provides="Products.GenericSetup.interfaces.EXTENSION" />
 
-  <!-- Queue dispatcher -->
+  <!-- Generic Setup *IMPORT STEP* -->
+  <genericsetup:importStep
+      name="SENAITE QUEUE"
+      title="Asynchronous tasks add-on for SENAITE"
+      description="Run SENAITE.QUEUE Handler"
+      handler="senaite.queue.setuphandlers.setup_handler"/>
+
+
+  <!-- Generic Setup *UNINSTALL* Profile -->
+  <genericsetup:registerProfile
+      name="uninstall"
+      title="SENAITE QUEUE"
+      directory="profiles/uninstall"
+      description="Asynchronous tasks add-on for SENAITE"
+      post_handler="senaite.queue.setuphandlers.post_uninstall"
+      provides="Products.GenericSetup.interfaces.EXTENSION"/>
+
+  <!-- Queue dispatcher view -->
   <browser:page
     for="*"
     name="queue_dispatcher"
@@ -44,7 +61,7 @@
     permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 
-  <!-- Queue consumer -->
+  <!-- Queue consumer view -->
   <browser:page
     for="*"
     name="queue_consumer"

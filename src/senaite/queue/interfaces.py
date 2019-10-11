@@ -38,3 +38,8 @@ class IQueued(Interface):
 class IQueuedTaskAdapter(Interface):
     """Marker interface for adapters in charge of processing queued tasks
     """
+
+
+class IQueueDispatcher(Interface):
+    """Dispatcher of tasks
+    """

@@ -19,15 +19,18 @@
 # Some rights reserved, see README and LICENSE.
 
 import json
+import threading
 
+import requests
 from Products.Five.browser import BrowserView
-from bika.lims import api
+from senaite.queue import is_queue_enabled, get_queue_utility
 from senaite.queue import logger
-from senaite.queue import is_queue_enabled
+from senaite.queue.interfaces import IQueueDispatcher
 from senaite.queue.storage import QueueStorageTool
 from senaite.queue.views.consumer import QueueConsumerView
-import requests
-import threading
+from zope.interface import implements
+
+from bika.lims import api
 
 
 class QueueDispatcherView(BrowserView):
@@ -56,28 +59,18 @@ class QueueDispatcherView(BrowserView):
             logger.info("Cannot lock the queue [SKIP]")
             return self.response("Cannot lock the queue", queue)
 
-        # We can make the queue consumed async only if we have taskqueue
+        # We can make the queue consumed async only if we have the named
+        # utility 'queue-consumer' registered
         if not is_queue_enabled():
             # No async. The job will be done in this same request
-            logger.warn("*** No task-queue utility for 'queue-consumer'!")
+            logger.warn("*** No utility found for 'queue_dispatcher'!")
             QueueConsumerView(self.context, self.request)()
 
         else:
-            # Add to TaskQueue for async processing
-            logger.info("*** Fire task-queue for 'queue-consumer'")
-            portal = api.get_portal()
-            task = queue.current
-            username = task.request.get("AUTHENTICATED_USER")
-            if username:
-                url = "{}/queue_consumer?user={}".format(
-                    api.get_url(portal), username)
-                logger.info(url)
-                thread = threading.Thread(target=requests.get, args=(url,))
-                thread.start()
-            else:
-                logger.error("No user specified!")
-                queue.fail(task)
-                return self.response("No user specified", queue)
+            logger.info("*** Fire async process for 'queue_dispatcher'")
+            utility = get_queue_utility()
+            if not utility.process(queue):
+                return self.response("Unable to process. Check the log", queue)
 
         # Return the detailed status of the queue
         return self.response("Consumer notified", queue)
@@ -110,3 +103,23 @@ class QueueDispatcherView(BrowserView):
 
         # Copy HTTP-headers from request._orig_env
         self.request._orig_env.update(task._orig_env)
+
+
+class QueueDispatcher(object):
+    implements(IQueueDispatcher)
+
+    def process(self, queue):
+        portal = api.get_portal()
+        task = queue.current
+        username = task.request.get("AUTHENTICATED_USER")
+        if username:
+            url = "{}/queue_consumer?user={}".format(
+                api.get_url(portal), username)
+            logger.info(url)
+            thread = threading.Thread(target=requests.get, args=(url,))
+            thread.start()
+            return True
+
+        logger.error("No user specified!")
+        queue.fail(task)
+        return False

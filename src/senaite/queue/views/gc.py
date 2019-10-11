@@ -91,7 +91,6 @@ class QueueGCView(BrowserView):
                 self.purge_queue_storage_for(worksheet)
                 ws_processed.append(worksheet_uid)
 
-
         query = dict(portal_type="Worksheet", review_state="open")
         for brain in api.search(query, CATALOG_WORKSHEET_LISTING):
             if api.get_uid(brain) in ws_processed:
