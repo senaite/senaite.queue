@@ -15,6 +15,43 @@ Transitions for sample levels could be easily supported in a near future.
 
 The asynchronous creation of Sample is not supported yet.
 
+Usage
+=====
+
+Create a new user in senaite (under `senaite/acl_users`) with username
+`queue_daemon` and password `queue_daemon`. It will not work when using acl
+users registered in Plone's root (e.g. `admin`).
+
+Add a new client in your buildout:
+
+```
+# Reserved user queued tasks
+queue-user-name=queue_daemon
+queue-user-password=queue_daemon
+
+parts =
+    ....
+    client_queue
+```
+
+and configure the client properly:
+
+```
+[client6_worker]
+# Client reserved as a worker for async tasks
+<= client_base
+recipe = plone.recipe.zope2instance
+http-address = 127.0.0.1:8088
+zope-conf-additional =
+# Queue tasks dispatcher
+    <clock-server>
+       method /senaite/queue_dispatcher
+       period 10
+       user ${buildout:queue-user-name}
+       password ${buildout:queue-user-password}
+       host localhost:8086
+    </clock-server>
+```
 
 Screenshots
 ===========
