@@ -19,15 +19,7 @@
 # Some rights reserved, see README and LICENSE.
 
 from Products.Archetypes.interfaces.base import IBaseObject
-from bika.lims import api
-from bika.lims.browser.workflow import WorkflowActionGenericAdapter
-from bika.lims.interfaces import IWorksheet
-from bika.lims.interfaces.analysis import IRequestAnalysis
-from bika.lims.workflow import doActionFor
-from senaite.queue import logger
-from senaite.queue import CHUNK_SIZES, get_action_task_name
-from senaite.queue import get_chunk_size
-from senaite.queue import is_queue_enabled
+from senaite.queue import logger, get_chunks
 from senaite.queue.interfaces import IQueuedTaskAdapter, IQueued
 from senaite.queue.queue import queue_action
 from senaite.queue.queue import queue_assign_analyses
@@ -35,6 +27,12 @@ from senaite.queue.storage import ActionQueueStorage, WorksheetQueueStorage
 from zope.component import adapts
 from zope.interface import implements
 from zope.interface import noLongerProvides
+
+from bika.lims import api
+from bika.lims.browser.workflow import WorkflowActionGenericAdapter
+from bika.lims.interfaces import IWorksheet
+from bika.lims.interfaces.analysis import IRequestAnalysis
+from bika.lims.workflow import doActionFor
 
 
 class QueuedTaskAdapter(object):
@@ -50,12 +48,6 @@ class QueuedTaskAdapter(object):
     @property
     def storage(self):
         raise NotImplementedError("Property storage not implemented")
-
-    @property
-    def chunk_size(self):
-        """Returns the max number of uids to transition in a single task
-        """
-        return self.storage.chunk_size or CHUNK_SIZES["default"]
 
     @property
     def uids(self):
@@ -83,22 +75,21 @@ class QueuedActionTaskAdapter(QueuedTaskAdapter):
 
     def process(self, task, request):
         """Transition the objects and/or queue some of them in accordance with
-        the parameters (chunk_size, etc.) defined in the task passed-in
+        the parameters defined in the task passed-in
         """
         if self.context != task.context:
             logger.error("Task's context does not match with self.context")
             return False
 
         # Process the first chunk
-        num_items = len(self.uids)
-        chunk_size = self.chunk_size
-        self.do_action(self.action, self.uids[:chunk_size])
+        num_objects = len(self.uids)
+        chunks = get_chunks(task.name, self.uids)
+        self.do_action(self.action, chunks[0])
 
         # Queue the rest
-        queued = self.uids[chunk_size:]
-        if queued:
+        if chunks[1]:
             # More items to process, just queue them and exit
-            queue_action(self.context, request, self.action, queued, chunk_size)
+            queue_action(self.context, request, self.action, chunks[1])
         else:
             # There are no more items to queue, all items queued for this
             # context have been transitioned already
@@ -106,7 +97,7 @@ class QueuedActionTaskAdapter(QueuedTaskAdapter):
             self.context.reindexObject(idxs="is_queued")
             self.storage.flush()
 
-        logger.info("*** Processed: {}/{}".format(chunk_size, num_items))
+        logger.info("*** Processed: {}/{}".format(len(chunks[0]), num_objects))
         return True
 
     def do_action(self, action, uid_or_uids):
@@ -164,17 +155,15 @@ class QueuedAssignAnalysesTaskAdapter(QueuedTaskAdapter):
             return False
 
         # Process the first chunk
-        num_items = len(self.uids)
-        chunk_size = self.chunk_size
-        self.do_assign(self.uids[:chunk_size], wst_uid=self.wst_uid)
+        num_objects = len(self.uids)
+        chunks = get_chunks(task.name, self.uids)
+        self.do_assign(chunks[0], wst_uid=self.wst_uid)
 
         # Queue the rest
-        quids = self.uids[chunk_size:]
-        qslots = self.uids[chunk_size:]
-        if quids:
+        if chunks[1]:
             # More items to process, just queue them and exit
-            queue_assign_analyses(self.context, request, quids, qslots,
-                                  chunk_size, wst_uid=self.wst_uid)
+            queue_assign_analyses(self.context, request, chunks[1], chunks[1],
+                                  wst_uid=self.wst_uid)
         else:
             # There are no more items to queue, all items queued for this
             # context have been transitioned already
@@ -182,12 +171,15 @@ class QueuedAssignAnalysesTaskAdapter(QueuedTaskAdapter):
             self.context.reindexObject(idxs="is_queued")
             self.storage.flush()
 
-        logger.info("*** Processed: {}/{}".format(chunk_size, num_items))
+        logger.info("*** Processed: {}/{}".format(len(chunks[0]), num_objects))
         return True
 
     def do_assign(self, uid_or_uids, wst_uid=None):
         """Transition the object(s) for the passed-in uid(s) without delay
         """
+        if not uid_or_uids:
+            return
+
         if isinstance(uid_or_uids, basestring):
             uid_or_uids = [uid_or_uids]
 
@@ -215,7 +207,6 @@ class QueuedAssignAnalysesTaskAdapter(QueuedTaskAdapter):
 
             # Add the analysis
             worksheet.addAnalysis(analysis, slot)
-
 
     def get_slot_for(self, analysis, wst=None, default=None):
         worksheet = self.context
@@ -268,18 +259,12 @@ class WorkflowActionGenericQueueAdapter(WorkflowActionGenericAdapter):
     """
 
     def do_action(self, action, objects):
-        if not is_queue_enabled():
-            return super(WorkflowActionGenericQueueAdapter, self).do_action(
-                action, objects)
-
         # Process the first chunk as usual
-        task_name = get_action_task_name(action)
-        chunk_size = get_chunk_size(task_name)
+        chunks = get_chunks(action, objects)
         super(WorkflowActionGenericQueueAdapter, self)\
-            .do_action(action, objects[:chunk_size])
+            .do_action(action, chunks[0])
 
         # Process the rest in a queue
-        queue_action(self.context, self.request, action, objects[chunk_size:],
-                     chunk_size)
+        queue_action(self.context, self.request, action, chunks[1])
 
         return objects

@@ -23,7 +23,6 @@ import time
 from datetime import datetime
 
 from BTrees.OOBTree import OOBTree
-from senaite.queue import CHUNK_SIZES
 from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.config import MAX_SECONDS_UNLOCK
@@ -327,10 +326,6 @@ class ActionQueueStorage(BaseStorageTool):
     @property
     def uids(self):
         return self.storage.get("uids") or []
-
-    @property
-    def chunk_size(self):
-        return self.storage.get("chunk_size") or CHUNK_SIZES["default"]
 
     @property
     def action(self):

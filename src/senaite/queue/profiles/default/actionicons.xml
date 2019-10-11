@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<action-icons xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+              i18n:domain="senaite.queue">
+  <action-icon
+      category="controlpanel"
+      action_id="queue-controlpanel"
+      title="Queue Settings"
+      i18n:attributes="title"
+      priority="0"
+      icon_expr="++resource++senaite.queue.static/icon.png"
+      />
+
+</action-icons>

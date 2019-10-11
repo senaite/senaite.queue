@@ -153,6 +153,7 @@ def _apply_worksheet_template_routine_analyses(self, wst):
     queue_slots = list()
     num = 0
     chunk_size = get_chunk_size("task_assign_analyses")
+    queue = chunk_size > 0 and is_queue_enabled()
 
     # Add regular analyses
     for ar_id in sorted_ar_ids:
@@ -170,7 +171,7 @@ def _apply_worksheet_template_routine_analyses(self, wst):
                 # Handle reference analyses (controls + blanks)
                 self.addAnalysis(ar_an, slot)
 
-            elif not is_queue_enabled():
+            elif not queue:
                 self.addAnalysis(ar_an, slot)
 
             else:
@@ -197,10 +198,10 @@ def get_routine_analyses(worksheet):
 def addAnalyses(self, analyses):
     """Adds a collection of analyses to the Worksheet at once
     """
-    queue = is_queue_enabled()
     queue_uids = list()
     queue_slots = list()
     chunk_size = get_chunk_size("task_assign_analyses")
+    queue = chunk_size > 0 and is_queue_enabled()
     for num, analysis in enumerate(analyses):
         analysis = api.get_object(analysis)
         if num < chunk_size:

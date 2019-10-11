@@ -18,14 +18,6 @@
 # Copyright 2018-2019 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-CHUNK_SIZES = {
-    "default": 5,
-    "task_action_reject": 5,
-    "task_action_retract": 5,
-    "task_action_submit": 5,
-    "task_action_unassign": 10,
-    "task_assign_analyses": 5,
-}
 
 # Maximum number of seconds to wait for a process in queue to be finished
 # before being considered as failed
