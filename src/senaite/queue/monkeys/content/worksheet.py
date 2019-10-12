@@ -21,8 +21,6 @@
 from bika.lims.catalog.worksheet_catalog import CATALOG_WORKSHEET_LISTING
 from bika.lims.interfaces.analysis import IRequestAnalysis
 from senaite.queue import api
-from senaite.queue import get_chunk_size
-from senaite.queue import is_queue_enabled
 from senaite.queue.interfaces import IQueued
 from senaite.queue.queue import queue_assign_analyses
 
@@ -152,8 +150,8 @@ def _apply_worksheet_template_routine_analyses(self, wst):
     queue_uids = list()
     queue_slots = list()
     num = 0
-    chunk_size = get_chunk_size("task_assign_analyses")
-    queue = chunk_size > 0 and is_queue_enabled()
+    chunk_size = api.get_chunk_size("task_assign_analyses")
+    queue = chunk_size > 0 and api.is_queue_enabled()
 
     # Add regular analyses
     for ar_id in sorted_ar_ids:
@@ -200,8 +198,8 @@ def addAnalyses(self, analyses):
     """
     queue_uids = list()
     queue_slots = list()
-    chunk_size = get_chunk_size("task_assign_analyses")
-    queue = chunk_size > 0 and is_queue_enabled()
+    chunk_size = api.get_chunk_size("task_assign_analyses")
+    queue = chunk_size > 0 and api.is_queue_enabled()
     for num, analysis in enumerate(analyses):
         analysis = api.get_object(analysis)
         if num < chunk_size:

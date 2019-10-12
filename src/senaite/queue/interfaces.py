@@ -30,6 +30,7 @@ class ISenaiteQueueLayer(IBikaLIMS, ISenaiteLIMS):
     only when the add-on installer has been run.
     """
 
+
 class IQueued(Interface):
     """Marker interface for objects that are in an async queue
     """

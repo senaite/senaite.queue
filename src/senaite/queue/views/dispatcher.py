@@ -23,14 +23,12 @@ import threading
 
 import requests
 from Products.Five.browser import BrowserView
-from senaite.queue import is_queue_enabled, get_queue_utility
+from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.interfaces import IQueueDispatcher
 from senaite.queue.storage import QueueStorageTool
 from senaite.queue.views.consumer import QueueConsumerView
 from zope.interface import implements
-
-from bika.lims import api
 
 
 class QueueDispatcherView(BrowserView):
@@ -61,14 +59,14 @@ class QueueDispatcherView(BrowserView):
 
         # We can make the queue consumed async only if we have the named
         # utility 'queue-consumer' registered
-        if not is_queue_enabled():
+        if not api.is_queue_enabled():
             # No async. The job will be done in this same request
             logger.warn("*** No utility found for 'queue_dispatcher'!")
             QueueConsumerView(self.context, self.request)()
 
         else:
             logger.info("*** Fire async process for 'queue_dispatcher'")
-            utility = get_queue_utility()
+            utility = api.get_queue_utility()
             if not utility.process(queue):
                 return self.response("Unable to process. Check the log", queue)
 

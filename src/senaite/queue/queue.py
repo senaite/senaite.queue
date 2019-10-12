@@ -18,7 +18,7 @@
 # Copyright 2018-2019 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-from senaite.queue import get_action_task_name
+from senaite.queue import api
 from senaite.queue.interfaces import IQueued
 from senaite.queue.storage import ActionQueueStorage
 from senaite.queue.storage import QueueStorageTool
@@ -43,7 +43,7 @@ def queue_action(context, request, action, objects):
     storage.queue(objects, action=action)
 
     # Add to the generic queue
-    task_name = get_action_task_name(action)
+    task_name = api.get_action_task_name(action)
     return queue_task(task_name, request, context)
 
 

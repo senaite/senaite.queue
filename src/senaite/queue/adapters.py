@@ -19,7 +19,8 @@
 # Some rights reserved, see README and LICENSE.
 
 from Products.Archetypes.interfaces.base import IBaseObject
-from senaite.queue import logger, get_chunks
+from senaite.queue import api
+from senaite.queue import logger
 from senaite.queue.interfaces import IQueuedTaskAdapter, IQueued
 from senaite.queue.queue import queue_action
 from senaite.queue.queue import queue_assign_analyses
@@ -28,7 +29,6 @@ from zope.component import adapts
 from zope.interface import implements
 from zope.interface import noLongerProvides
 
-from bika.lims import api
 from bika.lims.browser.workflow import WorkflowActionGenericAdapter
 from bika.lims.interfaces import IWorksheet
 from bika.lims.interfaces.analysis import IRequestAnalysis
@@ -83,7 +83,7 @@ class QueuedActionTaskAdapter(QueuedTaskAdapter):
 
         # Process the first chunk
         num_objects = len(self.uids)
-        chunks = get_chunks(task.name, self.uids)
+        chunks = api.get_chunks(task.name, self.uids)
         self.do_action(self.action, chunks[0])
 
         # Queue the rest
@@ -156,7 +156,7 @@ class QueuedAssignAnalysesTaskAdapter(QueuedTaskAdapter):
 
         # Process the first chunk
         num_objects = len(self.uids)
-        chunks = get_chunks(task.name, self.uids)
+        chunks = api.get_chunks(task.name, self.uids)
         self.do_assign(chunks[0], wst_uid=self.wst_uid)
 
         # Queue the rest
@@ -260,7 +260,7 @@ class WorkflowActionGenericQueueAdapter(WorkflowActionGenericAdapter):
 
     def do_action(self, action, objects):
         # Process the first chunk as usual
-        chunks = get_chunks(action, objects)
+        chunks = api.get_chunks(action, objects)
         super(WorkflowActionGenericQueueAdapter, self)\
             .do_action(action, chunks[0])
 
