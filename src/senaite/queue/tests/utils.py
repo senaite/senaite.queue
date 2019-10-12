@@ -68,5 +68,7 @@ def dispatch(request=None, wait_for_empty_queue=True):
     return QueueConsumerView(portal, request)()
 
 def filter_by_state(brains_or_objects, state):
+    """Filters the objects passed in by state
+    """
     objs = map(api.get_object, brains_or_objects)
     return filter(lambda obj: api.get_review_status(obj) == state, objs)
