@@ -197,6 +197,11 @@ Now, only 2 analyses have been transitioned:
     >>> IQueued.providedBy(worksheet)
     True
 
+And the worksheet's status remains to `to_be_verified`:
+
+    >>> api.get_review_status(worksheet) == 'to_be_verified'
+    True
+
 As we've seen, the queue for this task is enabled:
 
     >>> api.is_queue_enabled(action)
@@ -235,6 +240,11 @@ Since all analyses have been processed, the worksheet no longer provides the
 
     >>> IQueued.providedBy(worksheet)
     False
+
+And its state is now `verified`:
+
+    >>> api.get_review_status(worksheet) == 'verified'
+    True
 
 And all the samples the analyses belong to have been transitioned to the new
 status too:
