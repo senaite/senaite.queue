@@ -1,3 +1,24 @@
+
+*Open Source LIMS Core based on the CMS Plone*
+==============================================
+
+.. image:: https://img.shields.io/pypi/v/senaite.queue.svg?style=flat-square
+    :target: https://pypi.python.org/pypi/senaite.queue
+
+.. image:: https://img.shields.io/travis/senaite/senaite.queue/master.svg?style=flat-square
+    :target: https://travis-ci.org/senaite/senaite.core
+
+.. image:: https://img.shields.io/github/issues-pr/senaite/senaite.queue.svg?style=flat-square
+    :target: https://github.com/senaite/senaite.queue/pulls
+
+.. image:: https://img.shields.io/github/issues/senaite/senaite.queue.svg?style=flat-square
+    :target: https://github.com/senaite/senaite.queue/issues
+
+.. image:: https://img.shields.io/badge/Made%20for%20SENAITE-%E2%AC%A1-lightgrey.svg
+   :target: https://www.senaite.com
+
+
+
 About
 =====
 
