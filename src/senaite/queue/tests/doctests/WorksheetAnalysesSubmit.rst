@@ -229,3 +229,11 @@ Since all analyses have been processed, the worksheet no longer provides the
 
     >>> IQueued.providedBy(worksheet)
     False
+
+And all the samples the analyses belong to have been transitioned to the new
+status too:
+
+    >>> samples = map(lambda an: an.getRequest(), analyses)
+    >>> statuses = map(lambda samp: api.get_review_status(samp) == "to_be_verified", samples)
+    >>> all(statuses)
+    True
