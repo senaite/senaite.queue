@@ -1,5 +1,5 @@
-Unassign transition (analyses from worksheet)
-=============================================
+Verify transition (analyses from worksheet)
+===========================================
 
 SENAITE Queue comes with an adapter for generic actions (e.g. submit, unassign).
 Generic actions don't require additional logic other than transitioning and this
@@ -10,7 +10,7 @@ requirements.
 
 Running this test from the buildout directory::
 
-    bin/test test_textual_doctests -t WorksheetAnalysesUnassign
+    bin/test test_textual_doctests -t WorksheetAnalysesVerify
 
 
 Test Setup
@@ -40,6 +40,10 @@ Functional Helpers:
     ...     worksheet.addAnalyses(analyses)
     ...     return worksheet
 
+    >>> def set_analyses_results(worksheet):
+    ...     for analysis in worksheet.getAnalyses():
+    ...         analysis.setResult(13)
+
 Variables:
 
     >>> portal = self.portal
@@ -65,23 +69,37 @@ a worksheet, slot positions, etc.).
     >>> api.is_queue_enabled("task_assign_analyses")
     False
 
+And submit transition as well:
 
-Unassign transition
--------------------
+    >>> api.disable_queue_for("submit")
+    >>> api.is_queue_enabled("submit")
+    False
+
+Enable the self-verification too:
+
+    >>> setup.setSelfVerificationEnabled(True)
+    >>> setup.getSelfVerificationEnabled()
+    True
+
+
+Verify transition
+-----------------
 
 Set the number of analyses to be transitioned in a single queued task:
 
-    >>> action = "unassign"
+    >>> action = "verify"
     >>> api.set_chunk_size(action, 5)
     >>> api.get_chunk_size(action)
     5
 
-Create a worksheet with some analyses:
+Create a worksheet with some analyses, set a result and submit all them:
 
     >>> worksheet = new_worksheet(15)
     >>> analyses = worksheet.getAnalyses()
+    >>> set_analyses_results(worksheet)
+    >>> test_utils.handle_action(worksheet, analyses, "submit")
 
-Unassign analyses:
+Verify the results:
 
     >>> test_utils.handle_action(worksheet, analyses, action)
 
@@ -92,7 +110,7 @@ The worksheet provides now the interface `IQueued`:
 
 Only the first chunk of analyses has been transitioned non-async:
 
-    >>> transitioned = filter(lambda an: not an.getWorksheet(), analyses)
+    >>> transitioned = test_utils.filter_by_state(analyses, "verified")
     >>> len(transitioned)
     5
 
@@ -103,7 +121,7 @@ And none of them provide the interface `IQueued`:
 
 While the rest of analyses, not yet transitioned, do provide `IQueued`:
 
-    >>> non_transitioned = filter(lambda an: an.getWorksheet(), analyses)
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "to_be_verified")
     >>> len(non_transitioned)
     10
     >>> all(map(lambda an: IQueued.providedBy(an), non_transitioned))
@@ -136,10 +154,10 @@ But is not yet empty:
 The next chunk of analyses has been processed and only those that have
 transitioned provide the interface `IQueued`:
 
-    >>> transitioned = filter(lambda an: not an.getWorksheet(), analyses)
+    >>> transitioned = test_utils.filter_by_state(analyses, "verified")
     >>> len(transitioned)
     10
-    >>> non_transitioned = filter(lambda an: an.getWorksheet(), analyses)
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "to_be_verified")
     >>> len(non_transitioned)
     5
     >>> any(map(lambda an: IQueued.providedBy(an), transitioned))
@@ -166,10 +184,10 @@ And dispatch again:
 
 Now, only 2 analyses have been transitioned:
 
-    >>> transitioned = filter(lambda an: not an.getWorksheet(), analyses)
+    >>> transitioned = test_utils.filter_by_state(analyses, "verified")
     >>> len(transitioned)
     12
-    >>> non_transitioned = filter(lambda an: an.getWorksheet(), analyses)
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "to_be_verified")
     >>> len(non_transitioned)
     3
     >>> any(map(lambda an: IQueued.providedBy(an), transitioned))
@@ -203,10 +221,10 @@ the queue. Rather all remaining tasks will be processed in just one shot:
     True
     >>> queue.is_empty()
     True
-    >>> transitioned = filter(lambda an: not an.getWorksheet(), analyses)
+    >>> transitioned = test_utils.filter_by_state(analyses, "verified")
     >>> len(transitioned)
     15
-    >>> non_transitioned = filter(lambda an: an.getWorksheet(), analyses)
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "to_be_verified")
     >>> len(non_transitioned)
     0
     >>> any(map(lambda an: IQueued.providedBy(an), transitioned))
@@ -217,3 +235,11 @@ Since all analyses have been processed, the worksheet no longer provides the
 
     >>> IQueued.providedBy(worksheet)
     False
+
+And all the samples the analyses belong to have been transitioned to the new
+status too:
+
+    >>> samples = map(lambda an: an.getRequest(), analyses)
+    >>> statuses = map(lambda samp: api.get_review_status(samp) == "verified", samples)
+    >>> all(statuses)
+    True

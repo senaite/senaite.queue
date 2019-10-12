@@ -18,6 +18,7 @@
 # Copyright 2018-2019 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
+from plone import api as ploneapi
 from senaite.queue.interfaces import IQueueDispatcher
 from zope.component._api import queryUtility
 
@@ -59,6 +60,21 @@ def is_queue_enabled(task=_DEFAULT_TASK_ID):
     return get_chunk_size(task) > 0
 
 
+def disable_queue_for(task_name_or_action):
+    """Disables the queue for the given action
+    """
+    set_chunk_size(task_name_or_action, 0)
+
+
+def set_chunk_size(task_name_or_action, chunk_size):
+    """
+    Sets the chunk size for the given task name
+    """
+    registry_id = resolve_queue_registry_record(task_name_or_action)
+    if registry_id:
+        ploneapi.portal.set_registry_record(registry_id, chunk_size)
+
+
 def get_chunk_size(task_name_or_action):
     """Returns the default chunk size for a given task. If the queue is not
     enabled for the task or for the whole queue, returns 0
@@ -97,21 +113,37 @@ def get_chunks(task_name, items):
     return [items[:chunk_size], items[chunk_size:]]
 
 
-def get_queue_registry_record(task_name_or_action, fallback_action=True):
-    # Be sure we don't miss the prefix
+def get_queue_registry_record(task_name_or_action):
+    """Returns the value for queue settings from the registry
+    """
+    registry_id = resolve_queue_registry_record(task_name_or_action)
+    if registry_id:
+        return get_registry_record(registry_id)
+    return None
+
+
+def resolve_queue_registry_record(task_name_or_action):
+    """Resolves the id used in the registry for the given task name or action
+    """
     registry_name = task_name_or_action
     if "senaite.queue." not in registry_name:
         registry_name = "senaite.queue.{}".format(task_name_or_action)
 
     # Get the value
     val = get_registry_record(registry_name)
+    if val is not None:
+        return registry_name
 
-    if val is None and fallback_action:
-        # Maybe is an action
-        action_name = get_action_task_name(task_name_or_action)
-        return get_queue_registry_record(action_name, fallback_action=False)
+    # Maybe is an action
+    action_name = get_action_task_name(task_name_or_action)
+    if "senaite.queue." not in action_name:
+        action_name = "senaite.queue.{}".format(action_name)
 
-    return val
+    # Get the value
+    val = get_registry_record(action_name)
+    if val is not None:
+        return action_name
+    return None
 
 
 def get_action_task_name(action):

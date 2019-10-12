@@ -39,12 +39,6 @@ def create_sample(services, client, contact, sample_type, receive=True):
     return sample
 
 
-def set_registry_record(name, value):
-    """Sets a value in the registry record for the given name
-    """
-    ploneapi.portal.set_registry_record(name, value)
-
-
 def get_queue_tool():
     """Returns the queue storage tool
     """
@@ -66,6 +60,7 @@ def dispatch(request=None, wait_for_empty_queue=True):
     if not queue.lock():
         return "Cannot lock the queue"
     return QueueConsumerView(portal, request)()
+
 
 def filter_by_state(brains_or_objects, state):
     """Filters the objects passed in by state

@@ -70,6 +70,16 @@ class IQueueControlPanel(Interface):
         required=True,
     )
 
+    task_action_verify = schema.Int(
+        title=_(u"Number of analyses to verify per task"),
+        description=_(
+            "Number of analyses that will be handled in a single task when "
+            "the analysis is verified. Overrides default's for 'reject' "
+            "action. A value of 0 disables the queue for this specific action"),
+        default=10,
+        required=True,
+    )
+
     task_action_retract = schema.Int(
         title=_(u"Number of analyses to retract per task"),
         description=_(

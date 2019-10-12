@@ -18,8 +18,6 @@ Test Setup
 
 Needed imports:
 
-    >>> from bika.lims.workflow import doActionFor as do_action_for
-    >>> from plone import api as ploneapi
     >>> from plone.app.testing import setRoles
     >>> from plone.app.testing import TEST_USER_ID
     >>> from plone.app.testing import TEST_USER_PASSWORD
@@ -67,34 +65,32 @@ Disable the queue for `task_assign_analyses` so we can create Worksheets to test
 generic actions (`assign` action is not a generic one because involves handling
 a worksheet, slot positions, etc.).
 
-    >>> test_utils.set_registry_record("senaite.queue.task_assign_analyses", 0)
-    >>> api.get_chunk_size("task_assign_analyses") == 0
-    True
+    >>> api.disable_queue_for("task_assign_analyses")
+    >>> api.is_queue_enabled("task_assign_analyses")
+    False
 
 
 Submit transition
 -----------------
 
-Set the variables:
-
-    >>> action = "submit"
-    >>> task_name = api.get_action_task_name(action)
-    >>> task_registry = "senaite.queue.{}".format(task_name)
-
 Set the number of analyses to be transitioned in a single queued task:
 
-    >>> test_utils.set_registry_record(task_registry, 5)
-    >>> api.get_chunk_size(action) == 5
-    True
+    >>> action = "submit"
+    >>> api.set_chunk_size(action, 5)
+    >>> api.get_chunk_size(action)
+    5
 
 Create a worksheet with some analyses:
 
     >>> worksheet = new_worksheet(15)
 
-Select all analyses, set a result and transition them:
+Select all analyses, set a result:
 
     >>> analyses = worksheet.getAnalyses()
     >>> set_analyses_results(worksheet)
+
+Submit the analyses
+
     >>> test_utils.handle_action(worksheet, analyses, action)
 
 The worksheet provides now the interface `IQueued`:
@@ -166,9 +162,9 @@ Since there are still 5 analyses remaining, the Worksheet provides `IQueued`:
 
 Change the number of items to process per task to 2:
 
-    >>> test_utils.set_registry_record(task_registry, 2)
-    >>> api.get_chunk_size(action) == 2
-    True
+    >>> api.set_chunk_size(action, 2)
+    >>> api.get_chunk_size(action)
+    2
 
 And dispatch again:
 
@@ -193,17 +189,17 @@ Now, only 2 analyses have been transitioned:
 
 As we've seen, the queue for this task is enabled:
 
-    >>> api.is_queue_enabled(task_name)
+    >>> api.is_queue_enabled(action)
     True
 
 But we can disable the queue for this task if we set the number of items to
 process per task to 0:
 
-    >>> test_utils.set_registry_record(task_registry, 0)
-    >>> api.get_chunk_size(action) == 0
-    True
-    >>> api.is_queue_enabled(task_name)
+    >>> api.disable_queue_for(action)
+    >>> api.is_queue_enabled(action)
     False
+    >>> api.get_chunk_size(action)
+    0
 
 But still, if we manually trigger the dispatch with the queue being disabled,
 the action will take place. Thus, disabling the queue only prevents the system
