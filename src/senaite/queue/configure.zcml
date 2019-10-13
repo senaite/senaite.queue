@@ -213,6 +213,13 @@
     provides="bika.lims.interfaces.IWorkflowActionAdapter"
     permission="zope.Public" />
 
+  <!-- AnalysisRequest cannot transition when they have queued analyses -->
+  <adapter
+    name="senaite.queue.sample_guard"
+    for="bika.lims.interfaces.IAnalysisRequest"
+    factory=".adapters.SampleGuardAdapter"
+    provides="bika.lims.interfaces.IGuardAdapter"
+  />
 
   <!-- Queued analyses: Add Analyses view from inside Worksheet.
   Analyses that are labeled with IQueued are not displayed -->

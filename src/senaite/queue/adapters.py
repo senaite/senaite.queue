@@ -30,9 +30,25 @@ from zope.interface import implements
 from zope.interface import noLongerProvides
 
 from bika.lims.browser.workflow import WorkflowActionGenericAdapter
-from bika.lims.interfaces import IWorksheet
+from bika.lims.interfaces import IWorksheet, IGuardAdapter
 from bika.lims.interfaces.analysis import IRequestAnalysis
 from bika.lims.workflow import doActionFor
+
+
+class SampleGuardAdapter(object):
+    implements(IGuardAdapter)
+
+    def __init__(self, context):
+        self.context = context
+
+    def guard(self, action):
+        """Returns False if the sample contains one queued analysis
+        """
+        for brain in self.context.getAnalyses():
+            analysis = api.get_object(brain)
+            if IQueued.providedBy(analysis):
+                return False
+        return True
 
 
 class QueuedTaskAdapter(object):
