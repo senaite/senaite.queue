@@ -7,7 +7,6 @@
 *.tags*
 *.wpr
 *.wpu
-*MANIFEST*
 *project
 *workspace
 *~
@@ -25,11 +24,6 @@ Thumbs.db
 /tags
 .mr.developer.cfg
 bin
-
-# Other sources
-src/senaite.core
-src/senaite.api
-src/senaite.lims
 
 # Distribution / packaging
 .Python
@@ -73,7 +67,6 @@ coverage.xml
 
 # Translations
 *.mo
-*.pot
 
 # virtualenv
 .venv
