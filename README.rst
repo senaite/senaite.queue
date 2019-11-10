@@ -251,7 +251,8 @@ When the queue is not empty, you will see the list of tasks to be processed
 inside `tasks` attribute:
 
 
-.. code-block::json
+.. code-block:: json
+
     {
     "tasks": [{
       "context_uid": "9188a07b15be428d83c7a9f615dc8e28",
