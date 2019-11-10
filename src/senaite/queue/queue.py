@@ -67,5 +67,4 @@ def queue_task(name, request, context):
     # Mark context as queued and reindex
     if not IQueued.providedBy(context):
         alsoProvides(context, IQueued)
-        context.reindexObject(idxs="is_queued")
     return queued
