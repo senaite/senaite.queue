@@ -296,7 +296,7 @@ inside `tasks` attribute:
 Contribute
 ==========
 
-We want contributing to SENAITE.STORAGE to be fun, enjoyable, and educational
+We want contributing to SENAITE.QUEUE to be fun, enjoyable, and educational
 for anyone, and everyone. This project adheres to the `Contributor Covenant
 <https://github.com/senaite/senaite.queue/blob/master/CODE_OF_CONDUCT.md>`_.
 
@@ -304,7 +304,7 @@ By participating, you are expected to uphold this code. Please report
 unacceptable behavior.
 
 Contributions go far beyond pull requests and commits. Although we love giving
-you the opportunity to put your stamp on SENAITE.STORAGE, we also are thrilled
+you the opportunity to put your stamp on SENAITE.QUEUE, we also are thrilled
 to receive a variety of other contributions.
 
 Please, read `Contributing to senaite.queue document
@@ -329,7 +329,7 @@ License
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the `GNU General Public License version 2
-<https://github.com/senaite/senaite.storage/blob/master/LICENSE>`_ as published
+<https://github.com/senaite/senaite.queue/blob/master/LICENSE>`_ as published
 by the Free Software Foundation.
 
 This program is distributed in the hope that it will be useful,
