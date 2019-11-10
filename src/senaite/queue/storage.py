@@ -25,7 +25,6 @@ from datetime import datetime
 from BTrees.OOBTree import OOBTree
 from senaite.queue import api
 from senaite.queue import logger
-from senaite.queue.config import MAX_SECONDS_UNLOCK
 from senaite.queue.interfaces import IQueued
 from zope.annotation.interfaces import IAnnotations
 from zope.interface import alsoProvides
@@ -174,7 +173,7 @@ class QueueStorageTool(BaseStorageTool):
         # was locked for the last time
         now = time.time()
         diff = datetime.fromtimestamp(now) - datetime.fromtimestamp(since)
-        return diff.total_seconds() > MAX_SECONDS_UNLOCK
+        return diff.total_seconds() > api.get_max_seconds_unlock()
 
     def lock(self):
         """Tries to lock the queue and returns whether it succeeded or not
