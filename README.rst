@@ -20,8 +20,6 @@
 About
 =====
 
-This is an **EXPERIMENTAL PACKAGE, use at your own risk**
-
 This package enables asynchronous tasks in Senaite to better handle concurrent
 actions and processes when senaite's workload is high, especially for instances
 with high-demand on writing to disk. 

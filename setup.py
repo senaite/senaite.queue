@@ -20,13 +20,14 @@
 
 from setuptools import setup, find_packages
 
-version = "0.0.9"
+version = "1.0.0"
 
 setup(
     name="senaite.queue",
     version=version,
     description="Asynchronous tasks add-on for SENAITE",
-    long_description=open("README.rst").read(),
+    long_description=open("README.rst").read() + "\n" +
+    open("CHANGES.rst").read() + "\n",
     # Get more strings from
     # http://pypi.python.org/pypi?:action=list_classifiers
     classifiers=[
@@ -36,8 +37,8 @@ setup(
         "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
     ],
     keywords=['senaite', 'lims', 'opensource'],
-    author="SENAITE Foundation",
-    author_email="support@senaite.com",
+    author="Naralabs SL",
+    author_email="info@naralabs.com",
     url="https://github.com/senaite/senaite.queue",
     license="GPLv2",
     packages=find_packages("src", exclude=["ez_setup"]),
@@ -48,7 +49,7 @@ setup(
     install_requires=[
         "setuptools",
         "senaite.lims>=1.3.0",
-        "senaite.lims<2",
+        "senaite.lims<2.0.0",
         "requests",
     ],
     extras_require={
