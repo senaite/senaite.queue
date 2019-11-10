@@ -1,4 +1,4 @@
-# Contributing to senaite.storage
+# Contributing to senaite.queue
 
 Third-party contributions are essential for keeping `senaite.queue` continuously 
 improving. We simply cannot access the huge number of platforms and myriad 
@@ -7,7 +7,7 @@ possible to contribute changes that get things working in your environment.
 There are a few guidelines that we need contributors to follow so that we can 
 have a chance of keeping on top of things.
 
-The following is a set of guidelines for contributing to senaite.storage, which is 
+The following is a set of guidelines for contributing to `senaite.queue`, which is 
 hosted in the [SENAITE Organization](https://github.com/senaite) on GitHub. 
 These are just guidelines, not rules. Use your best judgment, and feel free to 
 propose changes to this document in a [pull request](#how-to-submit-a-pull-request).
@@ -34,7 +34,7 @@ problem.
 
  * **Describe the exact steps which reproduce the problem** in as many
 details as possible. For example, start by describing your computing
-platform (Operating System and version, how did you installed senaite.storage
+platform (Operating System and version, how did you installed senaite.queue
 and its dependencies, what file or front-end are you using as a signal
 source, etc.). You can also include the configuration file(s) you are
 using, or a dump of the terminal output you are getting. The more
@@ -59,22 +59,22 @@ contribute to the source code.
    1. If you still have not done so, [create your personal account on GitHub](
    https://github.com/join).
 
-   2. [Fork senaite.storage from GitHub](
+   2. [Fork senaite.queue from GitHub](
    https://github.com/senaite/senaite.queue/fork). This will copy the whole
-   `senaite.storage` repository to your personal account.
+   `senaite.queue` repository to your personal account.
 
    3. Then, go to your favourite working folder in your computer and clone your 
    forked repository by typing (replacing ```YOUR_USERNAME``` by
    the actual username of your GitHub account):
 
-          $ git clone https://github.com/YOUR_USERNAME/senaite.storage
+          $ git clone https://github.com/YOUR_USERNAME/senaite.queue
 
-   4. Your forked repository https://github.com/YOUR_USERNAME/senaite.storage will 
+   4. Your forked repository https://github.com/YOUR_USERNAME/senaite.queue will 
    receive the default name of `origin`. You can also add the original 
-   `senaite.storage` repository, which is usually called `upstream`:
+   `senaite.queue` repository, which is usually called `upstream`:
 
-          $ cd senaite.storage
-          $ git remote add upstream https://github.com/senaite/senaite.storage.git
+          $ cd senaite.queue
+          $ git remote add upstream https://github.com/senaite/senaite.queue.git
 
 To verify the new upstream repository you have specified for your fork, type 
 `git remote -v`. You should see the URL for your fork as `origin`, and the URL 
