@@ -73,6 +73,16 @@ and configure the client properly:
   </clock-server>
 
 
+Configuration
+=============
+
+Some parameters of `senaite.queue` can be configured from SENAITE UI directly.
+Login as admin user and visit "Site Setup". A link "Queue Settings" can be found
+under "Add-on configuration". From this view you can either disable queue for
+specific actions and configure the number of items to be processed by a single
+queued task for a given action.
+
+
 Screenshots
 ===========
 
@@ -89,6 +99,14 @@ Queued worksheet
 
 .. image:: https://raw.githubusercontent.com/senaite/senaite.queue/master/static/queued_worksheet.png
    :alt: Queued worksheet
+   :width: 760px
+   :align: center
+
+Queue settings
+--------------
+
+.. image:: https://raw.githubusercontent.com/senaite/senaite.queue/master/static/queue_settings.png
+   :alt: Queue configuration view
    :width: 760px
    :align: center
 
