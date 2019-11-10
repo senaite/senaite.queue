@@ -110,7 +110,6 @@ class QueuedActionTaskAdapter(QueuedTaskAdapter):
             # There are no more items to queue, all items queued for this
             # context have been transitioned already
             noLongerProvides(self.context, IQueued)
-            self.context.reindexObject(idxs="is_queued")
             self.storage.flush()
 
         logger.info("*** Processed: {}/{}".format(len(chunks[0]), num_objects))
@@ -184,7 +183,6 @@ class QueuedAssignAnalysesTaskAdapter(QueuedTaskAdapter):
             # There are no more items to queue, all items queued for this
             # context have been transitioned already
             noLongerProvides(self.context, IQueued)
-            self.context.reindexObject(idxs="is_queued")
             self.storage.flush()
 
         logger.info("*** Processed: {}/{}".format(len(chunks[0]), num_objects))

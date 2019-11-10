@@ -78,30 +78,6 @@ class QueueDispatcherView(BrowserView):
                   "queue": queue.to_dict()}
         return json.dumps(output)
 
-    def spoof_request(self, task):
-        # Inject the PloneUser who started the task
-        username = task.request.get("AUTHENTICATED_USER")
-        if username:
-            mt = api.get_tool("portal_membership")
-            user = mt.getMemberById(username)
-            user = user and user.getUser() or None
-            if user:
-                self.request["AUTHENTICATED_USER"] = user
-
-        # Inject the __ac
-        __ac = task.request.get("__ac")
-        if __ac:
-            self.request["__ac"] = __ac
-            if hasattr(self.request, "cookies"):
-                self.request.cookies["__ac"] = __ac
-
-        remote_addr = task.request.get("REMOTE_ADDR")
-        if remote_addr:
-            self.request["REMOTE_ADDR"] = remote_addr
-
-        # Copy HTTP-headers from request._orig_env
-        self.request._orig_env.update(task._orig_env)
-
 
 class QueueDispatcher(object):
     implements(IQueueDispatcher)

@@ -115,4 +115,3 @@ class QueueGCView(BrowserView):
         storage._p_changed = True
 
         noLongerProvides(worksheet, IQueued)
-        worksheet.reindexObject(idxs="is_queued")

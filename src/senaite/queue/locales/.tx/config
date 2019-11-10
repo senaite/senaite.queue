@@ -1,0 +1,9 @@
+[main]
+host = https://www.transifex.com
+
+[senaite-queue]
+file_filter = <lang>/LC_MESSAGES/senaite.queue.po
+host = https://www.transifex.com
+source_file = senaite.queue.pot
+source_lang = en
+type = PO

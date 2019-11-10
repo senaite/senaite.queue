@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
-"POT-Creation-Date: 2019-10-10 23:36+0000\n"
+"POT-Creation-Date: 2019-11-10 12:47+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI +ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -26,8 +26,73 @@ msgstr ""
 msgid "Asynchronous tasks add-on for SENAITE"
 msgstr ""
 
+#: senaite/queue/controlpanel.py:35
+msgid "Default number of objects that will be handled in a single task. A value of 0 disables queuing of tasks functionality at all, specific tasks below included."
+msgstr ""
+
+#: senaite/queue/controlpanel.py:34
+msgid "Default number of objects to process per task"
+msgstr ""
+
 #: senaite/queue/views/worksheet.py:85
 msgid "No analyses were added"
+msgstr ""
+
+#: senaite/queue/controlpanel.py:45
+msgid "Number of analyses that will be handled in a single task when assigned to a worksheet. Overrides default's for action 'assign'. A value of 0 disables the queue for this specific action."
+msgstr ""
+
+#: senaite/queue/controlpanel.py:65
+msgid "Number of analyses that will be handled in a single task when result is submitted. Overrides default's for 'submit' action. A value of 0 disables the queue for this specific action."
+msgstr ""
+
+#: senaite/queue/controlpanel.py:95
+msgid "Number of analyses that will be handled in a single task when the analysis is rejected. Overrides default's for 'reject' action. A value of 0 disables the queue for this specific action"
+msgstr ""
+
+#: senaite/queue/controlpanel.py:85
+msgid "Number of analyses that will be handled in a single task when the analysis is retracted. Overrides default's for 'retract' action. A value of 0 disables the queue for this specific action"
+msgstr ""
+
+#: senaite/queue/controlpanel.py:75
+msgid "Number of analyses that will be handled in a single task when the analysis is verified. Overrides default's for 'reject' action. A value of 0 disables the queue for this specific action"
+msgstr ""
+
+#: senaite/queue/controlpanel.py:55
+msgid "Number of analyses that will be handled in a single task when unassigned from a worksheet. Overrides default's for 'unassign' action. A value of 0 disables the queue for this specific action."
+msgstr ""
+
+#: senaite/queue/controlpanel.py:44
+msgid "Number of analyses to assign per task"
+msgstr ""
+
+#: senaite/queue/controlpanel.py:94
+msgid "Number of analyses to reject per task"
+msgstr ""
+
+#: senaite/queue/controlpanel.py:84
+msgid "Number of analyses to retract per task"
+msgstr ""
+
+#: senaite/queue/controlpanel.py:64
+msgid "Number of analyses to submit per task"
+msgstr ""
+
+#: senaite/queue/controlpanel.py:54
+msgid "Number of analyses to unassign per task"
+msgstr ""
+
+#: senaite/queue/controlpanel.py:74
+msgid "Number of analyses to verify per task"
+msgstr ""
+
+#: senaite/queue/controlpanel.py:105
+msgid "Number of seconds to wait for a process in queue to be finished before being considered as failed. Failed processes will be enqueued again"
+msgstr ""
+
+#: senaite/queue/profiles/default/actionicons.xml
+#: senaite/queue/profiles/default/controlpanel.xml
+msgid "Queue Settings"
 msgstr ""
 
 #: senaite/queue/listing.py:51
@@ -36,6 +101,14 @@ msgstr ""
 
 #: senaite/queue/configure.zcml:37
 msgid "SENAITE QUEUE"
+msgstr ""
+
+#: senaite/queue/controlpanel.py:117
+msgid "SENAITE QUEUE Settings"
+msgstr ""
+
+#: senaite/queue/controlpanel.py:104
+msgid "Seconds to wait before unlock"
 msgstr ""
 
 #: senaite/queue/templates/queued_analyses_sample_viewlet.pt:17

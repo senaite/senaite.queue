@@ -118,9 +118,6 @@
     permission="zope.Public"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 
-  <!-- Indexers for async processing of analyses -->
-  <adapter name="is_queued" factory=".indexers.is_queued"/>
-
   <!-- Adapter for analyses assignment queue task -->
   <adapter
     name="task_assign_analyses"

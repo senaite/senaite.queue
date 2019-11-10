@@ -103,7 +103,7 @@ def get_chunk_size(task_name_or_action):
 
 
 def get_chunks(task_name, items):
-    """Returns the items splited into a list. Rhe first element contains the
+    """Returns the items splitted into a list. Rhe first element contains the
     first chunk and the second element contains the rest of the items
     """
     chunk_size = get_chunk_size(task_name)
@@ -147,5 +147,13 @@ def resolve_queue_registry_record(task_name_or_action):
 
 
 def get_action_task_name(action):
+    """Returns the unique name of an action type task
+    """
     return "task_action_{}".format(action)
 
+
+def get_max_seconds_unlock():
+    """Returns the number of seconds to wait for a process in queue to be
+    finished before being considered as failed
+    """
+    return get_registry_record("max_seconds_unlock", default=600)

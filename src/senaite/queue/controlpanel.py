@@ -100,6 +100,16 @@ class IQueueControlPanel(Interface):
         required=True,
     )
 
+    max_seconds_unlock = schema.Int(
+        title=_(u"Seconds to wait before unlock"),
+        description=_(
+            "Number of seconds to wait for a process in queue to be finished "
+            "before being considered as failed. Failed processes will be "
+            "enqueued again"),
+        default=600,
+        required=True,
+    )
+
 
 class QueueControlPanelForm(RegistryEditForm):
     schema = IQueueControlPanel
