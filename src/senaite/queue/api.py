@@ -157,3 +157,18 @@ def get_max_seconds_unlock():
     finished before being considered as failed
     """
     return get_registry_record("max_seconds_unlock", default=600)
+
+
+def get_max_retries():
+    """Returns the number of times a task will be re-queued before being
+    considered as failed and removed from the queue
+    """
+    max_retries = get_registry_record("senaite.queue.max_retries")
+    return to_int(max_retries, 5)
+
+
+def set_max_retries(retries):
+    """Sets the number of times a task will be re-queued before being
+    considered as failed and removed from the queue
+    """
+    ploneapi.portal.set_registry_record("senaite.queue.max_retries", retries)

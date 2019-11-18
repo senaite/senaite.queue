@@ -28,6 +28,8 @@ from senaite.queue import logger
 from senaite.queue.interfaces import IQueued
 from zope.annotation.interfaces import IAnnotations
 from zope.interface import alsoProvides
+from zope.interface import noLongerProvides
+
 
 # The id of the main tool for queue management of tasks
 MAIN_QUEUE_STORAGE_TOOL_ID = "senaite.queue.main.storage"
@@ -104,17 +106,10 @@ class QueueStorageTool(BaseStorageTool):
 
     @property
     def processed(self):
-        """The last task being processed or that was processed
+        """The last task being processed or that has been processed
         """
         processed = self.storage.get("processed")
         return processed and self._task_obj(processed) or None
-
-    @property
-    def speed(self):
-        """Number of tasks added since the last time the queue was locked
-        """
-        speed = self.storage.get("speed")
-        return speed and speed or 0
 
     def is_empty(self):
         """Returns whether the queue is empty and healthy
@@ -144,11 +139,12 @@ class QueueStorageTool(BaseStorageTool):
             return True
 
         # If the context object of the task marked as "processed" is still
-        # providing the interface IQueued, then we assume that the process
-        # routine finished, but without success
+        # providing the interface IQueued and there is no other task awaiting
+        # for same context, then we assume that the process routine finished,
+        # but without success
         obj = processed.context
         if obj and IQueued.providedBy(obj):
-            return False
+            return self.contains_tasks_for(obj)
 
         # If there is no object associated to this task or the object does not
         # provide IQueued, we don't have any chance to know if whether the task
@@ -207,9 +203,6 @@ class QueueStorageTool(BaseStorageTool):
                 logger.info("*** Cannot lock. Queue is empty")
                 return False
 
-            # Update the speed
-            self.storage["speed"] = len(self) - self.speed
-
             # Lock the queue by assigning the current task to be processed and
             # shifting the tasks in the pool (FIFO)
             self.storage["current"] = self.tasks[0]
@@ -226,33 +219,104 @@ class QueueStorageTool(BaseStorageTool):
         with self.__lock:
             self.storage["processed"] = self.current
             self.storage._p_changed = True
+
+            # Remove the IQueued interface so it can be transitioned
+            context = self.current.context
+            if IQueued.providedBy(context):
+                noLongerProvides(context, IQueued)
+
             return self.current
 
     def release(self):
         """Notifies that the current task has been finished
         """
         with self.__lock:
+            # Remove IQueued if there are no more tasks for the context
+            if self.current:
+                context = self.current.context
+                self._handle_queued_marker_for(context)
+
             self.storage["current"] = None
             self.storage["locked"] = None
             self.storage._p_changed = True
             logger.info("*** Queue released")
 
-    def append(self, name, request, context):
-        """Adds a new task at the end of the queue
+    def append(self, task):
+        """Appends a new task to the queue
         """
         with self.__lock:
             # Don't add to the queue if the task is already in there,
             # even if is in processed or current
-            alsoProvides(context, IQueued)
-            task = QueueTask(name, request, context)
             if self.contains(task):
                 return False
+
+            # Apply the IQueued marker to the context the task applies to
+            context = task.context
+            if not IQueued.providedBy(context):
+                alsoProvides(context, IQueued)
+
             # Append the task to the queue
             self.storage["tasks"].append(task)
             self.storage._p_changed = True
             logger.info("*** Queued new task for {}: {}"
-                        .format(api.get_id(context), name))
+                        .format(api.get_id(context), task.name))
             return True
+
+    def _handle_queued_marker_for(self, context):
+        """Applies/Removes the IQueued marker interface to the context. The
+        context gets marked with IQueued if there is still a task awaiting for
+        the context passed-in. Removes the marker IQueued otherwise
+        """
+        if self.contains_tasks_for(context):
+            # The queue still contains a task for the context. Add IQueued
+            if not IQueued.providedBy(context):
+                alsoProvides(context, IQueued)
+
+        elif IQueued.providedBy(context):
+            # There is no task awaiting for the context. Remove IQueued
+            noLongerProvides(context, IQueued)
+
+    def requeue(self, task):
+        """Re-queues the task passed-in
+        """
+        self.remove(task)
+        self.append(task)
+
+    def remove(self, task):
+        """Removes the task passed-in from the queue
+        """
+        with self.__lock:
+            # Remove the task from the tasks list
+            out_tasks = list()
+            for stored_task in self.storage["tasks"]:
+                if self._task_obj(stored_task) != task:
+                    out_tasks.append(stored_task)
+            self.storage["tasks"] = out_tasks
+
+            # Remove the task from current/processed
+            if task == self.current:
+                self.storage["current"] = None
+            if task == self.processed:
+                self.storage["processed"] = None
+
+            # Apply the changes
+            self.storage._p_changed = True
+
+            # Remove IQueued if there are no more tasks queued for the context
+            context = task.context
+            self._handle_queued_marker_for(context)
+
+            logger.info("*** Removed task for {}: {}".format(
+                api.get_id(context), task.name))
+
+    def contains_tasks_for(self, context):
+        """Finds tasks in queue for the context passed in
+        """
+        uid = api.get_uid(context)
+        for task in self.tasks:
+            if task.context_uid == uid:
+                return True
+        return False
 
     def contains(self, task, include_locked=False):
         """Checks if the queue contains the task passed-in
@@ -262,16 +326,18 @@ class QueueStorageTool(BaseStorageTool):
             tasks.extend([self.current, self.processed])
         return task in tasks
 
-    def fail(self, task, message=None):
+    def fail(self, task):
         """Marks a task as failed
         """
-        context = task.context
-        #alsoProvides(context, IQueued)
-        msg = "*** Queued task failed for {}: {}".format(
-            api.get_id(context), task.name)
-        if message:
-            msg = "{} ({})".format(msg, message)
-        logger.info(msg)
+        # Does the task needs to be reprocessed?
+        max_retries = api.get_max_retries()
+        if task.retries >= max_retries:
+            # Remove task from the queue
+            self.remove(task)
+        else:
+            # Re-queue the task
+            task.retries += 1
+            self.requeue(task)
 
     def _task_obj(self, task_dict):
         """Converts a dict representation of a Task to a QueueTask object
@@ -281,7 +347,9 @@ class QueueStorageTool(BaseStorageTool):
         name = task_dict["name"]
         req = task_dict.get("request")
         context = task_dict["context_uid"]
-        return QueueTask(name, req, context)
+        task_uid = task_dict["task_uid"]
+        retries = task_dict.get("retries", 0)
+        return QueueTask(name, req, context, task_uid, retries=retries)
 
     def to_dict(self):
         """A dict representation of the queue
@@ -292,8 +360,7 @@ class QueueStorageTool(BaseStorageTool):
             "tasks": self.tasks,
             "current": self.current,
             "locked": self.storage.get("locked"),
-            "processed": self.processed,
-            "speed": self.speed }
+            "processed": self.processed, }
 
     def __len__(self):
         return len(self.tasks)
@@ -381,11 +448,13 @@ class QueueTask(dict):
     """A task for queuing
     """
 
-    def __init__(self, name, request, context, *arg, **kw):
+    def __init__(self, name, request, context, task_uid, retries=0, *arg, **kw):
         super(QueueTask, self).__init__(*arg, **kw)
         self["name"] = name
         self["context_uid"] = api.get_uid(context)
         self["request"] = self._get_request_data(request).copy()
+        self["task_uid"] = task_uid
+        self["retries"] = retries
 
     def _get_request_data(self, request):
         env = getattr(request, "_orig_env", None) or {}
@@ -447,9 +516,17 @@ class QueueTask(dict):
         del(orig_req["_orig_env"])
         return orig_req
 
+    @property
+    def retries(self):
+        return self["retries"]
+
+    @property
+    def task_uid(self):
+        return self["task_uid"]
+
+    @retries.setter
+    def retries(self, value):
+        self["retries"] = value
+
     def __eq__(self, other):
-        if not isinstance(other, QueueTask):
-            return False
-        if self.context_uid != other.context_uid:
-            return False
-        return True
+        return self.task_uid == other.task_uid

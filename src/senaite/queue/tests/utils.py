@@ -1,5 +1,4 @@
 from DateTime import DateTime
-from plone import api as ploneapi
 from senaite.queue import api
 from senaite.queue.storage import QueueStorageTool
 from senaite.queue.views.consumer import QueueConsumerView

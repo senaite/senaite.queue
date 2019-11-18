@@ -19,12 +19,13 @@
 # Some rights reserved, see README and LICENSE.
 
 from Products.Five.browser import BrowserView
-from bika.lims.interfaces import IWorksheet
 from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.interfaces import IQueuedTaskAdapter
 from senaite.queue.storage import QueueStorageTool
 from zope.component import queryAdapter
+
+from bika.lims.interfaces import IWorksheet
 
 
 class QueueConsumerView(BrowserView):
@@ -89,9 +90,10 @@ class QueueConsumerView(BrowserView):
 
         adapter = queryAdapter(task_context, IQueuedTaskAdapter, name=task.name)
         if adapter:
-            # Process the task
             logger.info("Processing task '{}' for '{}' ({}) ...".format(
                 task.name, api.get_id(task_context), task.context_uid))
+
+            # Process the task
             return adapter.process(task, self.request)
 
         logger.error("Adapter for task {} and context {} not found!"

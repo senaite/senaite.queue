@@ -19,11 +19,12 @@
 # Some rights reserved, see README and LICENSE.
 
 from senaite.queue import api
-from senaite.queue.interfaces import IQueued
 from senaite.queue.storage import ActionQueueStorage
 from senaite.queue.storage import QueueStorageTool
+from senaite.queue.storage import QueueTask
 from senaite.queue.storage import WorksheetQueueStorage
-from zope.interface import alsoProvides
+
+from bika.lims.utils import tmpID
 
 
 def queue_action(context, request, action, objects):
@@ -62,9 +63,5 @@ def queue_task(name, request, context):
     """Adds a task to general queue storage
     """
     queue = QueueStorageTool()
-    queued = queue.append(name, request, context)
-
-    # Mark context as queued and reindex
-    if not IQueued.providedBy(context):
-        alsoProvides(context, IQueued)
-    return queued
+    task = QueueTask(name, request, context, tmpID())
+    return queue.append(task)

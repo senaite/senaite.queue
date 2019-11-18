@@ -109,7 +109,6 @@ class QueuedActionTaskAdapter(QueuedTaskAdapter):
         else:
             # There are no more items to queue, all items queued for this
             # context have been transitioned already
-            noLongerProvides(self.context, IQueued)
             self.storage.flush()
 
         logger.info("*** Processed: {}/{}".format(len(chunks[0]), num_objects))
@@ -127,7 +126,7 @@ class QueuedActionTaskAdapter(QueuedTaskAdapter):
                 logger.error("Object not found for UID {}".format(uid))
                 return
 
-            # Remove the marker interface
+            # Remove the marker interface to ensure the object can transition
             noLongerProvides(obj, IQueued)
 
             # Do the action
@@ -182,7 +181,6 @@ class QueuedAssignAnalysesTaskAdapter(QueuedTaskAdapter):
         else:
             # There are no more items to queue, all items queued for this
             # context have been transitioned already
-            noLongerProvides(self.context, IQueued)
             self.storage.flush()
 
         logger.info("*** Processed: {}/{}".format(len(chunks[0]), num_objects))
@@ -216,7 +214,7 @@ class QueuedAssignAnalysesTaskAdapter(QueuedTaskAdapter):
             # Get the suitable slot for this analysis
             slot = self.get_slot_for(analysis, wst)
 
-            # Remove the marker interface
+            # Remove the marker interface so the object can be transitioned
             noLongerProvides(analysis, IQueued)
 
             # Add the analysis

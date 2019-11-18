@@ -45,14 +45,6 @@ class QueueDispatcherView(BrowserView):
 
         # Get the queue from storage
         queue = QueueStorageTool()
-
-        # Check the speed on how new objects are added to the queue as an
-        # indicator of the overall activity of users. If the speed increases
-        # rapidly, better to slow down a bit the dispatcher to prevent users to
-        # experience db conflicts
-        #speed = queue.speed()
-        #logger.info("** SPEED: {}".format(speed))
-
         if not queue.lock():
             logger.info("Cannot lock the queue [SKIP]")
             return self.response("Cannot lock the queue", queue)
