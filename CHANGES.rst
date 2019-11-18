@@ -6,6 +6,7 @@ Changelog
 
 **Added**
 
+- #1 Add sample guard to prevent transitions when queued analyses
 
 **Changed**
 
