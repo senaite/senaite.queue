@@ -318,6 +318,18 @@ class QueueStorageTool(BaseStorageTool):
                 return True
         return False
 
+    def get_task(self, task_uid):
+        """Returns the task for the given task uid or None
+        """
+        current = self.current
+        if current and current.task_uid == task_uid:
+            return current
+        for task in self.tasks:
+            if task.task_uid == task_uid:
+                return task
+
+        return None
+
     def contains(self, task, include_locked=False):
         """Checks if the queue contains the task passed-in
         """
@@ -477,6 +489,7 @@ class QueueTask(dict):
         if authenticated_user:
             if hasattr(authenticated_user, "getId"):
                 authenticated_user = authenticated_user.getId()
+                data["AUTHENTICATED_USER"] = authenticated_user
             if isinstance(authenticated_user, basestring):
                 data["AUTHENTICATED_USER"] = authenticated_user
 
@@ -523,6 +536,10 @@ class QueueTask(dict):
     @property
     def task_uid(self):
         return self["task_uid"]
+
+    @property
+    def username(self):
+        return self.request.get("AUTHENTICATED_USER", None)
 
     @retries.setter
     def retries(self, value):
