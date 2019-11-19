@@ -118,8 +118,8 @@ specific-adapter:
 
       def do_action(self, action, objects):
           # Queue one task per object
-          for object in objects:
-              queue_task(name, self.request, object)
+          for obj in objects:
+              queue_task(name, self.request, obj)
           return objects
 
 Now, we only need to tell `senaite.queue` how to handle this task by adding
@@ -161,7 +161,7 @@ The adapter file would look like follows:
            return False
 
 This procedure can be used not only for transitions, but for any process you
-might think for. Since actions will often be bound to queue, `senaite.queue`
+might think of. Since actions will often be bound to queue, `senaite.queue`
 provides an easier mechanism to queue and process workflow actions. Instead of
 all the above, you can easily bind a workflow action by only declaring two
 adapters as follows:
