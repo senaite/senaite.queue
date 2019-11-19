@@ -156,7 +156,7 @@ def get_max_seconds_unlock():
     """Returns the number of seconds to wait for a process in queue to be
     finished before being considered as failed
     """
-    return get_registry_record("max_seconds_unlock", default=600)
+    return get_registry_record("senaite.queue.max_seconds_unlock", default=600)
 
 
 def get_max_retries():
