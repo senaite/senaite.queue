@@ -40,6 +40,17 @@ class IQueueControlPanel(Interface):
         required=True,
     )
 
+    max_retries = schema.Int(
+        title=_(u"Maximum retries"),
+        description=_(
+            "Number of times a task will be re-queued before being considered "
+            "as failed and removed from the queue. A value of 0 disables the"
+            "re-queue of failing tasks."
+        ),
+        default=5,
+        required=True,
+    )
+
     task_assign_analyses = schema.Int(
         title=_(u"Number of analyses to assign per task"),
         description=_(

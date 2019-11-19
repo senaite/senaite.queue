@@ -6,6 +6,7 @@ Changelog
 
 **Added**
 
+- #2 Add max_retries setting for failing tasks
 - #1 Add sample guard to prevent transitions when queued analyses
 
 **Changed**

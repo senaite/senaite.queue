@@ -129,7 +129,6 @@ Empty queue
       "current": null,
       "processed": {},
       "container": "/senaite/bika_setup",
-      "speed": -1,
       "id": "senaite.queue.main.storage"
     }
 
@@ -191,7 +190,6 @@ under `processed` key:
       "name": "task_action_submit"
     },
     "container": "/senaite/bika_setup",
-    "speed": 2,
     "id": "senaite.queue.main.storage"
     }
 
@@ -239,7 +237,6 @@ but an empty list is displayed in `tasks`:
     },
     "processed": null,
     "container": "/senaite/bika_setup",
-    "speed": 2,
     "id": "senaite.queue.main.storage"
     }
 
@@ -288,7 +285,6 @@ inside `tasks` attribute:
     "current": null,
     "processed": {},
     "container": "/senaite/bika_setup",
-    "speed": -1,
     "id": "senaite.queue.main.storage"
     }
 
