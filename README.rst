@@ -80,6 +80,110 @@ under "Add-on configuration". From this view you can either disable queue for
 specific actions and configure the number of items to be processed by a single
 queued task for a given action.
 
+Extend
+======
+
+To make a process to be run async by `senaite.queue`, add an adapter for that
+specific process. Let's imagine you have a custom transition (e.g. `dispatch`)
+in sample's workflow, that besides transitioning the sample, it also generates a
+dispatch report. We want this transition to be handled asynchronously by
+`senaite.queue`.
+
+We need first to intercept the action `dispatch` and feed the queue by adding a
+specific-adapter:
+
+.. code-block:: xml
+
+  <adapter
+    name="workflow_action_dispatch"
+    for="*
+         zope.publisher.interfaces.browser.IBrowserRequest"
+    factory=".analysisrequests.WorkflowActionDispatchAdapter"
+    provides="bika.lims.interfaces.IWorkflowActionAdapter"
+    permission="zope.Public" />
+
+.. code-block:: python
+
+  from bika.lims.browser.workflow import WorkflowActionGenericAdapter
+  from senaite.queue.queue import queue_task
+  from senaite.queue.interfaces import IQueued
+  from senaite.queue.interfaces import IQueuedTaskAdapter
+
+  DISPATCH_TASK_ID = "my.addon.task_dispatch"
+
+  class WorkflowActionDispatchAdapter(WorkflowActionGenericAdapter):
+      """Adapter that intercepts the action dispatch from samples listing and
+      add the process into the queue
+      """
+
+      def do_action(self, action, objects):
+          # Queue one task per object
+          for object in objects:
+              queue_task(name, self.request, object)
+          return objects
+
+Now, we only need to tell `senaite.queue` how to handle this task by adding
+another adapter:
+
+.. code-block:: xml
+
+  <!-- My own adapter for dispatch action to be handled by senaite.queue -->
+  <adapter
+    name="my.addon.task_dispatch"
+    factory=".QueuedDispatchTaskAdapter"
+    provides="senaite.queue.interfaces.IQueuedTaskAdapter"
+    for="bika.lims.interfaces.IAnalysisRequest" />
+
+where:
+
+- `name`: a unique name for this adapter
+- `factory`: the adapter itself
+- `for`: the context in which this process takes place
+
+The adapter file would look like follows:
+
+.. code-block:: python
+
+  from senaite.core.interfaces import IAnalysisRequest
+  from senaite.queue.adapters import QueuedTaskAdapter
+  from senaite.queue.interfaces import IQueuedTaskAdapter
+
+  class QueuedDispatchTaskAdapter(QueuedTaskAdapter):
+       """Adapter in charge dispatching a Sample
+       """
+       adapts(IAnalysisRequest)
+       implements(IQueuedTaskAdapter)
+
+       def process(self, task, request):
+           sample = task.context
+           if self.dispatch(sample):
+               return True
+           return False
+
+This procedure can be used not only for transitions, but for any process you
+might think for. Since actions will often be bound to queue, `senaite.queue`
+provides an easier mechanism to queue and process workflow actions. Instead of
+all the above, you can easily bind a workflow action by only declaring two
+adapters as follows:
+
+.. code-block:: xml
+
+  <!-- Adapter that intercepts the action "dispatch" -->
+  <adapter
+    name="workflow_action_dispatch"
+    for="bika.lims.interfaces.IAnalysisRequests
+         senaite.queue.interfaces.ISenaiteQueueLayer"
+    factory="senaite.queue.adapters.WorkflowActionGenericQueueAdapter"
+    provides="bika.lims.interfaces.IWorkflowActionAdapter"
+    permission="zope.Public" />
+
+  <!-- Adapter for sample dispatch action -->
+  <adapter
+    name="task_action_dispatch"
+    factory="senaite.queue.adapters.QueuedActionTaskAdapter"
+    provides="senaite.queue.interfaces.IQueuedTaskAdapter"
+    for="bika.lims.interfaces.IanalysisRequests" />
+
 
 Screenshots
 ===========
