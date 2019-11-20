@@ -118,7 +118,7 @@ class QueueStorageTool(BaseStorageTool):
         statistics = self.storage.get("statistics")
         if not statistics:
             entry = self.get_statistics_entry()
-            entry["in_queue"] = len(self.tasks)
+            entry["queued"] = len(self.tasks)
             statistics = [entry]
             self.storage["statistics"] = statistics
         return statistics
