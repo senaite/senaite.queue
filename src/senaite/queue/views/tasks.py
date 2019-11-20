@@ -91,18 +91,15 @@ class TasksView(BrowserView):
 
         # Get the data lines from queue's statistics
         statistics = self.queue_tool.statistics
-        queued = map(lambda item: item["queued"], statistics)
-        added = map(lambda item: item["added"], statistics)
-        removed = map(lambda item: item["removed"], statistics)
-        processed = map(lambda item: item["processed"], statistics)
-        failed = map(lambda item: item["failed"], statistics)
+        keys = statistics[0].keys()
+        transposed = {k: map(lambda item: item[k], statistics) for k in keys}
 
         # Add the data lines to the chart
-        chart.add(_("Queued"), queued)
-        chart.add(_("Added"), added)
-        chart.add(_("Removed"), removed)
-        chart.add(_("Processed"), processed)
-        chart.add(_("Failed"), failed)
+        chart.add(_("Queued"), transposed["queued"])
+        chart.add(_("Added"), transposed["added"])
+        chart.add(_("Removed"), transposed["removed"])
+        chart.add(_("Processed"), transposed["processed"])
+        chart.add(_("Failed"), transposed["failed"])
 
         # Render the SVG
         return chart.render()
