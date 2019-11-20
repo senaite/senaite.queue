@@ -111,6 +111,18 @@ class QueueStorageTool(BaseStorageTool):
         processed = self.storage.get("processed")
         return processed and self._task_obj(processed) or None
 
+    @property
+    def statistics(self):
+        """Statistics information about the queue
+        """
+        statistics = self.storage.get("statistics")
+        if not statistics:
+            entry = self.get_statistics_entry()
+            entry["in_queue"] = len(self.tasks)
+            statistics = [entry]
+            self.storage["statistics"] = statistics
+        return statistics
+
     def is_empty(self):
         """Returns whether the queue is empty and healthy
         """
@@ -236,6 +248,8 @@ class QueueStorageTool(BaseStorageTool):
                 context = self.current.context
                 self._handle_queued_marker_for(context)
 
+            # Update statistics
+            self.add_stats("processed")
             self.storage["current"] = None
             self.storage["locked"] = None
             self.storage._p_changed = True
@@ -257,10 +271,58 @@ class QueueStorageTool(BaseStorageTool):
 
             # Append the task to the queue
             self.storage["tasks"].append(task)
+
+            # Update statistics
+            self.add_stats("added")
+
             self.storage._p_changed = True
             logger.info("*** Queued new task for {}: {}"
                         .format(api.get_id(context), task.name))
             return True
+
+    def add_stats(self, key):
+        """Increases the statistics value for the key passed-in in one unit
+        """
+        stats = self.statistics
+        minute = datetime.now().minute
+        if stats[-1]["minute"] == minute:
+            stats[-1][key] += 1
+        else:
+            # New minute, add a new statistics entry
+            entry = self.get_statistics_entry(minute=minute)
+            entry[key] += 1
+            stats.append(entry)
+
+            # We don't want to keep statistics indefinitely!
+            record_key = "senaite.queue.max_stats_hours"
+            max_hours = api.get_registry_record(record_key, default=4)
+            if max_hours < 1:
+                max_hours = 1
+
+            # Remove all entries from statistics
+            max_entries = max_hours * 60
+            stats = stats[-max_entries:]
+
+        # Recalculate queued
+        added = stats[-1]["added"]
+        stats[-1]["queued"] = len(self.storage["tasks"]) - added
+        self.storage["statistics"] = stats
+
+    def get_statistics_entry(self, minute=None):
+        """Returns an empty entry for statistics
+        """
+        entry = {
+            "minute": datetime.now().minute,
+            "added": 0,
+            "removed": 0,
+            "processed": 0,
+            "queued": 0,
+            "failed": 0,
+        }
+        if minute is not None and 0 <= minute <= 59:
+            entry["minute"] = minute
+        return entry
+
 
     def _handle_queued_marker_for(self, context):
         """Applies/Removes the IQueued marker interface to the context. The
@@ -298,6 +360,9 @@ class QueueStorageTool(BaseStorageTool):
                 self.storage["current"] = None
             if task == self.processed:
                 self.storage["processed"] = None
+
+            # Update statistics
+            self.add_stats("removed")
 
             # Apply the changes
             self.storage._p_changed = True
@@ -341,6 +406,9 @@ class QueueStorageTool(BaseStorageTool):
     def fail(self, task):
         """Marks a task as failed
         """
+        # Update statistics
+        self.add_stats("failed")
+
         # Does the task needs to be reprocessed?
         max_retries = api.get_max_retries()
         if task.retries >= max_retries:

@@ -43,7 +43,6 @@
       description="Run SENAITE.QUEUE Handler"
       handler="senaite.queue.setuphandlers.setup_handler"/>
 
-
   <!-- Generic Setup *UNINSTALL* Profile -->
   <genericsetup:registerProfile
       name="uninstall"
@@ -75,6 +74,14 @@
     name="queue_consumer"
     class=".views.consumer.QueueConsumerView"
     permission="zope2.View"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+
+  <!-- Tasks view -->
+  <browser:page
+    for="*"
+    name="queue_tasks"
+    class=".views.tasks.TasksView"
+    permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 
   <!-- Garbage collector for Queued Worksheets + Analyses. Looks for worksheets
