@@ -1,0 +1,13 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    i18n_domain="senaite.queue">
+
+ <genericsetup:upgradeStep
+     title="Upgrade to SENAITE.QUEUE 1.0.1"
+     source="1.0.0"
+     destination="1.0.1"
+     handler=".v01_00_001.upgrade"
+     profile="senaite.queue:default"/>
+
+</configure>
