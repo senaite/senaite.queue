@@ -6,6 +6,7 @@ Changelog
 
 **Added**
 
+- #3 New `queue_tasks` view with the list of tasks and statistics
 - #2 Add max_retries setting for failing tasks
 - #1 Add sample guard to prevent transitions when queued analyses
 
