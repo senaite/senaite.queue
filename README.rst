@@ -188,6 +188,14 @@ adapters as follows:
 Screenshots
 ===========
 
+Queued tasks
+------------
+
+.. image:: https://raw.githubusercontent.com/senaite/senaite.queue/master/static/queued_tasks.png
+   :alt: Queued tasks
+   :width: 760px
+   :align: center
+
 Queued analyses
 ---------------
 
@@ -213,8 +221,8 @@ Queue settings
    :align: center
 
 
-How to see the queued tasks
-===========================
+How to see the queued tasks (JSON)
+==================================
 
 Login with `admin` user and visit the following address: http://<your_senaite_site>/queue_gc
 
