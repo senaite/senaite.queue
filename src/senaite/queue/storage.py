@@ -26,10 +26,11 @@ from BTrees.OOBTree import OOBTree
 from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.interfaces import IQueued
+from senaite.queue.interfaces import IQueuedTaskAdapter
 from zope.annotation.interfaces import IAnnotations
+from zope.component import queryAdapter
 from zope.interface import alsoProvides
 from zope.interface import noLongerProvides
-
 
 # The id of the main tool for queue management of tasks
 MAIN_QUEUE_STORAGE_TOOL_ID = "senaite.queue.main.storage"
@@ -367,6 +368,18 @@ class QueueStorageTool(BaseStorageTool):
             # Apply the changes
             self.storage._p_changed = True
 
+            # Call the adapter in charge of restoring initial state, if any
+            context = task.context
+            adapter = queryAdapter(context, IQueuedTaskAdapter, name=task.name)
+            if adapter and hasattr(adapter, "flush"):
+                try:
+                    adapter.flush(task)
+                except:
+                    # Don't care if something went wrong here (we are probably
+                    # removing this task because is somehow corrupted already)
+                    logger.warn("Cannot flush {} for {}".format(
+                        task.name, repr(context)))
+
             # Remove IQueued if there are no more tasks queued for the context
             context = task.context
             self._handle_queued_marker_for(context)
@@ -510,6 +523,21 @@ class ActionQueueStorage(BaseStorageTool):
         self.storage["uids"] = queued_uids
         self.storage._p_changed = True
 
+    def flush(self):
+        # Inner objects
+        for uid in self.uids:
+            obj = api.get_object_by_uid(uid)
+            if IQueued.providedBy(obj):
+                noLongerProvides(obj, IQueued)
+
+        # Container
+        container = self.container
+        if IQueued.providedBy(container):
+            noLongerProvides(container, IQueued)
+
+        # Flush annotations
+        super(ActionQueueStorage, self).flush()
+
 
 class WorksheetQueueStorage(ActionQueueStorage):
     """A tool for handling worksheet-related specific tasks such as assignment
@@ -620,4 +648,4 @@ class QueueTask(dict):
         self["retries"] = value
 
     def __eq__(self, other):
-        return self.task_uid == other.task_uid
+        return other and self.task_uid == other.task_uid

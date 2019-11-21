@@ -41,6 +41,10 @@ class TasksView(BrowserView):
     def __call__(self):
         self.request.set("disable_border", 1)
         self.request.set("disable_plone.rightcolumn", 1)
+        remove_uid = self.request.get("remove")
+        if remove_uid:
+            self.remove_task(remove_uid)
+
         return self.template()
 
     @property
@@ -48,6 +52,12 @@ class TasksView(BrowserView):
         if not self._queue_tool:
             self._queue_tool = QueueStorageTool()
         return self._queue_tool
+
+    def remove_task(self, tuid):
+        qtool = self.queue_tool
+        task = qtool.get_task(tuid)
+        if task:
+            qtool.remove(task)
 
     def get_tasks(self):
         processed = self.queue_tool.processed

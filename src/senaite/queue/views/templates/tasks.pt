@@ -27,7 +27,10 @@
         }
         tr.failing,
         tr.failing a {
-          color: red;
+          color: #a73232;
+        }
+        tr.failing a.btn {
+          color: #fff;
         }
       </style>
     </metal:block>
@@ -60,6 +63,7 @@
             <th i18n:translate="">Type</th>
             <th i18n:translate="">Status</th>
             <th i18n:translate="">Retries</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -81,6 +85,11 @@
               <td tal:content="task/name"></td>
               <td tal:content="task/task_status"></td>
               <td tal:content="task/retries"></td>
+              <td>
+                <a class="btn btn-default btn-primary btn-sm"
+                   i18n:translate=""
+                   tal:attributes="href python: 'queue_tasks?remove={}'.format(task.task_uid)">Remove</a>
+              </td>
             </tr>
           </tal:row>
         </tbody>

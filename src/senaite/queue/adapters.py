@@ -71,6 +71,11 @@ class QueuedTaskAdapter(object):
         """
         return self.storage.uids
 
+    def flush(self, task):
+        """Discards this task
+        """
+        self.storage.flush()
+
 
 class QueuedActionTaskAdapter(QueuedTaskAdapter):
     """Adapter for generic transitions
