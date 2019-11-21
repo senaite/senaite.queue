@@ -84,6 +84,14 @@
     permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 
+  <!-- Task view (JSON) -->
+  <browser:page
+    for="*"
+    name="queue_task"
+    class=".views.task.TaskView"
+    permission="senaite.core.permissions.ManageBika"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+
   <!-- Garbage collector for Queued Worksheets + Analyses. Looks for worksheets
   marked with IQueued, assigns the remaining analyses to them and removes the
   IQueued interface from the Worksheet -->

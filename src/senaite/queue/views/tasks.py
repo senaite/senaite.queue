@@ -67,6 +67,11 @@ class TasksView(BrowserView):
 
         return tasks
 
+    def get_task_json(self, task):
+        """Returns the url that displays the task in JSON format
+        """
+        return "{}/queue_task?uid={}".format(self.portal_url, task.task_uid)
+
     def get_statistics_chart(self):
         """Generates a SVG with queue statistics
         """

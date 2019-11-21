@@ -18,6 +18,13 @@
           text-overflow: ellipsis;
           width: 800px;
         }
+        .task_uid {
+          font-family: monospace;
+          font-size:0.9em;
+          width: 7ch;
+          overflow: hidden;
+          white-space: nowrap;
+        }
       </style>
     </metal:block>
   </head>
@@ -36,14 +43,13 @@
       <div class="col-sm-12">
         <div class="monitor-chart">
           <div tal:replace="structure view/get_statistics_chart"></div>
-
         </div>
       </div>
 
       <table class="table table-bordered">
         <thead>
           <tr>
-            <th i18n:translate="">Task Num</th>
+            <th i18n:translate="">TUID</th>
             <th i18n:translate="">User</th>
             <th i18n:translate="">Remote Addr</th>
             <th i18n:translate="">Context</th>
@@ -55,7 +61,11 @@
         <tbody>
           <tal:row repeat="task view/get_tasks">
             <tr>
-              <td rowspan="2" tal:content="repeat/task/number"></td>
+              <td rowspan="2">
+                <div class="task_uid" >
+                  <a tal:attributes="href python: view.get_task_json(task)" tal:content="task/task_uid"></a>
+                </div>
+              </td>
               <td tal:content="task/username"></td>
               <td tal:content="task/request/REMOTE_ADDR"></td>
               <td tal:define="obj python:task.context">
