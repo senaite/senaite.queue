@@ -162,3 +162,29 @@ class QueuedSampleAnalysisServicesViewAdapter(object):
         if api.get_uid(obj) in self.uids:
             item["disabled"] = True
         return item
+
+
+class QueuedSamplesViewAdapter(object):
+    """Disables the checkbox for samples that provide IQueued and displays
+    a loading icon in progress bar column
+    """
+    adapts(IListingView)
+    implements(IListingViewAdapter)
+
+    # Order of priority
+    priority_order = 1010
+
+    def __init__(self, listing, context):
+        self.listing = listing
+        self.context = context
+
+    def before_render(self):
+        return
+
+    def folder_item(self, obj, item, index):
+        if IQueued.providedBy(api.get_object(obj)):
+            item["disabled"] = True
+            icon = api.get_queue_image("queued.gif", width="55px")
+            item["replace"]["state_title"] = _("Queued")
+            item["replace"]["Progress"] = icon
+        return item

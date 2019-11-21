@@ -298,4 +298,12 @@
     provides="senaite.core.listing.interfaces.IListingViewAdapter"
     factory=".listing.QueuedWorksheetsViewAdapter"/>
 
+  <!-- Samples listing: Disables the checkbox for queued samples and displays
+   a loading image in status column -->
+  <subscriber
+    for="bika.lims.browser.analysisrequest.analysisrequests.AnalysisRequestsView
+         *"
+    provides="senaite.core.listing.interfaces.IListingViewAdapter"
+    factory=".listing.QueuedSamplesViewAdapter" />
+
 </configure>
