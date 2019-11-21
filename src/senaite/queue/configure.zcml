@@ -92,16 +92,6 @@
     permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 
-  <!-- Garbage collector for Queued Worksheets + Analyses. Looks for worksheets
-  marked with IQueued, assigns the remaining analyses to them and removes the
-  IQueued interface from the Worksheet -->
-  <browser:page
-    for="*"
-    name="queue_gc"
-    class=".views.gc.QueueGCView"
-    permission="senaite.core.permissions.ManageBika"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
   <!-- Analyses in queue: Worksheet -->
   <browser:viewlet
     for="bika.lims.interfaces.IWorksheet"
