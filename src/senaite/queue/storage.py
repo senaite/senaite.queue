@@ -383,14 +383,20 @@ class QueueStorageTool(BaseStorageTool):
                 return True
         return False
 
-    def get_task(self, task_uid):
-        """Returns the task for the given task uid or None
+    def get_task(self, task_or_obj_uid, task_name=None):
+        """Returns the tasks for the given uid, that can be either from a task
+        or from the context to which the task is bound to
         """
-        current = self.current
-        if current and current.task_uid == task_uid:
-            return current
-        for task in self.tasks:
-            if task.task_uid == task_uid:
+        def is_target_task(candidate, uid, name=None):
+            if not candidate:
+                return False
+            if name and candidate.name != name:
+                return False
+            return uid in [candidate.task_uid, candidate.context_uid]
+
+        tasks = [self.current] + self.tasks
+        for task in tasks:
+            if is_target_task(task, task_or_obj_uid, task_name):
                 return task
 
         return None
