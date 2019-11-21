@@ -46,6 +46,7 @@ def upgrade(tool):
 
     # https://github.com/senaite/senaite.queue/pull/3
     setup.runImportStepFromProfile(PROFILE_ID, "plone.app.registry")
+    setup.runImportStepFromProfile(PROFILE_ID, "actions")
 
     logger.info("{0} upgraded to version {1}".format(PRODUCT_NAME, version))
     return True
