@@ -66,7 +66,7 @@
           <tal:row repeat="task view/get_tasks">
             <tr tal:define="css_class python: task.retries &gt; 0 and 'failing' or ''"
                 tal:attributes="class css_class">
-              <td rowspan="2">
+              <td>
                 <div class="task_uid" >
                   <a tal:attributes="href python: view.get_task_json(task)" tal:content="task/task_uid"></a>
                 </div>
@@ -81,11 +81,6 @@
               <td tal:content="task/name"></td>
               <td tal:content="task/task_status"></td>
               <td tal:content="task/retries"></td>
-            </tr>
-            <tr>
-              <td colspan="6">
-                <div class="task_referer" tal:content="task/request/HTTP_REFERER"></div>
-              </td>
             </tr>
           </tal:row>
         </tbody>
