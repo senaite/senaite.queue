@@ -2,7 +2,6 @@
     xmlns="http://namespaces.zope.org/zope"
     xmlns:browser="http://namespaces.zope.org/browser"
     xmlns:five="http://namespaces.zope.org/five"
-    xmlns:cmf="http://namespaces.zope.org/cmf"
     xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
     xmlns:i18n="http://namespaces.zope.org/i18n"
     i18n_domain="senaite.queue">
@@ -15,6 +14,7 @@
   <!-- Needed for "BIKA: Manage Bika" permission -->
   <include package="bika.lims" file="permissions.zcml" />
 
+  <include package=".upgrade"/>
   <include package=".monkeys"/>
 
   <!-- Static resource directory -->
@@ -42,7 +42,6 @@
       title="Asynchronous tasks add-on for SENAITE"
       description="Run SENAITE.QUEUE Handler"
       handler="senaite.queue.setuphandlers.setup_handler"/>
-
 
   <!-- Generic Setup *UNINSTALL* Profile -->
   <genericsetup:registerProfile
@@ -77,13 +76,19 @@
     permission="zope2.View"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 
-  <!-- Garbage collector for Queued Worksheets + Analyses. Looks for worksheets
-  marked with IQueued, assigns the remaining analyses to them and removes the
-  IQueued interface from the Worksheet -->
+  <!-- Tasks view -->
   <browser:page
     for="*"
-    name="queue_gc"
-    class=".views.gc.QueueGCView"
+    name="queue_tasks"
+    class=".views.tasks.TasksView"
+    permission="senaite.core.permissions.ManageBika"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+
+  <!-- Task view (JSON) -->
+  <browser:page
+    for="*"
+    name="queue_task"
+    class=".views.task.TaskView"
     permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 
@@ -290,5 +295,13 @@
          bika.lims.interfaces.IWorksheetFolder"
     provides="senaite.core.listing.interfaces.IListingViewAdapter"
     factory=".listing.QueuedWorksheetsViewAdapter"/>
+
+  <!-- Samples listing: Disables the checkbox for queued samples and displays
+   a loading image in status column -->
+  <subscriber
+    for="bika.lims.browser.analysisrequest.analysisrequests.AnalysisRequestsView
+         *"
+    provides="senaite.core.listing.interfaces.IListingViewAdapter"
+    factory=".listing.QueuedSamplesViewAdapter" />
 
 </configure>

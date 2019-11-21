@@ -51,6 +51,15 @@ class IQueueControlPanel(Interface):
         required=True,
     )
 
+    max_stats_hours = schema.Int(
+        title=_(u"Hours to keep in statistics"),
+        description=_(
+            "Maximum number of hours backwards to keep statistics"
+        ),
+        default=8,
+        required=True,
+    )
+
     task_assign_analyses = schema.Int(
         title=_(u"Number of analyses to assign per task"),
         description=_(

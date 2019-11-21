@@ -26,10 +26,11 @@ from BTrees.OOBTree import OOBTree
 from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.interfaces import IQueued
+from senaite.queue.interfaces import IQueuedTaskAdapter
 from zope.annotation.interfaces import IAnnotations
+from zope.component import queryAdapter
 from zope.interface import alsoProvides
 from zope.interface import noLongerProvides
-
 
 # The id of the main tool for queue management of tasks
 MAIN_QUEUE_STORAGE_TOOL_ID = "senaite.queue.main.storage"
@@ -110,6 +111,18 @@ class QueueStorageTool(BaseStorageTool):
         """
         processed = self.storage.get("processed")
         return processed and self._task_obj(processed) or None
+
+    @property
+    def statistics(self):
+        """Statistics information about the queue
+        """
+        statistics = self.storage.get("statistics")
+        if not statistics:
+            entry = self.get_statistics_entry()
+            entry["queued"] = len(self.tasks)
+            statistics = [entry]
+            self.storage["statistics"] = statistics
+        return statistics
 
     def is_empty(self):
         """Returns whether the queue is empty and healthy
@@ -236,6 +249,8 @@ class QueueStorageTool(BaseStorageTool):
                 context = self.current.context
                 self._handle_queued_marker_for(context)
 
+            # Update statistics
+            self.add_stats("processed")
             self.storage["current"] = None
             self.storage["locked"] = None
             self.storage._p_changed = True
@@ -257,10 +272,58 @@ class QueueStorageTool(BaseStorageTool):
 
             # Append the task to the queue
             self.storage["tasks"].append(task)
+
+            # Update statistics
+            self.add_stats("added")
+
             self.storage._p_changed = True
             logger.info("*** Queued new task for {}: {}"
                         .format(api.get_id(context), task.name))
             return True
+
+    def add_stats(self, key):
+        """Increases the statistics value for the key passed-in in one unit
+        """
+        stats = self.statistics
+        minute = datetime.now().minute
+        if stats[-1]["minute"] == minute:
+            stats[-1][key] += 1
+        else:
+            # New minute, add a new statistics entry
+            entry = self.get_statistics_entry(minute=minute)
+            entry[key] += 1
+            stats.append(entry)
+
+            # We don't want to keep statistics indefinitely!
+            record_key = "senaite.queue.max_stats_hours"
+            max_hours = api.get_registry_record(record_key, default=4)
+            if max_hours < 1:
+                max_hours = 1
+
+            # Remove all entries from statistics
+            max_entries = max_hours * 60
+            stats = stats[-max_entries:]
+
+        # Recalculate queued
+        added = stats[-1]["added"]
+        stats[-1]["queued"] = len(self.storage["tasks"]) - added
+        self.storage["statistics"] = stats
+
+    def get_statistics_entry(self, minute=None):
+        """Returns an empty entry for statistics
+        """
+        entry = {
+            "minute": datetime.now().minute,
+            "added": 0,
+            "removed": 0,
+            "processed": 0,
+            "queued": 0,
+            "failed": 0,
+        }
+        if minute is not None and 0 <= minute <= 59:
+            entry["minute"] = minute
+        return entry
+
 
     def _handle_queued_marker_for(self, context):
         """Applies/Removes the IQueued marker interface to the context. The
@@ -299,8 +362,23 @@ class QueueStorageTool(BaseStorageTool):
             if task == self.processed:
                 self.storage["processed"] = None
 
+            # Update statistics
+            self.add_stats("removed")
+
             # Apply the changes
             self.storage._p_changed = True
+
+            # Call the adapter in charge of restoring initial state, if any
+            context = task.context
+            adapter = queryAdapter(context, IQueuedTaskAdapter, name=task.name)
+            if adapter and hasattr(adapter, "flush"):
+                try:
+                    adapter.flush(task)
+                except:
+                    # Don't care if something went wrong here (we are probably
+                    # removing this task because is somehow corrupted already)
+                    logger.warn("Cannot flush {} for {}".format(
+                        task.name, repr(context)))
 
             # Remove IQueued if there are no more tasks queued for the context
             context = task.context
@@ -318,14 +396,20 @@ class QueueStorageTool(BaseStorageTool):
                 return True
         return False
 
-    def get_task(self, task_uid):
-        """Returns the task for the given task uid or None
+    def get_task(self, task_or_obj_uid, task_name=None):
+        """Returns the tasks for the given uid, that can be either from a task
+        or from the context to which the task is bound to
         """
-        current = self.current
-        if current and current.task_uid == task_uid:
-            return current
-        for task in self.tasks:
-            if task.task_uid == task_uid:
+        def is_target_task(candidate, uid, name=None):
+            if not candidate:
+                return False
+            if name and candidate.name != name:
+                return False
+            return uid in [candidate.task_uid, candidate.context_uid]
+
+        tasks = [self.current] + self.tasks
+        for task in tasks:
+            if is_target_task(task, task_or_obj_uid, task_name):
                 return task
 
         return None
@@ -341,6 +425,9 @@ class QueueStorageTool(BaseStorageTool):
     def fail(self, task):
         """Marks a task as failed
         """
+        # Update statistics
+        self.add_stats("failed")
+
         # Does the task needs to be reprocessed?
         max_retries = api.get_max_retries()
         if task.retries >= max_retries:
@@ -435,6 +522,21 @@ class ActionQueueStorage(BaseStorageTool):
 
         self.storage["uids"] = queued_uids
         self.storage._p_changed = True
+
+    def flush(self):
+        # Inner objects
+        for uid in self.uids:
+            obj = api.get_object_by_uid(uid)
+            if IQueued.providedBy(obj):
+                noLongerProvides(obj, IQueued)
+
+        # Container
+        container = self.container
+        if IQueued.providedBy(container):
+            noLongerProvides(container, IQueued)
+
+        # Flush annotations
+        super(ActionQueueStorage, self).flush()
 
 
 class WorksheetQueueStorage(ActionQueueStorage):
@@ -546,4 +648,4 @@ class QueueTask(dict):
         self["retries"] = value
 
     def __eq__(self, other):
-        return self.task_uid == other.task_uid
+        return other and self.task_uid == other.task_uid

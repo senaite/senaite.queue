@@ -1,0 +1,99 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:tal="http://xml.zope.org/namespaces/tal"
+      xmlns:metal="http://xml.zope.org/namespaces/metal"
+      metal:use-macro="here/main_template/macros/master"
+      i18n:domain="senaite.queue">
+  <head>
+    <metal:block fill-slot="javascript_head_slot"
+                 tal:define="portal context/@@plone_portal_state/portal;">
+    </metal:block>
+    <metal:block fill-slot="style_slot"
+                 tal:define="portal context/@@plone_portal_state/portal;">
+      <style>
+        .task_referer {
+          font-size:0.9em;
+          color: #666;
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          width: 800px;
+        }
+        .task_uid {
+          font-family: monospace;
+          font-size:0.9em;
+          width: 7ch;
+          overflow: hidden;
+          white-space: nowrap;
+        }
+        tr.failing,
+        tr.failing a {
+          color: #a73232;
+        }
+        tr.failing a.btn {
+          color: #fff;
+        }
+      </style>
+    </metal:block>
+  </head>
+  <body>
+
+    <!-- Title -->
+    <metal:title fill-slot="content-title">
+      <h1 i18n:translate="">
+        Queued tasks
+      </h1>
+    </metal:title>
+
+    <!-- Content -->
+    <metal:core fill-slot="content-core">
+
+      <div class="col-sm-12">
+        <div class="monitor-chart">
+          <div tal:replace="structure view/get_statistics_chart"></div>
+        </div>
+      </div>
+
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th i18n:translate="">TUID</th>
+            <th i18n:translate="">User</th>
+            <th i18n:translate="">Remote Addr</th>
+            <th i18n:translate="">Context</th>
+            <th i18n:translate="">Type</th>
+            <th i18n:translate="">Status</th>
+            <th i18n:translate="">Retries</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tal:row repeat="task view/get_tasks">
+            <tr tal:define="css_class python: task.retries &gt; 0 and 'failing' or ''"
+                tal:attributes="class css_class">
+              <td>
+                <div class="task_uid" >
+                  <a tal:attributes="href python: view.get_task_json(task)" tal:content="task/task_uid"></a>
+                </div>
+              </td>
+              <td tal:content="task/username"></td>
+              <td tal:content="task/request/REMOTE_ADDR"></td>
+              <td tal:define="obj python:task.context">
+                <a tal:content="python: obj.getId()"
+                   tal:condition="python: obj"
+                   tal:attributes="href python:obj.absolute_url()"></a>
+              </td>
+              <td tal:content="task/name"></td>
+              <td tal:content="task/task_status"></td>
+              <td tal:content="task/retries"></td>
+              <td>
+                <a class="btn btn-default btn-primary btn-sm"
+                   i18n:translate=""
+                   tal:attributes="href python: 'queue_tasks?remove={}'.format(task.task_uid)">Remove</a>
+              </td>
+            </tr>
+          </tal:row>
+        </tbody>
+      </table>
+    </metal:core>
+  </body>
+</html>
