@@ -25,6 +25,10 @@
           overflow: hidden;
           white-space: nowrap;
         }
+        tr.failing,
+        tr.failing a {
+          color: red;
+        }
       </style>
     </metal:block>
   </head>
@@ -60,7 +64,8 @@
         </thead>
         <tbody>
           <tal:row repeat="task view/get_tasks">
-            <tr>
+            <tr tal:define="css_class python: task.retries &gt; 0 and 'failing' or ''"
+                tal:attributes="class css_class">
               <td rowspan="2">
                 <div class="task_uid" >
                   <a tal:attributes="href python: view.get_task_json(task)" tal:content="task/task_uid"></a>
