@@ -106,8 +106,6 @@ specific-adapter:
 
   from bika.lims.browser.workflow import WorkflowActionGenericAdapter
   from senaite.queue.queue import queue_task
-  from senaite.queue.interfaces import IQueued
-  from senaite.queue.interfaces import IQueuedTaskAdapter
 
   DISPATCH_TASK_ID = "my.addon.task_dispatch"
 
