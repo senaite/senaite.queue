@@ -80,7 +80,7 @@ class TasksView(BrowserView):
         tasks.extend(queued)
 
         # Remove empties
-        return tasks
+        return filter(None, tasks)
 
     def get_task_data(self, task, status_id):
         """Adds additional metadata to the task for the template

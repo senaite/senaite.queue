@@ -74,13 +74,9 @@
         </thead>
         <tbody>
           <tal:row repeat="task view/get_tasks">
-<<<<<<< HEAD
             <tr tal:define="
                   css_class python: task.retries &gt; 0 and 'failing' or '';
                   css_class python: '{} {}'.format(css_class, task['task_status_id'])"
-=======
-            <tr tal:define="css_class python: task.retries &gt; 0 and 'failing' or ''"
->>>>>>> 529778a9559de65aaa9599659afb5a2873cd4999
                 tal:attributes="class css_class">
               <td>
                 <div class="task_uid" >
@@ -100,10 +96,7 @@
               <td>
                 <a class="btn btn-default btn-primary btn-sm"
                    i18n:translate=""
-<<<<<<< HEAD
                    tal:condition="python: task['task_status_id'] in 'queued'"
-=======
->>>>>>> 529778a9559de65aaa9599659afb5a2873cd4999
                    tal:attributes="href python: 'queue_tasks?remove={}'.format(task.task_uid)">Remove</a>
               </td>
             </tr>
