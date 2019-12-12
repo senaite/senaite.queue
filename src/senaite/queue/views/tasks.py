@@ -60,22 +60,36 @@ class TasksView(BrowserView):
             qtool.remove(task)
 
     def get_tasks(self):
+        tasks = []
         processed = self.queue_tool.processed
         current = self.queue_tool.current
-        tasks = []
+
+        # Last processed task
         if processed and processed != current:
-            processed["task_status"] = _("processed")
+            processed = self.get_task_data(processed, "processed")
             tasks.append(processed)
 
-        if self.queue_tool.current:
-            current["task_status"] = _("active")
+        # Undergoing task
+        current = self.get_task_data(current, "active")
+        if current:
             tasks.append(current)
 
-        for task in self.queue_tool.tasks:
-            task["task_status"] = _("queued")
-            tasks.append(task)
+        # Awaiting tasks
+        queued = self.queue_tool.tasks
+        queued = map(lambda task: self.get_task_data(task, "queued"), queued)
+        tasks.extend(queued)
 
+        # Remove empties
         return tasks
+
+    def get_task_data(self, task, status_id):
+        """Adds additional metadata to the task for the template
+        """
+        if not task:
+            return None
+        task["task_status_id"] = status_id
+        task["task_status"] = _(status_id)
+        return task
 
     def get_task_json(self, task):
         """Returns the url that displays the task in JSON format

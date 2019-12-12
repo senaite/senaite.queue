@@ -282,7 +282,8 @@ class QueueStorageTool(BaseStorageTool):
             return True
 
     def add_stats(self, key):
-        """Increases the statistics value for the key passed-in in one unit
+        """Increases the statistics value for the key passed-in in one unit and
+        recalculates the total number of queued tasks
         """
         stats = self.statistics
         minute = datetime.now().minute
@@ -305,8 +306,18 @@ class QueueStorageTool(BaseStorageTool):
             stats = stats[-max_entries:]
 
         # Recalculate queued
+        # The number of "added" tasks is a subgroup of tasks that are in queue,
+        # but we want to keep track of the tasks added within a given time-frame
+        # so the sum of added+queued returns the total number of tasks handled
+        # by the queue at the end of that time-frame window.
         added = stats[-1]["added"]
-        stats[-1]["queued"] = len(self.storage["tasks"]) - added
+        queued = len(self.storage["tasks"]) - added
+        if queued < 0:
+            # This is necessary because a task can be added and processed
+            # within the same time-frame window. In such case, at the end of the
+            # life-cycle you get 0 tasks in the queue, 1 added and 1 processed.
+            queued = 0
+        stats[-1]["queued"] = queued
         self.storage["statistics"] = stats
 
     def get_statistics_entry(self, minute=None):
@@ -323,7 +334,6 @@ class QueueStorageTool(BaseStorageTool):
         if minute is not None and 0 <= minute <= 59:
             entry["minute"] = minute
         return entry
-
 
     def _handle_queued_marker_for(self, context):
         """Applies/Removes the IQueued marker interface to the context. The
