@@ -66,7 +66,7 @@ class QueueConsumerView(BrowserView):
                 raise RuntimeError(msg)
         except (RuntimeError, Exception) as e:
             msg = "Exception while processing the queued task '{}': {}"\
-                .format(task.name, str(e.args[0]))
+                .format(task.name, e.message)
             logger.error(msg)
 
             # Notify the queue machinery this task has not succeed
