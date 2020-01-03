@@ -256,7 +256,8 @@ class QueueStorageTool(BaseStorageTool):
             # Remove IQueued if there are no more tasks for the context
             if self.current:
                 context = self.current.context
-                self._handle_queued_marker_for(context)
+                if context:
+                    self._handle_queued_marker_for(context)
 
             # Update statistics
             self.add_stats("processed")
