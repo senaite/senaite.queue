@@ -53,6 +53,7 @@ class SampleGuardAdapter(object):
 
 class QueuedTaskAdapter(object):
     """Generic adapter for queued tasks
+    TODO: Rename to QueuedUIDsTaskAdapter
     """
     implements(IQueuedTaskAdapter)
 

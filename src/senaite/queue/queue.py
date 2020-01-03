@@ -24,6 +24,7 @@ from senaite.queue.storage import QueueStorageTool
 from senaite.queue.storage import QueueTask
 from senaite.queue.storage import WorksheetQueueStorage
 
+from bika.lims.decorators import synchronized
 from bika.lims.utils import tmpID
 
 
@@ -59,6 +60,7 @@ def queue_assign_analyses(worksheet, request, uids, slots, wst_uid=None):
     return queue_task("task_assign_analyses", request, worksheet)
 
 
+@synchronized(max_connections=1)
 def queue_task(name, request, context):
     """Adds a task to general queue storage
     """

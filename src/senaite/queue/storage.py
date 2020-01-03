@@ -184,10 +184,19 @@ class QueueStorageTool(BaseStorageTool):
         diff = datetime.fromtimestamp(now) - datetime.fromtimestamp(since)
         return diff.total_seconds() > api.get_max_seconds_unlock()
 
+    def sync(self):
+        """Updates with the changes done since the beginning
+        """
+        self.container._p_jar.sync()
+        self.storage._p_jar.sync()
+
     def lock(self):
         """Tries to lock the queue and returns whether it succeeded or not
         """
         with self.__lock:
+            # Sync (maybe other threads modified the queue)
+            self.sync()
+
             if self.is_locked():
                 if self.is_stucked():
                     # The queue is in stucked status: we've been waiting for

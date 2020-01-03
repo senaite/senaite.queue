@@ -19,8 +19,7 @@
 # Some rights reserved, see README and LICENSE.
 
 from plone import api as ploneapi
-from senaite.queue.interfaces import IQueueDispatcher
-from zope.component._api import queryUtility
+from senaite.queue import is_installed
 
 from bika.lims.api import *
 from bika.lims.utils import render_html_attributes
@@ -45,13 +44,6 @@ def get_queue_image_url(name):
     """
     portal_url = get_url(get_portal())
     return "{}/++resource++senaite.queue.static/{}".format(portal_url, name)
-
-
-def get_queue_utility():
-    """
-    Returns the queue utility
-    """
-    return queryUtility(IQueueDispatcher)
 
 
 def is_queue_enabled(task=_DEFAULT_TASK_ID):
@@ -79,9 +71,7 @@ def get_chunk_size(task_name_or_action):
     """Returns the default chunk size for a given task. If the queue is not
     enabled for the task or for the whole queue, returns 0
     """
-    utility = get_queue_utility()
-    if utility is None:
-        # Queue dispatch utility not registered. The add-on is not installed
+    if not is_installed():
         return 0
 
     # If the whole queue is deactivated, return 0

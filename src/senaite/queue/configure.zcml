@@ -68,14 +68,6 @@
     permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 
-  <!-- Queue consumer view -->
-  <browser:page
-    for="*"
-    name="queue_consumer"
-    class=".views.consumer.QueueConsumerView"
-    permission="zope2.View"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
   <!-- Tasks view -->
   <browser:page
     for="*"

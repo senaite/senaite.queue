@@ -24,7 +24,10 @@ from Products.Archetypes.atapi import listTypes
 from Products.Archetypes.atapi import process_types
 from Products.CMFCore.permissions import AddPortalContent
 from Products.CMFCore.utils import ContentInit
+from senaite.queue.interfaces import ISenaiteQueueLayer
 from zope.i18nmessageid import MessageFactory
+
+from bika.lims import api
 
 PRODUCT_NAME = "senaite.queue"
 PROFILE_ID = "profile-{}:default".format(PRODUCT_NAME)
@@ -53,3 +56,10 @@ def initialize(context):
                     extra_constructors=(constructor, ),
                     fti=ftis,
                     ).initialize(context)
+
+
+def is_installed():
+    """Returns whether the product is installed or not
+    """
+    request = api.get_request()
+    return ISenaiteQueueLayer.providedBy(request)

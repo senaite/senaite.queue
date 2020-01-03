@@ -1,7 +1,7 @@
 from DateTime import DateTime
 from senaite.queue import api
 from senaite.queue.storage import QueueStorageTool
-from senaite.queue.views.consumer import QueueConsumerView
+from senaite.queue.views.dispatcher import QueueDispatcherView
 
 from bika.lims.browser.workflow import WorkflowActionHandler
 from bika.lims.utils.analysisrequest import create_analysisrequest
@@ -44,21 +44,13 @@ def get_queue_tool():
     return QueueStorageTool()
 
 
-def dispatch(request=None, wait_for_empty_queue=True):
+def dispatch(request=None):
     """Triggers the Queue Dispatcher
     """
     portal = api.get_portal()
     if not request:
         request = api.get_request()
-
-    # I simulate here the behavior of QueueDispatcher, haven't found any other
-    # solution to deal with the fact the queue utility opens a new Thread by
-    # calling requests module and nohost is not available. I need to do more
-    # research on this topic....
-    queue = get_queue_tool()
-    if not queue.lock():
-        return "Cannot lock the queue"
-    return QueueConsumerView(portal, request)()
+    return QueueDispatcherView(portal, request)()
 
 
 def filter_by_state(brains_or_objects, state):
