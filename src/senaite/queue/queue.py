@@ -60,7 +60,6 @@ def queue_assign_analyses(worksheet, request, uids, slots, wst_uid=None):
     return queue_task("task_assign_analyses", request, worksheet)
 
 
-@synchronized(max_connections=1)
 def queue_task(name, request, context):
     """Adds a task to general queue storage
     """
