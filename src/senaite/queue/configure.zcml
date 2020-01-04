@@ -55,12 +55,4 @@
       post_handler="senaite.queue.setuphandlers.post_uninstall"
       provides="Products.GenericSetup.interfaces.EXTENSION" />
 
-  <!-- Queue Control panel -->
-  <browser:page
-    name="queue-controlpanel"
-    for="Products.CMFPlone.interfaces.IPloneSiteRoot"
-    class=".controlpanel.QueueControlPanelView"
-    permission="senaite.core.permissions.ManageBika"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
 </configure>

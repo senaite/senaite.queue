@@ -3,6 +3,14 @@
     xmlns:browser="http://namespaces.zope.org/browser"
     i18n_domain="senaite.queue">
 
+  <!-- Queue Control panel -->
+  <browser:page
+    name="queue-controlpanel"
+    for="Products.CMFPlone.interfaces.IPloneSiteRoot"
+    class=".controlpanel.QueueControlPanelView"
+    permission="senaite.core.permissions.ManageBika"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+
   <!-- Queue dispatcher view -->
   <browser:page
     for="*"
