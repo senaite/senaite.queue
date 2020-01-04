@@ -15,8 +15,8 @@
   <include package="bika.lims" file="permissions.zcml" />
 
   <include package=".browser"/>
-  <include package=".upgrade"/>
   <include package=".monkeys"/>
+  <include package=".upgrade"/>
 
   <!-- Static resource directory -->
   <browser:resourceDirectory
@@ -60,28 +60,6 @@
     class=".controlpanel.QueueControlPanelView"
     permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
-  <!-- Analyses in queue: Worksheet -->
-  <browser:viewlet
-    for="bika.lims.interfaces.IWorksheet"
-    name="senaite.queue.worksheet_analyses_queue_viewlet"
-    class=".viewlets.QueuedAnalysesViewlet"
-    manager="plone.app.layout.viewlets.interfaces.IAboveContent"
-    template="templates/queued_analyses_viewlet.pt"
-    permission="zope2.View"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer"
-  />
-
-  <!-- Analyses in queue: Sample -->
-  <browser:viewlet
-    for="bika.lims.interfaces.IAnalysisRequest"
-    name="senaite.queue.worksheet_analyses_sample_queue_viewlet"
-    class=".viewlets.QueuedAnalysesSampleViewlet"
-    manager="plone.app.layout.viewlets.interfaces.IAboveContent"
-    template="templates/queued_analyses_sample_viewlet.pt"
-    permission="zope2.View"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer"
-  />
 
   <!-- Adapter for analyses assignment queue task -->
   <adapter
