@@ -2,7 +2,7 @@ import transaction
 from DateTime import DateTime
 from senaite.queue import api
 from senaite.queue.storage import QueueStorageTool
-from senaite.queue.views.dispatcher import QueueDispatcherView
+from senaite.queue.browser.views.dispatcher import QueueDispatcherView
 
 from bika.lims.browser.workflow import WorkflowActionHandler
 from bika.lims.utils.analysisrequest import create_analysisrequest

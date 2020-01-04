@@ -14,6 +14,7 @@
   <!-- Needed for "BIKA: Manage Bika" permission -->
   <include package="bika.lims" file="permissions.zcml" />
 
+  <include package=".browser"/>
   <include package=".upgrade"/>
   <include package=".monkeys"/>
 
@@ -60,30 +61,6 @@
     permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 
-  <!-- Queue dispatcher view -->
-  <browser:page
-    for="*"
-    name="queue_dispatcher"
-    class=".views.dispatcher.QueueDispatcherView"
-    permission="senaite.core.permissions.ManageBika"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
-  <!-- Tasks view -->
-  <browser:page
-    for="*"
-    name="queue_tasks"
-    class=".views.tasks.TasksView"
-    permission="senaite.core.permissions.ManageBika"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
-  <!-- Task view (JSON) -->
-  <browser:page
-    for="*"
-    name="queue_task"
-    class=".views.task.TaskView"
-    permission="senaite.core.permissions.ManageBika"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
   <!-- Analyses in queue: Worksheet -->
   <browser:viewlet
     for="bika.lims.interfaces.IWorksheet"
@@ -105,15 +82,6 @@
     permission="zope2.View"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer"
   />
-
-  <!-- When a Worksheet is created and the worksheet is marked with IQueued,
-  redirect to the Worksheet listing -->
-  <browser:page
-    for="bika.lims.interfaces.IWorksheetFolder"
-    name="worksheet_add"
-    class=".views.worksheet.AddWorksheetQueueView"
-    permission="zope.Public"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 
   <!-- Adapter for analyses assignment queue task -->
   <adapter
