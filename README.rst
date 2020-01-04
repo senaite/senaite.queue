@@ -136,14 +136,11 @@ another adapter:
 
   from senaite.core.interfaces import IAnalysisRequest
   from senaite.queue.adapters import QueuedTaskAdapter
-  from senaite.queue.interfaces import IQueuedTaskAdapter
 
   class QueuedDispatchTaskAdapter(QueuedTaskAdapter):
        """Adapter in charge dispatching a Sample
        """
-
        adapts(IAnalysisRequest)
-       implements(IQueuedTaskAdapter)
 
        def process(self, task, request):
            sample = task.context
