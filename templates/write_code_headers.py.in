@@ -10,7 +10,7 @@ from datetime import datetime
 
 SRC_DIR = "${buildout:directory}/src/senaite.queue/"
 
-YEAR_FROM = "2018"
+YEAR_FROM = "2019"
 TEMPLATE = """# -*- coding: utf-8 -*-
 #
 # This file is part of SENAITE.QUEUE.

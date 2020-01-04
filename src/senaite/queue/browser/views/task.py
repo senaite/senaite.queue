@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of SENAITE.QUEUE.
+#
 # SENAITE.QUEUE is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the Free
 # Software Foundation, version 2.
@@ -11,7 +15,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51
 # Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
-# Copyright 2018-2019 by it's authors.
+# Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
 import json
