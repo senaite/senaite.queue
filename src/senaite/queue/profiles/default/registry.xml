@@ -3,7 +3,7 @@
     i18n:domain="senaite.queue">
 
   <records
-      interface="senaite.queue.controlpanel.IQueueControlPanel"
+      interface="senaite.queue.browser.controlpanel.IQueueControlPanel"
       prefix="senaite.queue" />
 
 </registry>
