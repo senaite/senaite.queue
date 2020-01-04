@@ -26,29 +26,29 @@
   <!-- Package includes -->
   <include package=".monkeys"/>
 
-  <!-- Installation profile -->
+  <!-- Default profile -->
   <genericsetup:registerProfile
       name="default"
       title="SENAITE QUEUE"
       directory="profiles/default"
-      description="Asynchronous tasks add-on for SENAITE"
+      description="Asynchronous tasks for SENAITE"
       pre_handler="senaite.queue.setuphandlers.pre_install"
       post_handler="senaite.queue.setuphandlers.post_install"
       provides="Products.GenericSetup.interfaces.EXTENSION" />
 
-  <!-- Generic Setup *IMPORT STEP* -->
+  <!-- Generic Setup Handler -->
   <genericsetup:importStep
-      name="SENAITE QUEUE"
-      title="Asynchronous tasks add-on for SENAITE"
-      description="Run SENAITE.QUEUE Handler"
+      name="senaite.queue.setuphandler"
+      title="SENAITE.QUEUE Setup Handler"
+      description="Run various configuration actions"
       handler="senaite.queue.setuphandlers.setup_handler"/>
 
-  <!-- Generic Setup *UNINSTALL* Profile -->
+  <!-- Uninstall profile -->
   <genericsetup:registerProfile
       name="uninstall"
-      title="SENAITE QUEUE"
+      title="SENAITE QUEUE (uninstall)"
       directory="profiles/uninstall"
-      description="Asynchronous tasks add-on for SENAITE"
+      description="Asynchronous tasks for SENAITE"
       post_handler="senaite.queue.setuphandlers.post_uninstall"
       provides="Products.GenericSetup.interfaces.EXTENSION" />
 

@@ -20,6 +20,7 @@
 
 from senaite.queue import PRODUCT_NAME
 from senaite.queue import PROFILE_ID
+from senaite.queue import UNINSTALL_PROFILE_ID
 from senaite.queue import logger
 
 
@@ -72,8 +73,7 @@ def post_uninstall(portal_setup):
     logger.info("{} uninstall handler [BEGIN]".format(PRODUCT_NAME.upper()))
 
     # https://docs.plone.org/develop/addons/components/genericsetup.html#custom-installer-code-setuphandlers-py
-    profile_id = "profile-senaite.queue:uninstall"
-    context = portal_setup._getImportContext(profile_id)
+    context = portal_setup._getImportContext(UNINSTALL_PROFILE_ID)
     portal = context.getSite()  # noqa
 
     logger.info("{} uninstall handler [DONE]".format(PRODUCT_NAME.upper()))

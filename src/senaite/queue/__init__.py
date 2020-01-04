@@ -30,6 +30,7 @@ from zope.i18nmessageid import MessageFactory
 
 PRODUCT_NAME = "senaite.queue"
 PROFILE_ID = "profile-{}:default".format(PRODUCT_NAME)
+UNINSTALL_PROFILE_ID = "profile-{}:uninstall".format(PRODUCT_NAME)
 
 # Defining a Message Factory for when this product is internationalized.
 messageFactory = MessageFactory(PRODUCT_NAME)
