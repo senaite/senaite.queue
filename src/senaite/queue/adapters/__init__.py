@@ -21,34 +21,19 @@
 from Products.Archetypes.interfaces.base import IBaseObject
 from senaite.queue import api
 from senaite.queue import logger
-from senaite.queue.interfaces import IQueuedTaskAdapter, IQueued
+from senaite.queue.interfaces import IQueued
+from senaite.queue.interfaces import IQueuedTaskAdapter
 from senaite.queue.queue import queue_action
 from senaite.queue.queue import queue_assign_analyses
-from senaite.queue.storage import ActionQueueStorage, WorksheetQueueStorage
+from senaite.queue.storage import ActionQueueStorage
+from senaite.queue.storage import WorksheetQueueStorage
 from zope.component import adapts
 from zope.interface import implements
 from zope.interface import noLongerProvides
 
-from bika.lims.browser.workflow import WorkflowActionGenericAdapter
-from bika.lims.interfaces import IWorksheet, IGuardAdapter
+from bika.lims.interfaces import IWorksheet
 from bika.lims.interfaces.analysis import IRequestAnalysis
 from bika.lims.workflow import doActionFor
-
-
-class SampleGuardAdapter(object):
-    implements(IGuardAdapter)
-
-    def __init__(self, context):
-        self.context = context
-
-    def guard(self, action):
-        """Returns False if the sample contains one queued analysis
-        """
-        for brain in self.context.getAnalyses():
-            analysis = api.get_object(brain)
-            if IQueued.providedBy(analysis):
-                return False
-        return True
 
 
 class QueuedTaskAdapter(object):
@@ -272,20 +257,3 @@ class QueuedAssignAnalysesTaskAdapter(QueuedUIDsTaskAdapter):
         slots = filter(lambda slot: slot["type"] == type, layout)
         slots = map(lambda slot: int(slot["pos"]), slots)
         return sorted(set(slots))
-
-
-class WorkflowActionGenericQueueAdapter(WorkflowActionGenericAdapter):
-    """Adapter in charge of submission of results from a worksheet,
-    adding them into a queue for async submission
-    """
-
-    def do_action(self, action, objects):
-        # Process the first chunk as usual
-        chunks = api.get_chunks(action, objects)
-        super(WorkflowActionGenericQueueAdapter, self)\
-            .do_action(action, chunks[0])
-
-        # Process the rest in a queue
-        queue_action(self.context, self.request, action, chunks[1])
-
-        return objects
