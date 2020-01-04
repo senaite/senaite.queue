@@ -39,3 +39,7 @@ class IQueued(Interface):
 class IQueuedTaskAdapter(Interface):
     """Marker interface for adapters in charge of processing queued tasks
     """
+
+    def process(self, task, request):
+        """Process the task from the queue
+        """

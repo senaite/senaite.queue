@@ -53,14 +53,17 @@ class SampleGuardAdapter(object):
 
 class QueuedTaskAdapter(object):
     """Generic adapter for queued tasks
-    TODO: Rename to QueuedUIDsTaskAdapter
     """
     implements(IQueuedTaskAdapter)
 
-    _storage = None
-
     def __init__(self, context):
         self.context = context
+
+
+class QueuedUIDsTaskAdapter(QueuedTaskAdapter):
+    """Generic adapter for queued tasks with uids stored in their own storage
+    """
+    _storage = None
 
     @property
     def storage(self):
@@ -78,7 +81,7 @@ class QueuedTaskAdapter(object):
         self.storage.flush()
 
 
-class QueuedActionTaskAdapter(QueuedTaskAdapter):
+class QueuedActionTaskAdapter(QueuedUIDsTaskAdapter):
     """Adapter for generic transitions
     """
     adapts(IBaseObject)
@@ -142,7 +145,7 @@ class QueuedActionTaskAdapter(QueuedTaskAdapter):
             doActionFor(obj, action)
 
 
-class QueuedAssignAnalysesTaskAdapter(QueuedTaskAdapter):
+class QueuedAssignAnalysesTaskAdapter(QueuedUIDsTaskAdapter):
     """Adapter for the assignment of analyses to a worksheet
     """
     adapts(IWorksheet)
