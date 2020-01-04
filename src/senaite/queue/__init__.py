@@ -27,7 +27,6 @@ from Products.CMFCore.utils import ContentInit
 from senaite.queue.interfaces import ISenaiteQueueLayer
 from zope.i18nmessageid import MessageFactory
 
-from bika.lims import api
 
 PRODUCT_NAME = "senaite.queue"
 PROFILE_ID = "profile-{}:default".format(PRODUCT_NAME)
@@ -61,5 +60,6 @@ def initialize(context):
 def is_installed():
     """Returns whether the product is installed or not
     """
+    from bika.lims import api
     request = api.get_request()
     return ISenaiteQueueLayer.providedBy(request)

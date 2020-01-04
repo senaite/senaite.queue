@@ -1,3 +1,4 @@
+import transaction
 from DateTime import DateTime
 from senaite.queue import api
 from senaite.queue.storage import QueueStorageTool
@@ -47,6 +48,10 @@ def get_queue_tool():
 def dispatch(request=None):
     """Triggers the Queue Dispatcher
     """
+    # Do a transaction commit first. In a test environment, all happens within
+    # the same request life-cycle, while in a real environment, the dispatch is
+    # always called by a dedicated worker, through an independent thread.
+    transaction.commit()
     portal = api.get_portal()
     if not request:
         request = api.get_request()

@@ -24,7 +24,6 @@ from senaite.queue.storage import QueueStorageTool
 from senaite.queue.storage import QueueTask
 from senaite.queue.storage import WorksheetQueueStorage
 
-from bika.lims.decorators import synchronized
 from bika.lims.utils import tmpID
 
 

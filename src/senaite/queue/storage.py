@@ -185,24 +185,24 @@ class QueueStorageTool(BaseStorageTool):
         return diff.total_seconds() > api.get_max_seconds_unlock()
 
     def sync(self):
-        """Updates with the changes done since the beginning
+        """Synchronizes the queue with the current data from db
         """
-        self.container._p_jar.sync()
-        self.storage._p_jar.sync()
+        to_sync = [self.container, self.storage]
+        for obj in to_sync:
+            p_jar = obj._p_jar
+            if p_jar is not None:
+                p_jar.sync()
 
     def lock(self):
         """Tries to lock the queue and returns whether it succeeded or not
         """
         with self.__lock:
-            # Sync (maybe other threads modified the queue)
-            self.sync()
-
             if self.is_locked():
                 if self.is_stucked():
                     # The queue is in stucked status: we've been waiting for
                     # the current task to finish for too much long. Force the
                     # release to make room to other tasks
-                    logger.warn("*** Queue stucked: {}".format(repr(self.current)))
+                    logger.warn("*** Queue stacked: {}".format(repr(self.current)))
                     if not self.contains(self.current):
                         self.storage["tasks"].append(self.current)
                 else:
@@ -614,6 +614,10 @@ class QueueTask(dict):
                 data["AUTHENTICATED_USER"] = authenticated_user
             if isinstance(authenticated_user, basestring):
                 data["AUTHENTICATED_USER"] = authenticated_user
+        else:
+            current_user = api.get_current_user()
+            if current_user:
+                data["AUTHENTICATED_USER"] = current_user.id
 
         __ac = request.get("__ac")
         if __ac:

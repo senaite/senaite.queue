@@ -45,15 +45,24 @@ class QueueDispatcherView(BrowserView):
     def __call__(self):
         logger.info("Starting Queue Dispatcher ...")
 
-        # Lock the queue to prevent race-conditions
+        # Sync, cause maybe a previous thread modified the queue while we were
+        # waiting for that thread to finish due to the synchronized decorator
         queue = QueueStorageTool()
+        queue.sync()
+
+        # Lock the queue to prevent other threads not using this dispatcher
+        # (it should never happen) to process tasks while we are on it. This
+        # guarantees the tasks are always processed sequentially
         if not queue.lock():
             return self.response("Cannot lock the queue [SKIP]", queue)
 
-        # Get the task to process
+        # Do the work
         output = self.process_queue(queue)
 
-        # Ensure next thread starts working with latest data
+        # Ensure next thread starts working with latest data. We need to ensure
+        # the data is stored in the database before we leave the function to
+        # allow the next thread that might be awaiting because of synchronized
+        # decorator to sync the queue with latest data
         transaction.commit()
 
         return output
@@ -66,7 +75,7 @@ class QueueDispatcherView(BrowserView):
             return self.response(msg, queue, log_mode="error")
 
         # Get the user who fired the task
-        user_id = task.request.get("AUTHENTICATED_USER")
+        user_id = task.username
         if not user_id:
             queue.fail(task)
             queue.release()
