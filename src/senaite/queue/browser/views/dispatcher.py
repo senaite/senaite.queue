@@ -19,17 +19,16 @@
 # Some rights reserved, see README and LICENSE.
 
 import json
+import threading
 
+import requests
 import transaction
 from Products.Five.browser import BrowserView
 from senaite.queue import api
 from senaite.queue import logger
-from senaite.queue.interfaces import IQueuedTaskAdapter
 from senaite.queue.storage import QueueStorageTool
-from zope.component import queryAdapter
 
 from bika.lims.decorators import synchronized
-from bika.lims.interfaces import IWorksheet
 
 
 class QueueDispatcherView(BrowserView):
@@ -56,8 +55,8 @@ class QueueDispatcherView(BrowserView):
         if not queue.lock():
             return self.response("Cannot lock the queue [SKIP]", queue)
 
-        # Do the work
-        output = self.process_queue(queue)
+        # Pop the task to process
+        task = queue.pop()
 
         # Ensure next thread starts working with latest data. We need to ensure
         # the data is stored in the database before we leave the function to
@@ -65,84 +64,26 @@ class QueueDispatcherView(BrowserView):
         # decorator to sync the queue with latest data
         transaction.commit()
 
-        return output
+        # Notify the consumer. We do this because even that we can login with
+        # the user that fired the task here, the new user session will only
+        # take effect after this request life-cycle. We cannot redirect to a
+        # new url here, because dispatcher is automatically called by a client
+        # worker. Thus, we open a new thread and call the consumer view, that
+        # does not require privileges, except that will check the tuid with the
+        # task to be processed and login with the proper user thereafter.
+        self.notify_consumer(task)
+        return self.response("Consumer notified", queue)
 
-    def process_queue(self, queue):
-        task = queue.pop()
-        if not task:
-            queue.release()
-            msg = "No task available [SKIP]"
-            return self.response(msg, queue, log_mode="error")
-
-        # Get the user who fired the task
-        user_id = task.username
-        if not user_id:
-            queue.fail(task)
-            queue.release()
-            msg = "Task without user: {} [SKIP]".format(task.task_uid)
-            return self.response(msg, queue, log_mode="error")
-
-        # Try to authenticate as the original user
-        if not self.login_as(user_id):
-            msg = "Cannot login with '{}' [SKIP]".format(user_id)
-            logger.warn(msg)
-
-        # Process the task
-        try:
-            if not self.process_task(task):
-                msg = "Cannot process this task: {} [SKIP]".format(repr(task))
-                raise RuntimeError(msg)
-
-        except (RuntimeError, Exception) as e:
-            msg = "Exception while processing '{}': {} [SKIP]" \
-                .format(task.name, e.message)
-
-            # Notify the queue machinery this task has not succeed
-            queue.fail(task)
-            queue.release()
-            return self.response(msg, queue, log_mode="error")
-
-        # Release the queue to make room for others
-        queue.release()
-
-        # Return the detailed status of the queue
-        msg = "Task '{}' for '{}' processed".format(task.name, task.context_uid)
-        return self.response(msg, queue)
-
-    def response(self, msg, queue, log_mode="info"):
-        getattr(logger, log_mode)(msg)
-        output = {"message": msg, "queue": queue.to_dict()}
-        return json.dumps(output)
-
-    def login_as(self, username):
+    def notify_consumer(self, task):
+        """Requests for the consumer view in a new thread
         """
-        Login Plone user (without password)
-        """
-        logger.info("Logging in as {} ...".format(username))
-        acl_users = api.get_tool("acl_users")
-        user_ob = acl_users.getUserById(username)
-        if user_ob is None:
-            return False
-        acl_users.session._setupSession(username, self.request.response)
+        task_uid = task and task.task_uid or "empty"
+        base_url = api.get_url(api.get_portal())
+        url = "{}/queue_consumer?tuid={}".format(base_url, task_uid)
+        thread = threading.Thread(target=requests.get, args=(url,))
+        thread.start()
         return True
 
-    def process_task(self, task):
-        task_context = task.context
-
-        # If the task refers to a worksheet, inject (ws_id) in params to make
-        # sure guards (assign, unassign) return True
-        if IWorksheet.providedBy(task_context):
-            self.request.set("ws_uid", api.get_uid(task_context))
-
-        # Get the adapter able to process this specific type of task
-        adapter = queryAdapter(task_context, IQueuedTaskAdapter, name=task.name)
-        if adapter:
-            logger.info("Processing task '{}' for '{}' ({}) ...".format(
-                task.name, api.get_id(task_context), task.context_uid))
-
-            # Process the task
-            return adapter.process(task, self.request)
-
-        logger.error("Adapter for task {} and context {} not found!"
-                     .format(task.name, task_context.portal_type))
-        return False
+    def response(self, msg, queue):
+        output = {"message": msg, "queue": queue.to_dict()}
+        return json.dumps(output)
