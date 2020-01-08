@@ -125,6 +125,15 @@ class QueueStorageTool(BaseStorageTool):
         return processed and self._task_obj(processed) or None
 
     @property
+    def failed(self):
+        """List of failed tasks
+        """
+        if self.storage.get("failed") is None:
+            self.storage["failed"] = list()
+        tasks = map(self._task_obj, self.storage["failed"])
+        return filter(None, tasks)
+
+    @property
     def statistics(self):
         """Statistics information about the queue
         """
@@ -253,6 +262,7 @@ class QueueStorageTool(BaseStorageTool):
             self.tasks_storage["tasks"] = self.tasks[1:]
             self.storage["locked"] = time.time()
             self.storage._p_changed = True
+            self.tasks_storage._p_changed = True
             logger.info("*** Queue locked")
             return True
 
@@ -307,7 +317,7 @@ class QueueStorageTool(BaseStorageTool):
             # Update statistics
             self.add_stats("added")
 
-            self.storage._p_changed = True
+            self.tasks_storage._p_changed = True
             logger.info("*** Queued new task for {}: {}"
                         .format(api.get_id(context), task.name))
             return True
@@ -391,11 +401,19 @@ class QueueStorageTool(BaseStorageTool):
         """
         with self.__lock:
             # Remove the task from the tasks list
-            out_tasks = list()
-            for stored_task in self.tasks_storage["tasks"]:
-                if self._task_obj(stored_task) != task:
-                    out_tasks.append(stored_task)
-            self.tasks_storage["tasks"] = out_tasks
+            active_tasks = self.tasks
+            if task in active_tasks:
+                active_tasks = filter(lambda t: t.task_uid != task.task_uid,
+                                      active_tasks)
+                self.tasks_storage["tasks"] = active_tasks
+                self.tasks_storage._p_changed = True
+
+            # Remove the task from the list of failed tasks
+            failed_tasks = self.failed
+            if task in failed_tasks:
+                failed_tasks = filter(lambda t: t.task_uid != task.task_uid,
+                                      failed_tasks)
+                self.storage["failed"] = failed_tasks
 
             # Remove the task from current/processed
             if task == self.current:
@@ -448,7 +466,7 @@ class QueueStorageTool(BaseStorageTool):
                 return False
             return uid in [candidate.task_uid, candidate.context_uid]
 
-        tasks = [self.current] + self.tasks
+        tasks = [self.current] + self.tasks + self.failed
         for task in tasks:
             if is_target_task(task, task_or_obj_uid, task_name):
                 return task
@@ -474,6 +492,8 @@ class QueueStorageTool(BaseStorageTool):
         if task.retries >= max_retries:
             # Remove task from the queue
             self.remove(task)
+            # Add the task to the list of failed
+            self.storage["failed"] = self.failed + [task]
         else:
             # Re-queue the task
             task.retries += 1

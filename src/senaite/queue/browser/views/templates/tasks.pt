@@ -31,11 +31,10 @@
         tr.active, tr.active a {
           color: #666;
         }
-        tr.failing,
-        tr.failing a {
+        tr.failed, tr.failed a {
           color: #a73232;
         }
-        tr.failing a.btn {
+        tr.failed a.btn {
           color: #fff;
         }
       </style>
@@ -74,10 +73,7 @@
         </thead>
         <tbody>
           <tal:row repeat="task view/get_tasks">
-            <tr tal:define="
-                  css_class python: task.retries &gt; 0 and 'failing' or '';
-                  css_class python: '{} {}'.format(css_class, task['task_status_id'])"
-                tal:attributes="class css_class">
+            <tr tal:attributes="class task/task_status_id">
               <td>
                 <div class="task_uid" >
                   <a tal:attributes="href python: view.get_task_json(task)" tal:content="task/task_uid"></a>
@@ -96,8 +92,12 @@
               <td>
                 <a class="btn btn-default btn-primary btn-sm"
                    i18n:translate=""
-                   tal:condition="python: task['task_status_id'] in 'queued'"
+                   tal:condition="python: task['task_status_id'] in ['queued', 'failed']"
                    tal:attributes="href python: 'queue_tasks?remove={}'.format(task.task_uid)">Remove</a>
+                <a class="btn btn-danger btn-sm"
+                   i18n:translate=""
+                   tal:condition="python: task['task_status_id'] in ['failed']"
+                   tal:attributes="href python: 'queue_tasks?requeue={}'.format(task.task_uid)">Requeue</a>
               </td>
             </tr>
           </tal:row>

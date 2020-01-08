@@ -44,6 +44,9 @@ class TasksView(BrowserView):
         remove_uid = self.request.get("remove")
         if remove_uid:
             self.remove_task(remove_uid)
+        requeue_uid = self.request.get("requeue")
+        if requeue_uid:
+            self.requeue_task(requeue_uid)
 
         return self.template()
 
@@ -59,8 +62,18 @@ class TasksView(BrowserView):
         if task:
             qtool.remove(task)
 
+    def requeue_task(self, tuid):
+        qtool = self.queue_tool
+        task = qtool.get_task(tuid)
+        if task:
+            task.retries = 0
+            qtool.requeue(task)
+
     def get_tasks(self):
-        tasks = []
+        # Failed tasks
+        failed = self.queue_tool.failed
+        tasks = map(lambda task: self.get_task_data(task, "failed"), failed)
+
         processed = self.queue_tool.processed
         current = self.queue_tool.current
 
