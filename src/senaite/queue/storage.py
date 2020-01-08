@@ -182,7 +182,16 @@ class QueueStorageTool(BaseStorageTool):
         # was locked for the last time
         now = time.time()
         diff = datetime.fromtimestamp(now) - datetime.fromtimestamp(since)
-        return diff.total_seconds() > api.get_max_seconds_unlock()
+
+        # Get the maximum seconds for a process to finish before force unlock
+        max_seconds = api.get_max_seconds_unlock()
+        if max_seconds < 120:
+            logger.warn(
+                "Seconds to wait before unlock: {}s. Processes might take more "
+                "time to complete. Please consider to increase this value!. "
+                "Recommended value is 600s".format(max_seconds))
+
+        return diff.total_seconds() > max_seconds
 
     def sync(self):
         """Synchronizes the queue with the current data from db
