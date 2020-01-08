@@ -35,6 +35,11 @@ from zope.interface import noLongerProvides
 # The id of the main tool for queue management of tasks
 MAIN_QUEUE_STORAGE_TOOL_ID = "senaite.queue.main.storage"
 
+# The id of the storage of queued tasks. Having a different storage for the
+# queue itself and the tasks reduces the chance of database conflicts when a
+# task is added to the queue while another task is being processed
+TASKS_QUEUE_STORAGE_TOOL_ID = "senaite.queue.main.storage.tasks"
+
 # The id of the tool for queue management of action-like tasks in a container
 ACTION_QUEUE_STORAGE_TOOL_ID = "senaite.queue.action.storage"
 
@@ -90,12 +95,19 @@ class QueueStorageTool(BaseStorageTool):
         return self._container
 
     @property
+    def tasks_storage(self):
+        annotations = IAnnotations(self.container)
+        if annotations.get(TASKS_QUEUE_STORAGE_TOOL_ID) is None:
+            annotations[TASKS_QUEUE_STORAGE_TOOL_ID] = OOBTree()
+        return annotations[TASKS_QUEUE_STORAGE_TOOL_ID]
+
+    @property
     def tasks(self):
         """The outstanding tasks from the queue
         """
-        if self.storage.get("tasks") is None:
-            self.storage["tasks"] = list()
-        tasks = map(self._task_obj, self.storage["tasks"])
+        if self.tasks_storage.get("tasks") is None:
+            self.tasks_storage["tasks"] = list()
+        tasks = map(self._task_obj, self.tasks_storage["tasks"])
         return filter(None, tasks)
 
     @property
@@ -196,7 +208,7 @@ class QueueStorageTool(BaseStorageTool):
     def sync(self):
         """Synchronizes the queue with the current data from db
         """
-        to_sync = [self.container, self.storage]
+        to_sync = [self.container, self.storage, self.tasks_storage]
         for obj in to_sync:
             p_jar = obj._p_jar
             if p_jar is not None:
@@ -213,7 +225,7 @@ class QueueStorageTool(BaseStorageTool):
                     # release to make room to other tasks
                     logger.warn("*** Queue stacked: {}".format(repr(self.current)))
                     if not self.contains(self.current):
-                        self.storage["tasks"].append(self.current)
+                        self.tasks_storage["tasks"].append(self.current)
                 else:
                     # A task is actually under process and hasn't been finished
                     # yet, so it cannot be unlocked
@@ -227,7 +239,7 @@ class QueueStorageTool(BaseStorageTool):
                 # that is always failing
                 logger.warn("*** Queue not healthy: {}".format(repr(self.processed)))
                 if not self.contains(self.processed):
-                    self.storage["tasks"].append(self.processed)
+                    self.tasks_storage["tasks"].append(self.processed)
 
             if len(self.tasks) == 0:
                 # No tasks in the queue
@@ -238,7 +250,7 @@ class QueueStorageTool(BaseStorageTool):
             # shifting the tasks in the pool (FIFO)
             self.storage["current"] = self.tasks[0]
             self.storage["processed"] = None
-            self.storage["tasks"] = self.tasks[1:]
+            self.tasks_storage["tasks"] = self.tasks[1:]
             self.storage["locked"] = time.time()
             self.storage._p_changed = True
             logger.info("*** Queue locked")
@@ -290,7 +302,7 @@ class QueueStorageTool(BaseStorageTool):
                 alsoProvides(context, IQueued)
 
             # Append the task to the queue
-            self.storage["tasks"].append(task)
+            self.tasks_storage["tasks"].append(task)
 
             # Update statistics
             self.add_stats("added")
@@ -330,7 +342,7 @@ class QueueStorageTool(BaseStorageTool):
         # so the sum of added+queued returns the total number of tasks handled
         # by the queue at the end of that time-frame window.
         added = stats[-1]["added"]
-        queued = len(self.storage["tasks"]) - added
+        queued = len(self.tasks_storage["tasks"]) - added
         if queued < 0:
             # This is necessary because a task can be added and processed
             # within the same time-frame window. In such case, at the end of the
@@ -380,10 +392,10 @@ class QueueStorageTool(BaseStorageTool):
         with self.__lock:
             # Remove the task from the tasks list
             out_tasks = list()
-            for stored_task in self.storage["tasks"]:
+            for stored_task in self.tasks_storage["tasks"]:
                 if self._task_obj(stored_task) != task:
                     out_tasks.append(stored_task)
-            self.storage["tasks"] = out_tasks
+            self.tasks_storage["tasks"] = out_tasks
 
             # Remove the task from current/processed
             if task == self.current:
