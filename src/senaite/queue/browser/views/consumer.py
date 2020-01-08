@@ -76,10 +76,11 @@ class QueueConsumerView(BrowserView):
         msg = "Task '{}' for '{}' processed".format(task.name, task.context_uid)
         try:
             if not self.process_task(task):
-                queue.fail(task)
                 msg = "Cannot process this task: {} [SKIP]".format(repr(task))
                 raise RuntimeError(msg)
         except (RuntimeError, Exception) as e:
+            queue.fail(task)
+            log_mode = "error"
             msg = "{}: {} [SKIP]".format(task.name, e.message)
 
         # Release the queue

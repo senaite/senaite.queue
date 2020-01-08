@@ -21,8 +21,8 @@
 import transaction
 from DateTime import DateTime
 from senaite.queue import api
+from senaite.queue.browser.views.consumer import QueueConsumerView
 from senaite.queue.storage import QueueStorageTool
-from senaite.queue.browser.views.dispatcher import QueueDispatcherView
 
 from bika.lims.browser.workflow import WorkflowActionHandler
 from bika.lims.utils.analysisrequest import create_analysisrequest
@@ -75,7 +75,20 @@ def dispatch(request=None):
     portal = api.get_portal()
     if not request:
         request = api.get_request()
-    return QueueDispatcherView(portal, request)()
+
+    # I simulate here the behavior of QueueDispatcher, haven't found any other
+    # solution to deal with the fact the queue utility opens a new Thread by
+    # calling requests module and nohost is not available. I need to do more
+    # research on this topic....
+    queue = get_queue_tool()
+    if not queue.lock():
+        return "Cannot lock the queue"
+
+    # Pop the task to process
+    task = queue.pop()
+    request.set("tuid", task.task_uid)
+
+    return QueueConsumerView(portal, request)()
 
 
 def filter_by_state(brains_or_objects, state):

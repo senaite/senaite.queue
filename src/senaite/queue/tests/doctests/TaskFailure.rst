@@ -84,16 +84,13 @@ Only the first chunk of analyses has been transitioned non-async:
     >>> len(transitioned)
     5
 
-Submit the result of one of the remaining analyses to be assigned. Note this
-action is not possible through the web interface because analyses that implement
-the IQueued interface appear disabled in listings:
+Remove one of the remaining analyses to be assigned:
 
     >>> non_transitioned = filter(lambda an: IQueued.providedBy(an), analyses)
     >>> black_sheep = non_transitioned[0]
     >>> black_sheep.aq_parent.manage_delObjects([black_sheep.getId()])
 
-Since we've submitted a result for one analysis, the system won't be able to
-process the task successfully:
+The system won't be able to process the task successfully:
 
     >>> "No object found for UID" in test_utils.dispatch()
     True
