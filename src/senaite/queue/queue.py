@@ -59,9 +59,11 @@ def queue_assign_analyses(worksheet, request, uids, slots, wst_uid=None):
     return queue_task("task_assign_analyses", request, worksheet)
 
 
-def queue_task(name, request, context):
+def queue_task(name, request, context, username=None):
     """Adds a task to general queue storage
     """
     queue = QueueStorageTool()
     task = QueueTask(name, request, context, tmpID())
+    if username:
+        task.username = username
     return queue.append(task)

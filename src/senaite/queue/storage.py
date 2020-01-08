@@ -708,6 +708,10 @@ class QueueTask(dict):
     def username(self):
         return self.request.get("AUTHENTICATED_USER", None)
 
+    @username.setter
+    def username(self, value):
+        self["request"]["AUTHENTICATED_USER"] = value
+
     @retries.setter
     def retries(self, value):
         self["retries"] = value
