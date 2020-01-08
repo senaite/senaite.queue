@@ -44,14 +44,14 @@ class QueueConsumerView(BrowserView):
         task = queue.current
         if not task:
             queue.release()
-            return self.response("No task available", queue, log_mode="error")
+            return self.response("No task available", log_mode="error")
 
         # Check if the task uid passed-in matches with the current task
         task_uid = self.request.get("tuid", None)
         if task.task_uid != task_uid:
             queue.requeue(task)
             msg = "TUID mismatch: {} <> {}".format(task_uid, task.task_uid)
-            return self.response(msg, queue, log_mode="warn")
+            return self.response(msg, log_mode="warn")
 
         # Check if current user matches with task's user
         if api.get_current_user().id != task.username:
@@ -68,7 +68,7 @@ class QueueConsumerView(BrowserView):
                 queue.fail(task)
                 queue.release()
                 msg = "Cannot login with '{}'".format(task.username)
-                return self.response(msg, queue, log_mode="error")
+                return self.response(msg, log_mode="error")
 
         # Do the work
         # At this point, current user matches with task's user
@@ -91,12 +91,11 @@ class QueueConsumerView(BrowserView):
         # by an anonymous user that somehow, figured out the TUID
         acl = api.get_tool("acl_users")
         acl.resetCredentials(self.request, self.request.response)
-        return self.response(msg, queue, log_mode=log_mode)
+        return self.response(msg, log_mode=log_mode)
 
-    def response(self, msg, queue, log_mode="info"):
+    def response(self, msg, log_mode="info"):
         getattr(logger, log_mode)(msg)
-        output = {"message": msg, "queue": queue.to_dict()}
-        return json.dumps(output)
+        return msg
 
     def login_as(self, username):
         """
