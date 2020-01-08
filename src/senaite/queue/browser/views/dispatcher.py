@@ -82,7 +82,6 @@ class QueueDispatcherView(BrowserView):
         url = "{}/queue_consumer?tuid={}".format(base_url, task_uid)
         thread = threading.Thread(target=requests.get, args=(url,))
         thread.start()
-        return True
 
     def response(self, msg, queue):
         output = {"message": msg, "queue": queue.to_dict()}
