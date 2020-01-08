@@ -18,8 +18,6 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-import json
-
 from Products.Five.browser import BrowserView
 from senaite.queue import api
 from senaite.queue import logger
@@ -62,7 +60,6 @@ class QueueConsumerView(BrowserView):
                 base_url = api.get_url(api.get_portal())
                 url = "{}/queue_consumer?tuid={}".format(base_url, task_uid)
                 return self.request.response.redirect(url)
-
             else:
                 # Cannot login as this user
                 queue.fail(task)
@@ -98,16 +95,34 @@ class QueueConsumerView(BrowserView):
         return msg
 
     def login_as(self, username):
-        """
-        Login Plone user (without password)
+        """Login Plone user (without password)
         """
         logger.info("Logging in as {} ...".format(username))
-        acl_users = api.get_tool("acl_users")
-        user_ob = acl_users.getUserById(username)
+        user_ob = self.get_senaite_user(username)
         if user_ob is None:
+            if self.get_zope_user(username):
+                logger.error("User '{}' belongs to Zope's acl_users root!")
+            else:
+                logger.error("No valid user '{}'".format(username))
             return False
+        acl_users = api.get_tool("acl_users")
         acl_users.session._setupSession(username, self.request.response)
         return True
+
+    def get_senaite_user(self, username):
+        """Returns whether the current username matches with a user that
+        belongs to Senaite's acl_users
+        """
+        acl_users = api.get_tool("acl_users")
+        return acl_users.getUserById(username)
+
+    def get_zope_user(self, username):
+        """Returns whether the current username matches with a user that
+        belongs to Zope acl_users root
+        """
+        portal = api.get_portal()
+        zope_acl_users = portal.getPhysicalRoot().acl_users
+        return zope_acl_users.getUserById(username)
 
     def process_task(self, task):
         task_context = task.context
