@@ -41,14 +41,25 @@ class TasksView(BrowserView):
     def __call__(self):
         self.request.set("disable_border", 1)
         self.request.set("disable_plone.rightcolumn", 1)
+
         remove_uid = self.request.get("remove")
         if remove_uid:
+            # Remove the task
             self.remove_task(remove_uid)
+            return self.redirect()
+
         requeue_uid = self.request.get("requeue")
         if requeue_uid:
+            # Requeue the task
             self.requeue_task(requeue_uid)
+            return self.redirect()
 
         return self.template()
+
+    def redirect(self, url=None):
+        if not url:
+            url = "{}/queue_tasks".format(self.portal_url)
+        self.response.redirect(url)
 
     @property
     def queue_tool(self):
