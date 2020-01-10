@@ -59,7 +59,7 @@ class TasksView(BrowserView):
     def redirect(self, url=None):
         if not url:
             url = "{}/queue_tasks".format(self.portal_url)
-        self.response.redirect(url)
+        self.request.response.redirect(url)
 
     @property
     def queue_tool(self):
