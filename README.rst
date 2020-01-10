@@ -36,8 +36,8 @@ Usage
 =====
 
 Create a new user in senaite (under `senaite/acl_users`) with username
-`queue_daemon` and password `queue_daemon`. It will not work when using acl
-users registered in Plone's root (e.g. `admin`).
+`queue_daemon` and password `queue_daemon`. It won't work when using acl
+users registered in Zope's root (e.g. `admin`).
 
 Add a new client in your buildout:
 
@@ -64,7 +64,7 @@ and configure the client properly:
   # Queue tasks dispatcher
   <clock-server>
       method /senaite/queue_dispatcher
-      period 10
+      period 5
       user ${buildout:queue-user-name}
       password ${buildout:queue-user-password}
       host localhost:8088
@@ -79,6 +79,12 @@ Login as admin user and visit "Site Setup". A link "Queue Settings" can be found
 under "Add-on configuration". From this view you can either disable queue for
 specific actions and configure the number of items to be processed by a single
 queued task for a given action.
+
+Queue is not able to process tasks fired by users from Zope's root (e.g. default 
+`admin` user). `senaite.queue` will try to process them, but these tasks will be
+discarded after some attempts (see "Maximum retries" configuration option from
+Queue Control Panel). As a rule of thumb, always login with users registered in 
+Senaite portal. Zope's root users must be used for maintenance tasks only.
 
 Extend
 ======
