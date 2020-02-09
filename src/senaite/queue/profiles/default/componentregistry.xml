@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<componentregistry>
+  <utilities>
+    <!-- Only used to remove the IQueueDispatcher utility that was registered
+    in versions prior to v1.0.1. This componentregistry.xml needs to be removed
+    afterwards -->
+    <utility
+      interface="senaite.queue.interfaces.IQueueDispatcher"
+      factory="senaite.queue.views.dispatcher.QueueDispatcher"
+      remove="True"
+    />
+  </utilities>
+</componentregistry>

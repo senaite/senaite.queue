@@ -31,6 +31,13 @@ class ISenaiteQueueLayer(IBikaLIMS, ISenaiteLIMS):
     """
 
 
+# TODO: REMOVE. Is not longer used for v1.0.1 onwards. Only kept here for
+#       safe-uninstall and safe-upgrade
+class IQueueDispatcher(Interface):
+    """Process the task from the queue
+    """
+
+
 class IQueued(Interface):
     """Marker interface for objects that are in an async queue
     """

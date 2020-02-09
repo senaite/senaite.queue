@@ -21,6 +21,7 @@
 from senaite.queue import PRODUCT_NAME
 from senaite.queue import PROFILE_ID
 from senaite.queue import logger
+from senaite.queue.interfaces import IQueueDispatcher
 
 from bika.lims.upgrade import upgradestep
 from bika.lims.upgrade.utils import UpgradeUtils
@@ -48,5 +49,22 @@ def upgrade(tool):
     setup.runImportStepFromProfile(PROFILE_ID, "plone.app.registry")
     setup.runImportStepFromProfile(PROFILE_ID, "actions")
 
+    # Remove queue dispatcher utility, that is no longer used
+    setup.runImportStepFromProfile(PROFILE_ID, "componentregistry")
+    remove_queue_dispatcher_utility(portal)
+
     logger.info("{0} upgraded to version {1}".format(PRODUCT_NAME, version))
     return True
+
+
+def remove_queue_dispatcher_utility(portal):
+    logger.info("Removing IQueueDispatcher utility ...")
+    sm = portal.getSiteManager()
+    sm.unregisterUtility(provided=IQueueDispatcher)
+    util = sm.queryUtility(IQueueDispatcher)
+    if util:
+        del util
+        sm.utilities.unsubscribe((), IQueueDispatcher)
+        del sm.utilities.__dict__['_provided'][IQueueDispatcher]
+
+    logger.info("Removed IQueueDispatcher utility ...")
