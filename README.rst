@@ -35,9 +35,9 @@ The asynchronous creation of Sample is not supported yet.
 Usage
 =====
 
-Create a new user in senaite (under `senaite/acl_users`) with username
-`queue_daemon` and password `queue_daemon`. It won't work when using acl
-users registered in Zope's root (e.g. `admin`).
+Create a new user in senaite (under *senaite/acl_users*) with username
+*queue_daemon* and password *queue_daemon*. It won't work when using acl
+users registered in Zope's root (e.g. *admin*).
 
 Add a new client in your buildout:
 
@@ -74,14 +74,14 @@ and configure the client properly:
 Configuration
 =============
 
-Some parameters of `senaite.queue` can be configured from SENAITE UI directly.
+Some parameters of *senaite.queue* can be configured from SENAITE UI directly.
 Login as admin user and visit "Site Setup". A link "Queue Settings" can be found
 under "Add-on configuration". From this view you can either disable queue for
 specific actions and configure the number of items to be processed by a single
 queued task for a given action.
 
 Queue is not able to process tasks fired by users from Zope's root (e.g. default 
-`admin` user). `senaite.queue` will try to process them, but these tasks will be
+*admin* user). *senaite.queue* will try to process them, but these tasks will be
 discarded after some attempts (see "Maximum retries" configuration option from
 Queue Control Panel). As a rule of thumb, always login with users registered in 
 Senaite portal. Zope's root users must be used for maintenance tasks only.
@@ -89,13 +89,13 @@ Senaite portal. Zope's root users must be used for maintenance tasks only.
 Extend
 ======
 
-To make a process to be run async by `senaite.queue`, add an adapter for that
-specific process. Let's imagine you have a custom transition (e.g. `dispatch`)
+To make a process to be run async by *senaite.queue*, add an adapter for that
+specific process. Let's imagine you have a custom transition (e.g. *dispatch*)
 in sample's workflow, that besides transitioning the sample, it also generates a
 dispatch report. We want this transition to be handled asynchronously by
-`senaite.queue`.
+*senaite.queue*.
 
-We need first to intercept the action `dispatch` and feed the queue by adding a
+We need first to intercept the action *dispatch* and feed the queue by adding a
 specific-adapter:
 
 .. code-block:: xml
@@ -126,7 +126,7 @@ specific-adapter:
               queue_task(DISPATCH_TASK_ID, self.request, obj)
           return objects
 
-Now, we only need to tell `senaite.queue` how to handle this task by adding
+Now, we only need to tell *senaite.queue* how to handle this task by adding
 another adapter:
 
 .. code-block:: xml
@@ -160,11 +160,11 @@ another adapter:
 This procedure can be used not only for transitions, but for any process you
 might think of.
 
-Since transitions are good candidates for queued tasks, `senaite.queue` provides
+Since transitions are good candidates for queued tasks, *senaite.queue* provides
 an easier mechanism to queue and process workflow actions. Instead of all the
 above, you can easily bind a workflow action by reusing the adapters
-`senaite.queue` already provides such scenarios. For instance, if you want the
-action "dispatch" to be automatically handled by `senaite.queue` when user
+*senaite.queue* already provides such scenarios. For instance, if you want the
+action "dispatch" to be automatically handled by *senaite.queue* when user
 clicks the button "Dispatch" from the bottom of generic Samples listing, you
 only need to declare two adapters, as follows:
 
@@ -255,7 +255,7 @@ Feedback and support
 License
 =======
 
-**SENAITE.QUEUE** Copyright (C) 2019 Senaite Foundation
+**SENAITE.QUEUE** Copyright (C) 2019-2020 RIDING BYTES & NARALABS
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the `GNU General Public License version 2
