@@ -4,7 +4,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
-"POT-Creation-Date: 2019-11-10 12:47+0000\n"
+"POT-Creation-Date: 2020-02-09 22:21+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI +ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,80 +17,112 @@ msgstr ""
 "Preferred-Encodings: utf-8 latin1\n"
 "Domain: senaite.queue\n"
 
-#: senaite.queue/src/senaite/queue/views/worksheet.py:80
+#: senaite.queue/src/senaite/queue/browser/views/tasks.py:152
+msgid "Added"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/views/worksheet.py:80
 msgid "Analyses for {} have been queued"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/views/worksheet.py:44
+#: senaite.queue/src/senaite/queue/browser/views/worksheet.py:44
 msgid "Analyst must be specified."
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/configure.zcml:37
-msgid "Asynchronous tasks add-on for SENAITE"
+#: senaite.queue/src/senaite/queue/configure.zcml:40
+msgid "Asynchronous tasks for SENAITE"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:35
+#: senaite.queue/src/senaite/queue/browser/views/templates/tasks.pt:67
+msgid "Context"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:35
 msgid "Default number of objects that will be handled in a single task. A value of 0 disables queuing of tasks functionality at all, specific tasks below included."
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:34
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:34
 msgid "Default number of objects to process per task"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/views/worksheet.py:85
+#: senaite.queue/src/senaite/queue/browser/views/tasks.py:155
+msgid "Failed"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:55
+msgid "Hours to keep in statistics"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:56
+msgid "Maximum number of hours backwards to keep statistics"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:44
+msgid "Maximum retries"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/views/worksheet.py:85
 msgid "No analyses were added"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:45
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:65
 msgid "Number of analyses that will be handled in a single task when assigned to a worksheet. Overrides default's for action 'assign'. A value of 0 disables the queue for this specific action."
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:65
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:85
 msgid "Number of analyses that will be handled in a single task when result is submitted. Overrides default's for 'submit' action. A value of 0 disables the queue for this specific action."
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:95
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:115
 msgid "Number of analyses that will be handled in a single task when the analysis is rejected. Overrides default's for 'reject' action. A value of 0 disables the queue for this specific action"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:85
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:105
 msgid "Number of analyses that will be handled in a single task when the analysis is retracted. Overrides default's for 'retract' action. A value of 0 disables the queue for this specific action"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:75
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:95
 msgid "Number of analyses that will be handled in a single task when the analysis is verified. Overrides default's for 'reject' action. A value of 0 disables the queue for this specific action"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:55
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:75
 msgid "Number of analyses that will be handled in a single task when unassigned from a worksheet. Overrides default's for 'unassign' action. A value of 0 disables the queue for this specific action."
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:44
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:64
 msgid "Number of analyses to assign per task"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:94
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:114
 msgid "Number of analyses to reject per task"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:84
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:104
 msgid "Number of analyses to retract per task"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:64
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:84
 msgid "Number of analyses to submit per task"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:54
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:74
 msgid "Number of analyses to unassign per task"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:74
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:94
 msgid "Number of analyses to verify per task"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:105
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:125
 msgid "Number of seconds to wait for a process in queue to be finished before being considered as failed. Failed processes will be enqueued again"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:45
+msgid "Number of times a task will be re-queued before being considered as failed and removed from the queue. A value of 0 disables there-queue of failing tasks."
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/views/tasks.py:154
+msgid "Processed"
 msgstr ""
 
 #: senaite.queue/src/senaite/queue/profiles/default/actionicons.xml
@@ -98,34 +130,79 @@ msgstr ""
 msgid "Queue Settings"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/listing.py:51
+#: senaite.queue/src/senaite/queue/adapters/listing.py:51
+#: senaite.queue/src/senaite/queue/browser/views/tasks.py:151
 msgid "Queued"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/configure.zcml:37
+#: senaite.queue/src/senaite/queue/browser/views/templates/tasks.pt:47
+msgid "Queued tasks"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/views/templates/tasks.pt:66
+msgid "Remote Addr"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/views/templates/tasks.pt:93
+msgid "Remove"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/views/tasks.py:153
+msgid "Removed"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/views/templates/tasks.pt:97
+msgid "Requeue"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/views/templates/tasks.pt:70
+msgid "Retries"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/configure.zcml:40
 msgid "SENAITE QUEUE"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:117
+#: senaite.queue/src/senaite/queue/configure.zcml:56
+msgid "SENAITE QUEUE (uninstall)"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:137
 msgid "SENAITE QUEUE Settings"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/controlpanel.py:104
+#: senaite.queue/src/senaite/queue/browser/controlpanel.py:124
 msgid "Seconds to wait before unlock"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/templates/queued_analyses_sample_viewlet.pt:17
+#: senaite.queue/src/senaite/queue/browser/views/templates/tasks.pt:69
+msgid "Status"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/views/templates/tasks.pt:64
+msgid "TUID"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/views/templates/tasks.pt:68
+msgid "Type"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/views/templates/tasks.pt:65
+msgid "User"
+msgstr ""
+
+#: senaite.queue/src/senaite/queue/browser/viewlets/templates/queued_analyses_sample_viewlet.pt:17
 msgid "analyses are being processed in background"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/templates/queued_analyses_viewlet.pt:17
+#: senaite.queue/src/senaite/queue/browser/viewlets/templates/queued_analyses_viewlet.pt:17
 msgid "analyses are being processed in background."
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/templates/queued_analyses_sample_viewlet.pt:16
+#: senaite.queue/src/senaite/queue/browser/viewlets/templates/queued_analyses_sample_viewlet.pt:16
 msgid "analysis is being processed in background"
 msgstr ""
 
-#: senaite.queue/src/senaite/queue/templates/queued_analyses_viewlet.pt:16
+#: senaite.queue/src/senaite/queue/browser/viewlets/templates/queued_analyses_viewlet.pt:16
 msgid "analysis is being processed in background."
 msgstr ""

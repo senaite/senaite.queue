@@ -1,7 +1,7 @@
 [main]
 host = https://www.transifex.com
 
-[senaite-queue]
+[senaite-queue.senaite]
 file_filter = <lang>/LC_MESSAGES/senaite.queue.po
 host = https://www.transifex.com
 source_file = senaite.queue.pot
