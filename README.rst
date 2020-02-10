@@ -62,13 +62,13 @@ and configure the client properly:
   http-address = 127.0.0.1:8088
   zope-conf-additional =
   # Queue tasks dispatcher
-  <clock-server>
-      method /senaite/queue_dispatcher
-      period 5
-      user ${buildout:queue-user-name}
-      password ${buildout:queue-user-password}
-      host localhost:8088
-  </clock-server>
+      <clock-server>
+          method /senaite/queue_dispatcher
+          period 5
+          user ${buildout:queue-user-name}
+          password ${buildout:queue-user-password}
+          host localhost:8088
+      </clock-server>
 
 
 Configuration
