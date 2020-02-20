@@ -59,11 +59,32 @@ def queue_assign_analyses(worksheet, request, uids, slots, wst_uid=None):
     return queue_task("task_assign_analyses", request, worksheet)
 
 
-def queue_task(name, request, context, username=None):
+def queue_task(name, request, context, username=None, unique=False):
     """Adds a task to general queue storage
+    :param name: the name of the task
+    :param request: the HTTPRequest
+    :param context: the context the task is bound to
+    :param username: user responsible of the task. Fallback to request's user
+    :param unique: whether if only one task for the given name and context
+    must be added. If True, the task will only be added if there is no other
+    task with same name and context
     """
+    if not name:
+        # Name is mandatory
+        return False
+
+    if unique and in_queue(context, name=name):
+        # The task is already in the queue, do not add
+        return False
+
     queue = QueueStorageTool()
     task = QueueTask(name, request, context, tmpID())
     if username:
         task.username = username
     return queue.append(task)
+
+
+def in_queue(context, name=None):
+    """Returns whether a task for the given name and context is in the queue
+    """
+    return QueueStorageTool().contains_tasks_for(context, name=name)
