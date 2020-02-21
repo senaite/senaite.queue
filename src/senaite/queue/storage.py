@@ -446,12 +446,17 @@ class QueueStorageTool(BaseStorageTool):
             logger.info("*** Removed task for {}: {}".format(
                 api.get_id(context), task.name))
 
-    def contains_tasks_for(self, context):
+    def contains_tasks_for(self, context, name=None, include_locked=False):
         """Finds tasks in queue for the context passed in
         """
         uid = api.get_uid(context)
-        for task in self.tasks:
-            if task.context_uid == uid:
+        tasks = self.tasks
+        if include_locked:
+            tasks += [self.current]
+        for task in tasks:
+            if not task or task.context_uid != uid:
+                continue
+            if not name or task.name == name:
                 return True
         return False
 
