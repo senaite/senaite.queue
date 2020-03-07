@@ -101,6 +101,13 @@
     factory=".guards.SampleGuardAdapter"
     provides="bika.lims.interfaces.IGuardAdapter"/>
 
+  <!-- Worksheet cannot transition when queued analyses -->
+  <adapter
+    name="senaite.queue.worksheet_guard"
+    for="bika.lims.interfaces.IWorksheet"
+    factory=".guards.WorksheetGuardAdapter"
+    provides="bika.lims.interfaces.IGuardAdapter"/>
+
   <!-- Queued analyses: Add Analyses view from inside Worksheet.
   Analyses that are labeled with IQueued are not displayed -->
   <subscriber
