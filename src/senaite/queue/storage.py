@@ -311,8 +311,15 @@ class QueueStorageTool(BaseStorageTool):
             if not IQueued.providedBy(context):
                 alsoProvides(context, IQueued)
 
-            # Append the task to the queue
-            self.tasks_storage["tasks"].append(task)
+            # Append to the list of tasks
+            tasks = self.tasks_storage["tasks"]
+            tasks.append(task)
+
+            # Sort by priority
+            tasks = sorted(tasks, key=lambda t: t.get("priority", 10))
+
+            # Assign the tasks to the queue
+            self.tasks_storage["tasks"] = tasks
 
             # Update statistics
             self.add_stats("added")
@@ -514,7 +521,9 @@ class QueueStorageTool(BaseStorageTool):
         context = task_dict["context_uid"]
         task_uid = task_dict["task_uid"]
         retries = task_dict.get("retries", 0)
-        return QueueTask(name, req, context, task_uid, retries=retries)
+        priority = task_dict.get("priority", 10)
+        return QueueTask(name, req, context, task_uid, retries=retries,
+                         priority=priority)
 
     def to_dict(self):
         """A dict representation of the queue
@@ -635,6 +644,7 @@ class QueueTask(dict):
         self["request"] = self._get_request_data(request).copy()
         self["task_uid"] = task_uid
         self["retries"] = retries
+        self["priority"] = kw.get("priority", 10)
 
     def _get_request_data(self, request):
         env = getattr(request, "_orig_env", None) or {}

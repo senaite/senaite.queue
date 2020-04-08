@@ -4,6 +4,7 @@ Changelog
 1.0.2 (unreleased)
 ------------------
 
+- #6 Allow the prioritization of tasks
 - #5 No actions can be done to worksheets with queued jobs
 
 1.0.1 (2020-02-09)
