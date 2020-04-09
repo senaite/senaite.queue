@@ -59,7 +59,8 @@ def queue_assign_analyses(worksheet, request, uids, slots, wst_uid=None):
     return queue_task("task_assign_analyses", request, worksheet)
 
 
-def queue_task(name, request, context, username=None, unique=False):
+def queue_task(name, request, context, username=None, unique=False,
+               priority=10):
     """Adds a task to general queue storage
     :param name: the name of the task
     :param request: the HTTPRequest
@@ -68,6 +69,8 @@ def queue_task(name, request, context, username=None, unique=False):
     :param unique: whether if only one task for the given name and context
     must be added. If True, the task will only be added if there is no other
     task with same name and context
+    :param priority: priority of this task over others. Lower values have more
+    priority over higher values
     """
     if not name:
         # Name is mandatory
@@ -78,7 +81,7 @@ def queue_task(name, request, context, username=None, unique=False):
         return False
 
     queue = QueueStorageTool()
-    task = QueueTask(name, request, context, tmpID())
+    task = QueueTask(name, request, context, tmpID(), priority=priority)
     if username:
         task.username = username
     return queue.append(task)
