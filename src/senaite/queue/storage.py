@@ -448,10 +448,12 @@ class QueueStorageTool(BaseStorageTool):
 
             # Remove IQueued if there are no more tasks queued for the context
             context = task.context
-            self._handle_queued_marker_for(context)
+            if context:
+                self._handle_queued_marker_for(context)
+                logger.info("*** Removed task for {}: {}".format(
+                    api.get_id(context), task.name))
 
-            logger.info("*** Removed task for {}: {}".format(
-                api.get_id(context), task.name))
+            logger.info("*** Removed task for {}".format(task.name))
 
     def contains_tasks_for(self, context, name=None, include_locked=False):
         """Finds tasks in queue for the context passed in
