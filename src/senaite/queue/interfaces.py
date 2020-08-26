@@ -38,6 +38,8 @@ class IQueueDispatcher(Interface):
     """
 
 
+# TODO: REMOVE. Is not longer used for v1.0.2 onwards. Only kept here for
+#       safe-uninstall and safe-upgrade
 class IQueued(Interface):
     """Marker interface for objects that are in an async queue
     """
@@ -47,6 +49,53 @@ class IQueuedTaskAdapter(Interface):
     """Marker interface for adapters in charge of processing queued tasks
     """
 
-    def process(self, task, request):
+    def process(self, task):
         """Process the task from the queue
+        """
+
+
+class IQueueUtility(Interface):
+    """Marker interface for Queue global utility (singleton)
+    """
+
+    def pop(self):
+        """Returns the next task to process, if any
+        """
+
+    def add(self):
+        """Adds a task to the queue
+        """
+
+    def is_empty(self):
+        """Returns whether the queue is empty
+        """
+
+    def is_busy(self):
+        """Returns whether the queue is busy
+        """
+
+    def fail(self, task):
+        """Notifies that the task failed
+        """
+
+    def success(self, task):
+        """Notifies that the task succeed
+        """
+
+    def purge(self):
+        """Purges the queue of invalid/stuck tasks
+        """
+
+    def get_task(self, task_uid):
+        """Returns the task with the given tuid
+        """
+
+    def get_tasks_for(self, context_or_uid, name=None):
+        """Returns an iterable with the tasks the queue contains for the given
+        context and name if provided
+        """
+
+    def has_tasks_for(self, context_or_uid, name=None):
+        """Returns whether the queue contains a task for the given context and
+        name if provided.
         """

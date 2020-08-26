@@ -43,8 +43,8 @@
     permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 
-  <!-- When a Worksheet is created and the worksheet is marked with IQueued,
-  redirect to the Worksheet listing -->
+  <!-- When a Worksheet is created and the worksheet is queued, redirect to
+  the Worksheet listing -->
   <browser:page
     for="bika.lims.interfaces.IWorksheetFolder"
     name="worksheet_add"

@@ -21,11 +21,11 @@
 from Products.Archetypes.config import REFERENCE_CATALOG
 from Products.CMFCore.utils import getToolByName
 from Products.CMFPlone.utils import _createObjectByType
-from bika.lims.browser.worksheet.views.add_worksheet import AddWorksheetView
-from bika.lims.utils import tmpID
 from senaite.queue import api
 from senaite.queue import messageFactory as _
-from senaite.queue.interfaces import IQueued
+
+from bika.lims.browser.worksheet.views.add_worksheet import AddWorksheetView
+from bika.lims.utils import tmpID
 
 
 class AddWorksheetQueueView(AddWorksheetView):
@@ -76,7 +76,7 @@ class AddWorksheetQueueView(AddWorksheetView):
         if ws.getLayout():
             self.request.RESPONSE.redirect(ws.absolute_url() + "/manage_results")
 
-        elif IQueued.providedBy(ws):
+        elif api.is_queued(ws):
             msg = _("Analyses for {} have been queued".format(api.get_id(ws)))
             self.context.plone_utils.addPortalMessage(msg)
             self.request.RESPONSE.redirect(api.get_url(ws.aq_parent))

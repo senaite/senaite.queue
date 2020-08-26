@@ -18,17 +18,14 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-import json
 import threading
 
 import requests
-import transaction
 from Products.Five.browser import BrowserView
 from senaite.queue import api
 from senaite.queue import logger
-from senaite.queue.storage import QueueStorageTool
 
-from bika.lims.decorators import synchronized
+from bika.lims import api as _api
 
 
 class QueueDispatcherView(BrowserView):
@@ -40,29 +37,19 @@ class QueueDispatcherView(BrowserView):
         self.context = context
         self.request = request
 
-    @synchronized(max_connections=1)
     def __call__(self):
         logger.info("Starting Queue Dispatcher ...")
+        queue = api.get_queue()
 
-        # Sync, cause maybe a previous thread modified the queue while we were
-        # waiting for that thread to finish due to the synchronized decorator
-        queue = QueueStorageTool()
-        queue.sync()
+        if queue.is_busy():
+            # Purge the queue from tasks that got stuck
+            queue.purge()
+            logger.info("Queue is busy [SKIP]")
+            return "Queue is busy"
 
-        # Lock the queue to prevent other threads not using this dispatcher
-        # (it should never happen) to process tasks while we are on it. This
-        # guarantees the tasks are always processed sequentially
-        if not queue.lock():
-            return self.response("Cannot lock the queue [SKIP]", queue)
-
-        # Pop the task to process
-        task = queue.pop()
-
-        # Ensure next thread starts working with latest data. We need to ensure
-        # the data is stored in the database before we leave the function to
-        # allow the next thread that might be awaiting because of synchronized
-        # decorator to sync the queue with latest data
-        transaction.commit()
+        if queue.is_empty():
+            logger.info("Queue is empty [SKIP]")
+            return "Queue is empty"
 
         # Notify the consumer. We do this because even that we can login with
         # the user that fired the task here, the new user session will only
@@ -71,18 +58,13 @@ class QueueDispatcherView(BrowserView):
         # worker. Thus, we open a new thread and call the consumer view, that
         # does not require privileges, except that will check the tuid with the
         # task to be processed and login with the proper user thereafter.
-        self.notify_consumer(task)
-        return self.response("Consumer notified", queue)
+        base_url = _api.get_url(_api.get_portal())
+        url = "{}/queue_consumer".format(base_url)
 
-    def notify_consumer(self, task):
-        """Requests for the consumer view in a new thread
-        """
-        task_uid = task and task.task_uid or "empty"
-        base_url = api.get_url(api.get_portal())
-        url = "{}/queue_consumer?tuid={}".format(base_url, task_uid)
-        thread = threading.Thread(target=requests.get, args=(url,))
-        thread.start()
+        # We set a timeout of 300 to prevent the thread to hang indefinitely
+        # in case the url happens to be not reachable for some reason
+        kwargs = dict(url=url, allow_redirects=True, timeout=300)
+        consumer = threading.Thread(target=requests.get, kwargs=kwargs)
+        consumer.start()
 
-    def response(self, msg, queue):
-        output = {"message": msg, "queue": queue.to_dict()}
-        return json.dumps(output)
+        return "Consumer notified"

@@ -14,7 +14,7 @@
       <p class="title">
         <span tal:content="num_analyses"></span>&nbsp;
         <span i18n:translate="" tal:condition="python: num_analyses == 1"> analysis is being processed in background.</span>
-        <span i18n:translate="" tal:condition="python: num_analyses > 1"> analyses are being processed in background.</span>&nbsp
+        <span i18n:translate="" tal:condition="python: num_analyses > 1"> analyses are being processed in background.</span>&nbsp;
         <a tal:attributes="href python:view.context.absolute_url()"
            class="btn btn-default">Refresh</a>
         <br/>

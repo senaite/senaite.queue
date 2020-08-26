@@ -18,18 +18,17 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-from senaite.queue import api
-from senaite.queue import messageFactory as _
-from senaite.queue.interfaces import IQueued
-from senaite.queue.storage import WorksheetQueueStorage
 from senaite.core.listing.interfaces import IListingView
 from senaite.core.listing.interfaces import IListingViewAdapter
+from senaite.queue import api
+from senaite.queue import messageFactory as _
+from senaite.queue.api import is_queued
 from zope.component import adapts
 from zope.interface import implements
 
 
 class QueuedWorksheetsViewAdapter(object):
-    """Disables the worksheets with analyses awaiting for assignment
+    """Disables the worksheets with analyses awaiting for assignment (queued)
     """
     adapts(IListingView)
     implements(IListingViewAdapter)
@@ -45,7 +44,7 @@ class QueuedWorksheetsViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
-        if IQueued.providedBy(api.get_object(obj)):
+        if is_queued(obj):
             item["disabled"] = True
             icon = api.get_queue_image("queued.gif", width="55px")
             item["replace"]["state_title"] = _("Queued")
@@ -62,14 +61,17 @@ class QueuedWorksheetAnalysesViewAdapter(object):
 
     # Order of priority
     priority_order = 1010
-
-    @property
-    def in_queue(self):
-        return IQueued.providedBy(self.context)
+    _is_queued = None
 
     def __init__(self, listing, context):
         self.listing = listing
         self.context = context
+
+    @property
+    def in_queue(self):
+        if self._is_queued is None:
+            self._is_queued = is_queued(self.context)
+        return self._is_queued
 
     def before_render(self):
         return
@@ -88,26 +90,30 @@ class QueuedAddAnalysesViewAdapter(object):
 
     # Order of priority of this subscriber adapter over others
     priority_order = 1010
-    queued_analyses_uids = list()
+    _is_queued = None
 
     def __init__(self, listing, context):
         self.listing = listing
         self.context = context
 
+    @property
+    def in_queue(self):
+        if self._is_queued is None:
+            self._is_queued = is_queued(self.context)
+        return self._is_queued
+
     def before_render(self):
-        storage = WorksheetQueueStorage(self.context)
-        self.queued_analyses_uids = storage.uids
         return
 
     def folder_item(self, obj, item, index):
-        if IQueued.providedBy(self.context):
+        if self.in_queue:
             # If the worksheet is in the queue, do not display analyses, but
             # those to be added and disabled
-            if api.get_uid(obj) in self.queued_analyses_uids:
+            if is_queued(obj):
                 item["disabled"] = True
             else:
                 item.clear()
-        elif IQueued.providedBy(api.get_object(obj)):
+        elif is_queued(obj):
             # Return an empty dict, so listing machinery won't render this item
             item.clear()
         return item
@@ -130,7 +136,7 @@ class QueuedAnalysesViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
-        if IQueued.providedBy(api.get_object(obj)):
+        if is_queued(obj):
             item["disabled"] = True
             icon = api.get_queue_image("queued.gif", title=_("Queued"),
                                       width="55px")
@@ -140,7 +146,7 @@ class QueuedAnalysesViewAdapter(object):
 
 class QueuedSampleAnalysisServicesViewAdapter(object):
     """Disables the analyses services for which the current context (Sample) has
-    at least one analysis awaiting for assignment (IQueued)
+    at least one analysis awaiting for assignment
     """
     adapts(IListingView)
     implements(IListingViewAdapter)
@@ -153,20 +159,17 @@ class QueuedSampleAnalysisServicesViewAdapter(object):
         self.context = context
 
     def before_render(self):
-        analyses = self.context.getAnalyses(full_objects=True)
-        analyses = filter(lambda an: IQueued.providedBy(an), analyses)
-        self.uids = map(lambda an: an.getServiceUID(), analyses)
         return
 
     def folder_item(self, obj, item, index):
-        if api.get_uid(obj) in self.uids:
+        if is_queued(obj):
             item["disabled"] = True
         return item
 
 
 class QueuedSamplesViewAdapter(object):
-    """Disables the checkbox for samples that provide IQueued and displays
-    a loading icon in progress bar column
+    """Disables the checkbox for queued samples and displays a loading icon in
+    progress bar column
     """
     adapts(IListingView)
     implements(IListingViewAdapter)
@@ -182,7 +185,7 @@ class QueuedSamplesViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
-        if IQueued.providedBy(api.get_object(obj)):
+        if is_queued(obj):
             item["disabled"] = True
             icon = api.get_queue_image("queued.gif", width="55px")
             item["replace"]["state_title"] = _("Queued")

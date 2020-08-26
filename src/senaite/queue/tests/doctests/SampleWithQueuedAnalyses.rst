@@ -14,11 +14,11 @@ Test Setup
 
 Needed imports:
 
+    >>> from bika.lims import api as _api
     >>> from plone.app.testing import setRoles
     >>> from plone.app.testing import TEST_USER_ID
     >>> from plone.app.testing import TEST_USER_PASSWORD
     >>> from senaite.queue import api
-    >>> from senaite.queue.interfaces import IQueued
     >>> from senaite.queue.tests import utils as test_utils
     >>> from bika.lims.workflow import getAllowedTransitions
 
@@ -33,7 +33,7 @@ Functional Helpers:
     ...     for num in range(num_analyses):
     ...         sample = new_sample([Cu])
     ...         analyses.extend(sample.getAnalyses(full_objects=True))
-    ...     worksheet = api.create(portal.worksheets, "Worksheet")
+    ...     worksheet = _api.create(portal.worksheets, "Worksheet")
     ...     worksheet.addAnalyses(analyses)
     ...     return worksheet
 
@@ -51,18 +51,18 @@ Variables:
 
     >>> portal = self.portal
     >>> request = self.request
-    >>> setup = api.get_setup()
+    >>> setup = _api.get_setup()
 
 Create some basic objects for the test:
 
     >>> setRoles(portal, TEST_USER_ID, ['Manager',])
-    >>> client = api.create(portal.clients, "Client", Name="Happy Hills", ClientID="HH", MemberDiscountApplies=True)
-    >>> contact = api.create(client, "Contact", Firstname="Rita", Lastname="Mohale")
-    >>> sampletype = api.create(setup.bika_sampletypes, "SampleType", title="Water", Prefix="W")
-    >>> labcontact = api.create(setup.bika_labcontacts, "LabContact", Firstname="Lab", Lastname="Manager")
-    >>> department = api.create(setup.bika_departments, "Department", title="Chemistry", Manager=labcontact)
-    >>> category = api.create(setup.bika_analysiscategories, "AnalysisCategory", title="Metals", Department=department)
-    >>> Cu = api.create(setup.bika_analysisservices, "AnalysisService", title="Copper", Keyword="Cu", Price="15", Category=category.UID(), Accredited=True)
+    >>> client = _api.create(portal.clients, "Client", Name="Happy Hills", ClientID="HH", MemberDiscountApplies=True)
+    >>> contact = _api.create(client, "Contact", Firstname="Rita", Lastname="Mohale")
+    >>> sampletype = _api.create(setup.bika_sampletypes, "SampleType", title="Water", Prefix="W")
+    >>> labcontact = _api.create(setup.bika_labcontacts, "LabContact", Firstname="Lab", Lastname="Manager")
+    >>> department = _api.create(setup.bika_departments, "Department", title="Chemistry", Manager=labcontact)
+    >>> category = _api.create(setup.bika_analysiscategories, "AnalysisCategory", title="Metals", Department=department)
+    >>> Cu = _api.create(setup.bika_analysisservices, "AnalysisService", title="Copper", Keyword="Cu", Price="15", Category=category.UID(), Accredited=True)
 
 Disable the queue for `task_assign_analyses` so we can create Worksheets to test
 generic actions (`assign` action is not a generic one because involves handling
@@ -104,6 +104,16 @@ Submit the analyses:
 
     >>> test_utils.handle_action(worksheet, analyses, "submit")
 
+No analyses have been transitioned. All them have been queued:
+
+    >>> test_utils.filter_by_state(analyses, "to_be_verified")
+    []
+
+We manually trigger the queue dispatcher:
+
+    >>> test_utils.dispatch()
+    "Task 'task_action_submit' for ... processed"
+
 Only the first chunk is transitioned and the samples they belong to can be
 transitioned as well:
 
@@ -111,8 +121,7 @@ transitioned as well:
     >>> samples_transitions_allowed(transitioned)
     True
 
-While the rest provide `IQueued` interface and the Samples they belong to cannot
-be transitioned at all:
+While the rest cannot be transitioned, these analyses are still queued:
 
     >>> samples_transitions_allowed(analyses)
     False
@@ -120,11 +129,10 @@ be transitioned at all:
     >>> samples_transitions_allowed(non_transitioned)
     False
 
-We manually trigger the queue dispatcher:
+We trigger the queue dispatcher again:
 
-    >>> response = test_utils.dispatch()
-    >>> "processed" in response
-    True
+    >>> test_utils.dispatch()
+    "Task 'task_action_submit' for ... processed"
 
 The next chunk of analyses has been processed and again, only the Samples for
 those that have been transitioned can be transitioned too:
@@ -141,11 +149,10 @@ While the rest of Samples (5) cannot be transitioned yet:
     >>> samples_transitions_allowed(non_transitioned)
     False
 
-Unless we manually trigger the queue dispatcher again:
+We trigger the queue dispatcher again:
 
-    >>> response = test_utils.dispatch()
-    >>> "processed" in response
-    True
+    >>> test_utils.dispatch()
+    "Task 'task_action_submit' for ... processed"
 
 All analyses have been processed at this point, so all samples can be
 transitioned now:

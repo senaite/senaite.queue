@@ -14,6 +14,11 @@
   <!-- Needed for "BIKA: Manage Bika" permission -->
   <include package="bika.lims" file="permissions.zcml" />
 
+  <!-- Register Queue utility so it's used as a singleton -->
+  <utility
+    provides=".interfaces.IQueueUtility"
+    factory=".queue.QueueUtility" />
+
   <!-- Package includes -->
   <include package=".adapters"/>
   <include package=".browser"/>

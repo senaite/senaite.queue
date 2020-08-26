@@ -18,14 +18,24 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
+import time
+import traceback
+
 from Products.Five.browser import BrowserView
 from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.interfaces import IQueuedTaskAdapter
-from senaite.queue.storage import QueueStorageTool
 from zope.component import queryAdapter
 
+from bika.lims import api as _api
 from bika.lims.interfaces import IWorksheet
+
+# If the tasks is performed very rapidly, the task will get priority over a
+# transaction done from userland. In case of conflict, the transaction from
+# userland will fail and will be retried 3 times. We do not want the user to
+# experience delays because of the queue, so we make the consumer to take its
+# time to complete.
+MIN_SECONDS_TASK = 2
 
 
 class QueueConsumerView(BrowserView):
@@ -36,34 +46,36 @@ class QueueConsumerView(BrowserView):
         self.context = context
         self.request = request
 
-    def __call__(self):
-        # Get the task to be processed
-        queue = QueueStorageTool()
-        task = queue.current
-        if not task:
-            queue.release()
-            return self.response("No task available", log_mode="error")
+    @property
+    def queue(self):
+        return api.get_queue()
 
-        # Check if the task uid passed-in matches with the current task
-        task_uid = self.request.get("tuid", None)
-        if task.task_uid != task_uid:
-            queue.requeue(task)
-            msg = "TUID mismatch: {} <> {}".format(task_uid, task.task_uid)
-            return self.response(msg, log_mode="warn")
+    def get_task(self):
+        """Returns the task to be processed
+        """
+        task_uid = self.request.get("tuid")
+        if task_uid:
+            return self.queue.get_task(task_uid)
+        return self.queue.pop()
+
+    def __call__(self):
+        task = self.get_task()
+        if not task:
+            # No tasks remaining or task not found, do nothing
+            return self.response("No task available", log_mode="info")
 
         # Check if current user matches with task's user
-        if api.get_current_user().id != task.username:
+        if _api.get_current_user().id != task.username:
 
             # Login as the user who initially fired the task and redirect to
             # consumer again for the authentication to be in force
             if self.login_as(task.username):
-                base_url = api.get_url(api.get_portal())
-                url = "{}/queue_consumer?tuid={}".format(base_url, task_uid)
+                base_url = _api.get_url(_api.get_portal())
+                url = "{}/queue_consumer?tuid={}".format(base_url, task.task_uid)
                 return self.request.response.redirect(url)
             else:
-                # Cannot login as this user
-                queue.fail(task)
-                queue.release()
+                # Cannot login as this user!
+                self.queue.fail(task)
                 msg = "Cannot login with '{}'".format(task.username)
                 return self.response(msg, log_mode="error")
 
@@ -72,21 +84,22 @@ class QueueConsumerView(BrowserView):
         log_mode = "info"
         msg = "Task '{}' for '{}' processed".format(task.name, task.context_uid)
         try:
-            if not self.process_task(task):
-                msg = "Cannot process this task: {} [SKIP]".format(repr(task))
-                raise RuntimeError(msg)
-        except (RuntimeError, Exception) as e:
-            queue.fail(task)
-            log_mode = "error"
-            msg = "{}: {} [SKIP]".format(task.name, e.message)
+            # Process the task
+            self.process_task(task)
 
-        # Release the queue
-        queue.release()
+            # Mark the task as succeded
+            self.queue.success(task)
+
+        except (RuntimeError, Exception) as e:
+            self.queue.fail(task)
+            log_mode = "error"
+            tbex = traceback.format_exc()
+            msg = "{}: {} [SKIP]\n{}".format(task.name, e.message, tbex)
 
         # Close the session for current user
         # Quite necessary for when this view is called directly from a browser
         # by an anonymous user that somehow, figured out the TUID
-        acl = api.get_tool("acl_users")
+        acl = _api.get_tool("acl_users")
         acl.resetCredentials(self.request, self.request.response)
         return self.response(msg, log_mode=log_mode)
 
@@ -105,7 +118,7 @@ class QueueConsumerView(BrowserView):
             else:
                 logger.error("No valid user '{}'".format(username))
             return False
-        acl_users = api.get_tool("acl_users")
+        acl_users = _api.get_tool("acl_users")
         acl_users.session._setupSession(username, self.request.response)
         return True
 
@@ -113,34 +126,45 @@ class QueueConsumerView(BrowserView):
         """Returns whether the current username matches with a user that
         belongs to Senaite's acl_users
         """
-        acl_users = api.get_tool("acl_users")
+        acl_users = _api.get_tool("acl_users")
         return acl_users.getUserById(username)
 
     def get_zope_user(self, username):
         """Returns whether the current username matches with a user that
         belongs to Zope acl_users root
         """
-        portal = api.get_portal()
+        portal = _api.get_portal()
         zope_acl_users = portal.getPhysicalRoot().acl_users
         return zope_acl_users.getUserById(username)
 
     def process_task(self, task):
-        task_context = task.context
+        # Start the timer
+        t0 = time.time()
+
+        # Get the context
+        task_context = task.get_context()
+
+        # Get the adapter able to process this specific type of task
+        adapter = queryAdapter(task_context, IQueuedTaskAdapter, name=task.name)
+        if not adapter:
+            raise RuntimeError(
+                "No IQueuedTaskAdapter found for task {} and context {}".format(
+                    task.name, task.context_path)
+            )
+
+        logger.info("Processing task '{}' for '{}' ({}) ...".format(
+            task.name, _api.get_id(task_context), task.context_uid))
 
         # If the task refers to a worksheet, inject (ws_id) in params to make
         # sure guards (assign, unassign) return True
         if IWorksheet.providedBy(task_context):
-            self.request.set("ws_uid", api.get_uid(task_context))
+            self.request.set("ws_uid", _api.get_uid(task_context))
 
-        # Get the adapter able to process this specific type of task
-        adapter = queryAdapter(task_context, IQueuedTaskAdapter, name=task.name)
-        if adapter:
-            logger.info("Processing task '{}' for '{}' ({}) ...".format(
-                task.name, api.get_id(task_context), task.context_uid))
+        # Process the task
+        adapter.process(task)
 
-            # Process the task
-            return adapter.process(task, self.request)
-
-        logger.error("Adapter for task {} and context {} not found!"
-                     .format(task.name, task_context.portal_type))
-        return False
+        # Sleep a bit for minimum effect against userland threads
+        # Better to have a transaction conflict here than in userland
+        min_seconds = task.get("min_seconds") or api.get_min_seconds_task()
+        while time.time() - t0 < min_seconds:
+            time.sleep(0.5)

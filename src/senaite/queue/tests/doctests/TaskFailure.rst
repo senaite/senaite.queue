@@ -20,6 +20,7 @@ Needed imports:
     >>> from senaite.queue import api
     >>> from senaite.queue.interfaces import IQueued
     >>> from senaite.queue.tests import utils as test_utils
+    >>> from bika.lims import api as _api
     >>> from bika.lims.workflow import doActionFor
     >>> from zope.interface import alsoProvides
     >>> from zope.interface import noLongerProvides
@@ -44,18 +45,18 @@ Variables:
 
     >>> portal = self.portal
     >>> request = self.request
-    >>> setup = api.get_setup()
+    >>> setup = _api.get_setup()
 
 Create some basic objects for the test:
 
     >>> setRoles(portal, TEST_USER_ID, ['Manager',])
-    >>> client = api.create(portal.clients, "Client", Name="Happy Hills", ClientID="HH", MemberDiscountApplies=True)
-    >>> contact = api.create(client, "Contact", Firstname="Rita", Lastname="Mohale")
-    >>> sampletype = api.create(setup.bika_sampletypes, "SampleType", title="Water", Prefix="W")
-    >>> labcontact = api.create(setup.bika_labcontacts, "LabContact", Firstname="Lab", Lastname="Manager")
-    >>> department = api.create(setup.bika_departments, "Department", title="Chemistry", Manager=labcontact)
-    >>> category = api.create(setup.bika_analysiscategories, "AnalysisCategory", title="Metals", Department=department)
-    >>> Cu = api.create(setup.bika_analysisservices, "AnalysisService", title="Copper", Keyword="Cu", Price="15", Category=category.UID(), Accredited=True)
+    >>> client = _api.create(portal.clients, "Client", Name="Happy Hills", ClientID="HH", MemberDiscountApplies=True)
+    >>> contact = _api.create(client, "Contact", Firstname="Rita", Lastname="Mohale")
+    >>> sampletype = _api.create(setup.bika_sampletypes, "SampleType", title="Water", Prefix="W")
+    >>> labcontact = _api.create(setup.bika_labcontacts, "LabContact", Firstname="Lab", Lastname="Manager")
+    >>> department = _api.create(setup.bika_departments, "Department", title="Chemistry", Manager=labcontact)
+    >>> category = _api.create(setup.bika_analysiscategories, "AnalysisCategory", title="Metals", Department=department)
+    >>> Cu = _api.create(setup.bika_analysisservices, "AnalysisService", title="Copper", Keyword="Cu", Price="15", Category=category.UID(), Accredited=True)
 
 Failure while assigning analyses to a Worksheet
 -----------------------------------------------
@@ -75,57 +76,62 @@ Create 10 Samples with 1 analysis each and add the analyses to a worksheet:
 
     >>> samples = new_samples(10)
     >>> analyses = get_analyses_from(samples)
-    >>> worksheet = api.create(portal.worksheets, "Worksheet")
+    >>> worksheet = _api.create(portal.worksheets, "Worksheet")
     >>> worksheet.addAnalyses(analyses)
 
-Only the first chunk of analyses has been transitioned non-async:
+No analyses have been transitioned yet:
 
     >>> transitioned = test_utils.filter_by_state(analyses, "assigned")
     >>> len(transitioned)
-    5
+    0
 
-Remove one of the remaining analyses to be assigned:
+Remove one of the analyses to be assigned:
 
-    >>> non_transitioned = filter(lambda an: IQueued.providedBy(an), analyses)
+    >>> non_transitioned = filter(api.is_queued, analyses)
     >>> black_sheep = non_transitioned[0]
     >>> black_sheep.aq_parent.manage_delObjects([black_sheep.getId()])
 
 The system won't be able to process the task successfully:
 
-    >>> "No object found for UID" in test_utils.dispatch()
-    True
+    >>> test_utils.dispatch()
+    '... No object found for UID ...'
+
     >>> transitioned = test_utils.filter_by_state(analyses, "assigned")
     >>> len(transitioned) < 10
     True
 
-And the task is re-queued automatically:
+And the task is re-queued automatically and retries is decreased in one unit:
 
     >>> queue = test_utils.get_queue_tool()
-    >>> task = queue.tasks[0]
+    >>> task = list(queue.get_tasks_for(worksheet))[0]
+    >>> task.retries
+    2
+
+If we retry, the number of retries decreases:
+
+    >>> test_utils.dispatch()
+    '... No object found for UID ...'
+
+    >>> task = list(queue.get_tasks_for(worksheet))[0]
     >>> task.retries
     1
 
-If we retry, the number of retries increases:
+Until we reach 0 retries:
 
-    >>> "No object found for UID" in test_utils.dispatch()
-    True
-    >>> queue.tasks[0].retries
-    2
+    >>> test_utils.dispatch()
+    '... No object found for UID ...'
 
-Until we reach the maximum of retries:
-
-    >>> "No object found for UID" in test_utils.dispatch()
-    True
-    >>> len(queue.tasks)
-    1
-    >>> queue.tasks[0].retries
-    3
-    >>> "No object found for UID" in test_utils.dispatch()
-    True
-    >>> len(queue.tasks)
+    >>> task = list(queue.get_tasks_for(worksheet))[0]
+    >>> task.retries
     0
 
-At this point, `IQueued` marker interface is no longer provided by Worksheet:
+    >>> test_utils.dispatch()
+    '... No object found for UID ...'
 
-     >>> IQueued.providedBy(worksheet)
+    >>> queue.has_tasks_for(worksheet)
+    False
+
+At this point, Worksheet is no longer queued:
+
+     >>> api.is_queued(worksheet)
      False

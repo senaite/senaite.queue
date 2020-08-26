@@ -8,7 +8,7 @@ is handled by DC workflow. Thus, the adapter for generic actions provided by
 no additional logic. Most transitions from `senaite.core` match with these
 requirements.
 
-Running this test from the buildout directory::
+Running this test from the buildout directory:
 
     bin/test test_textual_doctests -t WorksheetAnalysesUnassign
 
@@ -18,6 +18,7 @@ Test Setup
 
 Needed imports:
 
+    >>> from bika.lims import api as _api
     >>> from plone.app.testing import setRoles
     >>> from plone.app.testing import TEST_USER_ID
     >>> from plone.app.testing import TEST_USER_PASSWORD
@@ -36,7 +37,7 @@ Functional Helpers:
     ...     for num in range(num_analyses):
     ...         sample = new_sample([Cu])
     ...         analyses.extend(sample.getAnalyses(full_objects=True))
-    ...     worksheet = api.create(portal.worksheets, "Worksheet")
+    ...     worksheet = _api.create(portal.worksheets, "Worksheet")
     ...     worksheet.addAnalyses(analyses)
     ...     return worksheet
 
@@ -44,18 +45,18 @@ Variables:
 
     >>> portal = self.portal
     >>> request = self.request
-    >>> setup = api.get_setup()
+    >>> setup = _api.get_setup()
 
 Create some basic objects for the test:
 
     >>> setRoles(portal, TEST_USER_ID, ['Manager',])
-    >>> client = api.create(portal.clients, "Client", Name="Happy Hills", ClientID="HH", MemberDiscountApplies=True)
-    >>> contact = api.create(client, "Contact", Firstname="Rita", Lastname="Mohale")
-    >>> sampletype = api.create(setup.bika_sampletypes, "SampleType", title="Water", Prefix="W")
-    >>> labcontact = api.create(setup.bika_labcontacts, "LabContact", Firstname="Lab", Lastname="Manager")
-    >>> department = api.create(setup.bika_departments, "Department", title="Chemistry", Manager=labcontact)
-    >>> category = api.create(setup.bika_analysiscategories, "AnalysisCategory", title="Metals", Department=department)
-    >>> Cu = api.create(setup.bika_analysisservices, "AnalysisService", title="Copper", Keyword="Cu", Price="15", Category=category.UID(), Accredited=True)
+    >>> client = _api.create(portal.clients, "Client", Name="Happy Hills", ClientID="HH", MemberDiscountApplies=True)
+    >>> contact = _api.create(client, "Contact", Firstname="Rita", Lastname="Mohale")
+    >>> sampletype = _api.create(setup.bika_sampletypes, "SampleType", title="Water", Prefix="W")
+    >>> labcontact = _api.create(setup.bika_labcontacts, "LabContact", Firstname="Lab", Lastname="Manager")
+    >>> department = _api.create(setup.bika_departments, "Department", title="Chemistry", Manager=labcontact)
+    >>> category = _api.create(setup.bika_analysiscategories, "AnalysisCategory", title="Metals", Department=department)
+    >>> Cu = _api.create(setup.bika_analysisservices, "AnalysisService", title="Copper", Keyword="Cu", Price="15", Category=category.UID(), Accredited=True)
 
 Disable the queue for `task_assign_analyses` so we can create Worksheets to test
 generic actions (`assign` action is not a generic one because involves handling
@@ -85,10 +86,26 @@ Unassign analyses:
 
     >>> test_utils.handle_action(worksheet, analyses, action)
 
-The worksheet provides now the interface `IQueued`:
+The worksheet is now queued:
 
-    >>> IQueued.providedBy(worksheet)
+    >>> api.is_queued(worksheet)
     True
+
+None of the analyses have been transitioned yet:
+
+    >>> transitioned = filter(lambda an: not an.getWorksheet(), analyses)
+    >>> len(transitioned)
+    0
+
+And all them are queued:
+
+    >>> all(map(api.is_queued, analyses))
+    True
+
+We manually trigger the queue dispatcher:
+
+    >>> test_utils.dispatch()
+    "Task 'task_action_unassign' for ... processed"
 
 Only the first chunk of analyses has been transitioned non-async:
 
@@ -96,45 +113,32 @@ Only the first chunk of analyses has been transitioned non-async:
     >>> len(transitioned)
     5
 
-And none of them provide the interface `IQueued`:
+And none of them are queued anymore:
 
-    >>> any(map(lambda an: IQueued.providedBy(an), transitioned))
+    >>> any(map(api.is_queued, transitioned))
     False
 
-While the rest of analyses, not yet transitioned, do provide `IQueued`:
+While the rest of analyses, not yet transitioned, are still queued:
 
     >>> non_transitioned = filter(lambda an: an.getWorksheet(), analyses)
     >>> len(non_transitioned)
     10
-    >>> all(map(lambda an: IQueued.providedBy(an), non_transitioned))
+    >>> all(map(api.is_queued, non_transitioned))
     True
 
 As the queue confirms:
 
     >>> queue = test_utils.get_queue_tool()
-    >>> len(queue.tasks)
+    >>> len(queue)
     1
-    >>> queue.processed is None
-    True
 
 We manually trigger the queue dispatcher:
 
-    >>> response = test_utils.dispatch()
-    >>> "processed" in response
-    True
-
-And now, the queue has processed a new task:
-
-    >>> queue.processed is None
-    False
-
-But is not yet empty:
-
-    >>> queue.is_empty()
-    False
+    >>> test_utils.dispatch()
+    "Task 'task_action_unassign' for ... processed"
 
 The next chunk of analyses has been processed and only those that have
-transitioned provide the interface `IQueued`:
+transitioned are still queued:
 
     >>> transitioned = filter(lambda an: not an.getWorksheet(), analyses)
     >>> len(transitioned)
@@ -142,14 +146,14 @@ transitioned provide the interface `IQueued`:
     >>> non_transitioned = filter(lambda an: an.getWorksheet(), analyses)
     >>> len(non_transitioned)
     5
-    >>> any(map(lambda an: IQueued.providedBy(an), transitioned))
+    >>> any(map(api.is_queued, transitioned))
     False
-    >>> all(map(lambda an: IQueued.providedBy(an), non_transitioned))
+    >>> all(map(api.is_queued, non_transitioned))
     True
 
-Since there are still 5 analyses remaining, the Worksheet provides `IQueued`:
+Since there are still 5 analyses remaining, the Worksheet is still queued too:
 
-    >>> IQueued.providedBy(worksheet)
+    >>> api.is_queued(worksheet)
     True
 
 Change the number of items to process per task to 2:
@@ -160,9 +164,8 @@ Change the number of items to process per task to 2:
 
 And dispatch again:
 
-    >>> response = test_utils.dispatch()
-    >>> "processed" in response
-    True
+    >>> test_utils.dispatch()
+    "Task 'task_action_unassign' for ... processed"
 
 Now, only 2 analyses have been transitioned:
 
@@ -172,11 +175,11 @@ Now, only 2 analyses have been transitioned:
     >>> non_transitioned = filter(lambda an: an.getWorksheet(), analyses)
     >>> len(non_transitioned)
     3
-    >>> any(map(lambda an: IQueued.providedBy(an), transitioned))
+    >>> any(map(api.is_queued, transitioned))
     False
-    >>> all(map(lambda an: IQueued.providedBy(an), non_transitioned))
+    >>> all(map(api.is_queued, non_transitioned))
     True
-    >>> IQueued.providedBy(worksheet)
+    >>> api.is_queued(worksheet)
     True
 
 As we've seen, the queue for this task is enabled:
@@ -198,9 +201,8 @@ the action will take place. Thus, disabling the queue only prevents the system
 to add new tasks to the queue, but won't have effect to those that remain in
 the queue. Rather all remaining tasks will be processed in just one shot:
 
-    >>> response = test_utils.dispatch()
-    >>> "processed" in response
-    True
+    >>> test_utils.dispatch()
+    "Task 'task_action_unassign' for ... processed"
     >>> queue.is_empty()
     True
     >>> transitioned = filter(lambda an: not an.getWorksheet(), analyses)
@@ -209,11 +211,10 @@ the queue. Rather all remaining tasks will be processed in just one shot:
     >>> non_transitioned = filter(lambda an: an.getWorksheet(), analyses)
     >>> len(non_transitioned)
     0
-    >>> any(map(lambda an: IQueued.providedBy(an), transitioned))
+    >>> any(map(api.is_queued, transitioned))
     False
 
-Since all analyses have been processed, the worksheet no longer provides the
-`IQueue` marker interface:
+Since all analyses have been processed, the worksheet is no longer queued:
 
-    >>> IQueued.providedBy(worksheet)
+    >>> api.is_queued(worksheet)
     False

@@ -18,13 +18,28 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-from plone import api as ploneapi
-from senaite.queue import is_installed
+from collections import OrderedDict
 
-from bika.lims.api import *
+from plone import api as plone_api
+from senaite.queue import IQueueUtility
+from senaite.queue import is_installed
+from senaite.queue.interfaces import IQueuedTaskAdapter
+from senaite.queue.queue import QueueTask
+from zope.component import getUtility
+from zope.component import queryAdapter
+
+from bika.lims import api as _api
 from bika.lims.utils import render_html_attributes
 
-_DEFAULT_TASK_ID = "senaite.queue.default"
+
+# Registry key for the default number of objects to process per task
+_DEFAULT_CHUNK_SIZE_ID = "senaite.queue.default"
+
+# Registry key for the maximum retries before a task is considered as failed
+_DEFAULT_MAX_RETRIES_ID = "senaite.queue.max_retries"
+
+# Registry key for the minimum seconds to book per task
+_MIN_SECONDS_TASK_ID = "senaite.queue.min_seconds_task"
 
 
 def get_queue_image(name, **kwargs):
@@ -42,14 +57,14 @@ def get_queue_image(name, **kwargs):
 def get_queue_image_url(name):
     """Returns the url for the given image
     """
-    portal_url = get_url(get_portal())
+    portal_url = _api.get_url(_api.get_portal())
     return "{}/++resource++senaite.queue.static/{}".format(portal_url, name)
 
 
-def is_queue_enabled(task=_DEFAULT_TASK_ID):
+def is_queue_enabled(task_name_or_action=_DEFAULT_CHUNK_SIZE_ID):
     """Returns whether the queue is active for current instance or not.
     """
-    return get_chunk_size(task) > 0
+    return get_chunk_size(task_name_or_action) > 0
 
 
 def disable_queue_for(task_name_or_action):
@@ -64,7 +79,7 @@ def set_chunk_size(task_name_or_action, chunk_size):
     """
     registry_id = resolve_queue_registry_record(task_name_or_action)
     if registry_id:
-        ploneapi.portal.set_registry_record(registry_id, chunk_size)
+        plone_api.portal.set_registry_record(registry_id, chunk_size)
 
 
 def get_chunk_size(task_name_or_action):
@@ -75,14 +90,14 @@ def get_chunk_size(task_name_or_action):
         return 0
 
     # If the whole queue is deactivated, return 0
-    default_size = get_queue_registry_record(_DEFAULT_TASK_ID)
-    default_size = to_int(default_size, 0)
+    default_size = get_queue_registry_record(_DEFAULT_CHUNK_SIZE_ID)
+    default_size = _api.to_int(default_size, 0)
     if default_size < 1:
         return 0
 
     # Get the chunk size from this task name or action
     chunk_size = get_queue_registry_record(task_name_or_action)
-    chunk_size = to_int(chunk_size, default=None)
+    chunk_size = _api.to_int(chunk_size, default=None)
     if chunk_size is None:
         return default_size
 
@@ -93,7 +108,7 @@ def get_chunk_size(task_name_or_action):
 
 
 def get_chunks(task_name, items):
-    """Returns the items splitted into a list. Rhe first element contains the
+    """Returns the items splitted into a list. The first element contains the
     first chunk and the second element contains the rest of the items
     """
     chunk_size = get_chunk_size(task_name)
@@ -108,7 +123,7 @@ def get_queue_registry_record(task_name_or_action):
     """
     registry_id = resolve_queue_registry_record(task_name_or_action)
     if registry_id:
-        return get_registry_record(registry_id)
+        return _api.get_registry_record(registry_id)
     return None
 
 
@@ -120,7 +135,7 @@ def resolve_queue_registry_record(task_name_or_action):
         registry_name = "senaite.queue.{}".format(task_name_or_action)
 
     # Get the value
-    val = get_registry_record(registry_name)
+    val = _api.get_registry_record(registry_name)
     if val is not None:
         return registry_name
 
@@ -130,7 +145,7 @@ def resolve_queue_registry_record(task_name_or_action):
         action_name = "senaite.queue.{}".format(action_name)
 
     # Get the value
-    val = get_registry_record(action_name)
+    val = _api.get_registry_record(action_name)
     if val is not None:
         return action_name
     return None
@@ -142,23 +157,154 @@ def get_action_task_name(action):
     return "task_action_{}".format(action)
 
 
-def get_max_seconds_unlock():
-    """Returns the number of seconds to wait for a process in queue to be
-    finished before being considered as failed
+def get_min_seconds_task(default=2):
+    """Returns the minimum number of seconds to book per task
     """
-    return get_registry_record("senaite.queue.max_seconds_unlock", default=600)
+    min_seconds = get_queue_registry_record(_MIN_SECONDS_TASK_ID)
+    min_seconds = _api.to_int(min_seconds, default)
+    if min_seconds < 1:
+        min_seconds = 1
+    return min_seconds
 
 
-def get_max_retries():
+def get_max_retries(default=3):
     """Returns the number of times a task will be re-queued before being
-    considered as failed and removed from the queue
+    considered as failed
     """
-    max_retries = get_registry_record("senaite.queue.max_retries")
-    return to_int(max_retries, 5)
+    max_retries = get_queue_registry_record(_DEFAULT_MAX_RETRIES_ID)
+    max_retries = _api.to_int(max_retries, default)
+    if max_retries < 1:
+        max_retries = 0
+    return max_retries
 
 
-def set_max_retries(retries):
+def set_max_retries(value):
     """Sets the number of times a task will be re-queued before being
-    considered as failed and removed from the queue
+    considered as failed
     """
-    ploneapi.portal.set_registry_record("senaite.queue.max_retries", retries)
+    plone_api.portal.set_registry_record(_DEFAULT_MAX_RETRIES_ID, value)
+
+
+def get_queue():
+    """Returns the queue utility
+    """
+    return getUtility(IQueueUtility)
+
+
+def is_queued(brain_object_uid, include_running=True):
+    """Returns whether the object passed-in is queued
+    :param brain_object_uid: the object to check for
+    :param include_running: whether to look for in running tasks or not
+    :return: True if the object is in the queue
+    """
+    uid = _api.get_uid(brain_object_uid)
+    queued = False
+    queue = get_queue()
+    if include_running:
+        queued = queue.has_tasks_for(uid)
+    else:
+        # Bail out running tasks
+        for task in queue.get_tasks_for(uid):
+            if task.status == "running":
+                continue
+            else:
+                queued = True
+                break
+    return queued
+
+
+def queue_task(name, request, context, username=None, unique=False,
+               priority=10, **kw):
+    """Adds a task to general queue storage
+    :param name: the name of the task
+    :param request: the HTTPRequest
+    :param context: the context the task is bound to
+    :param username: user responsible of the task. Fallback to request's user
+    :param unique: whether if only one task for the given name and context
+    must be added. If True, the task will only be added if there is no other
+    task with same name and context
+    :param priority: priority of this task over others. Lower values have more
+    priority over higher values
+    """
+    if not all([name, request, context]):
+        raise ValueError("name, request and context are required")
+
+    # Check if there is a registered adapter able to handle this task
+    adapter = queryAdapter(context, IQueuedTaskAdapter, name=name)
+    if not adapter:
+        raise ValueError(
+            "No IQueuedTaskAdapter found for task '{}' and context '{}'".format(
+                name, _api.get_path(context))
+            )
+
+    # Create the QueueTask object
+    kw = kw or {}
+    if priority:
+        kw.update({"priority": priority})
+
+    task = QueueTask(name, request, context, **kw)
+    if username:
+        task.username = username
+
+    # Add the task to the queue
+    queue = get_queue()
+    return queue.add(task, unique=unique)
+
+
+def queue_action(brain_object_uid, action, context=None, request=None):
+    """Adds a given action to the queue for async processing
+    :param brain_object_uid: object/s to perform the action against
+    :param context: context where the action takes place
+    :param request: the HTTPRequest
+    :param action: action to be performed
+    :return: whether the action was successfully queued or not
+    """
+    if not isinstance(brain_object_uid, (list, tuple)):
+        brain_object_uid = [brain_object_uid]
+
+    # Remove empties and duplicates while keeping the order
+    uids = filter(None, map(_api.get_uid, brain_object_uid))
+    uids = list(OrderedDict.fromkeys(uids))
+    if not uids:
+        return False
+
+    context = context or _api.get_portal()
+    request = request or _api.get_request()
+
+    # Queue the task
+    task_name = get_action_task_name(action)
+    kwargs = {
+        "action": action,
+        "min_seconds": get_min_seconds_task(),
+        "retries": get_max_retries(),
+        "uids": uids,
+    }
+    queue_task(task_name, request, context, **kwargs)
+    return True
+
+
+def queue_assign_analyses(worksheet, analyses, ws_template=None, request=None):
+    """Adds analyses to the queue for analyses assignment
+    :param worksheet: the worksheet object the analyses have to be assigned to
+    :param analyses: list of analyses objects, brains or uids
+    :param ws_template: worksheet template (object, brain or uid)
+    :param request: the HTTPRequest
+    """
+    # Remove empties and duplicates while keeping the order
+    uids = filter(None, map(_api.get_uid, analyses))
+    uids = list(OrderedDict.fromkeys(uids))
+    if not uids:
+        return False
+
+    request = request or _api.get_request()
+
+    # Queue the task
+    task_name = "task_assign_analyses"
+    kwargs = {
+        "min_seconds": get_min_seconds_task(),
+        "retries": get_max_retries(),
+        "uids": uids,
+        "wst_uid": ws_template and _api.get_uid(ws_template) or None,
+    }
+    queue_task(task_name, request, worksheet, **kwargs)
+    return True

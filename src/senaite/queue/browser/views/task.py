@@ -21,7 +21,7 @@
 import json
 
 from Products.Five.browser import BrowserView
-from senaite.queue.storage import QueueStorageTool
+from senaite.queue import api
 
 
 class TaskView(BrowserView):
@@ -35,6 +35,6 @@ class TaskView(BrowserView):
 
     def __call__(self):
         task_uid = self.request.get("uid", None)
-        queue = QueueStorageTool()
+        queue = api.get_queue()
         task = queue.get_task(task_uid) or {}
         return json.dumps(task)

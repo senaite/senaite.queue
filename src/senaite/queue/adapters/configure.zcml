@@ -109,7 +109,7 @@
     provides="bika.lims.interfaces.IGuardAdapter"/>
 
   <!-- Queued analyses: Add Analyses view from inside Worksheet.
-  Analyses that are labeled with IQueued are not displayed -->
+  Queued Analyses are not displayed -->
   <subscriber
     for="bika.lims.browser.worksheet.views.AddAnalysesView
          bika.lims.interfaces.IWorksheet"
@@ -117,7 +117,7 @@
     factory=".listing.QueuedAddAnalysesViewAdapter"/>
 
   <!-- Queued analyses: Add Blank view from inside Worksheet.
-  If Worksheet is marked with IQueued, display analyses as disabled -->
+  If the worksheet is queued, display analyses as disabled -->
   <subscriber
     for="bika.lims.browser.worksheet.views.AddBlankView
          bika.lims.interfaces.IWorksheet"
@@ -125,7 +125,7 @@
     factory=".listing.QueuedWorksheetAnalysesViewAdapter"/>
 
   <!-- Queued analyses: Add Control view from inside Worksheet.
-  If Worksheet is marked with IQueued, display analyses as disabled -->
+  If the worksheet is queued, display analyses as disabled -->
   <subscriber
     for="bika.lims.browser.worksheet.views.AddControlView
          bika.lims.interfaces.IWorksheet"
@@ -133,7 +133,7 @@
     factory=".listing.QueuedWorksheetAnalysesViewAdapter"/>
 
   <!-- Queued analyses: Add Dulicate view from inside Worksheet.
-  If Worksheet is marked with IQueued, display analyses as disabled -->
+  If the worksheet is queued, display analyses as disabled -->
   <subscriber
     for="bika.lims.browser.worksheet.views.AddDuplicateView
          bika.lims.interfaces.IWorksheet"
@@ -141,7 +141,7 @@
     factory=".listing.QueuedWorksheetAnalysesViewAdapter"/>
 
   <!-- Queued analyses: Generic Analyses View.
-  Analyses that are labeled with IQueued are disabled in listing -->
+  Queued analysesa are disabled in listing -->
   <subscriber
     for="bika.lims.browser.analyses.view.AnalysesView
          zope.interface.Interface"
@@ -149,7 +149,7 @@
     factory=".listing.QueuedAnalysesViewAdapter"/>
 
   <!-- Queued analyses: Analyses from inside Worksheet.
-  Analyses that are labeled with IQueued are disabled in listing -->
+  Queued analyses are disabled in listing -->
   <subscriber
     for="bika.lims.browser.worksheet.views.AnalysesView
          bika.lims.interfaces.IWorksheet"
@@ -157,7 +157,7 @@
     factory=".listing.QueuedWorksheetAnalysesViewAdapter"/>
 
   <!-- Queued analyses: Manage Analyses view from inside Analysis Request.
-  Analyses that are labeled with IQueued are disabled in listing -->
+  Queued analyses are disabled in listing -->
   <subscriber
     for="bika.lims.browser.analysisrequest.manage_results.AnalysisRequestManageResultsView
          bika.lims.interfaces.IAnalysisRequest"
@@ -165,7 +165,7 @@
     factory=".listing.QueuedAnalysesViewAdapter"/>
 
   <!-- Queued analyses: Add Analyses view from inside Analysis Request.
-  Analyses that are labeled with IQueued are disabled in listing -->
+  Queued analyses are disabled in listing -->
   <subscriber
     for="bika.lims.browser.analysisrequest.manage_analyses.AnalysisRequestAnalysesView
          bika.lims.interfaces.IAnalysisRequest"
@@ -173,7 +173,7 @@
     factory=".listing.QueuedSampleAnalysisServicesViewAdapter"/>
 
   <!-- Queued worksheets: Worksheets listing.
-  Worksheets that are labeled with IQueued are disabled in listing -->
+  Queued analyses are disabled in listing -->
   <subscriber
     for="bika.lims.browser.worksheet.views.folder.FolderView
          bika.lims.interfaces.IWorksheetFolder"

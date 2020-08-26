@@ -19,8 +19,6 @@
 # Some rights reserved, see README and LICENSE.
 
 from senaite.queue import api
-from senaite.queue.interfaces import IQueued
-from senaite.queue.storage import WorksheetQueueStorage
 from zope.interface import implements
 
 from bika.lims.interfaces import IGuardAdapter
@@ -33,12 +31,17 @@ class SampleGuardAdapter(object):
         self.context = context
 
     def guard(self, action):
-        """Returns False if the sample contains one queued analysis
+        """Returns False if the sample is queued or contains queued analyses
         """
+        # Check if the sample is queued
+        if api.is_queued(self.context, include_running=False):
+            return False
+
+        # Check whether the sample contains queued analyses
         for brain in self.context.getAnalyses():
-            analysis = api.get_object(brain)
-            if IQueued.providedBy(analysis):
+            if api.is_queued(brain, include_running=False):
                 return False
+
         return True
 
 
@@ -51,12 +54,13 @@ class WorksheetGuardAdapter(object):
     def guard(self, action):
         """Returns False if the worksheet has queued jobs
         """
-        if IQueued.providedBy(self.context):
+        # Check if the worksheet is queued
+        if api.is_queued(self.context, include_running=False):
             return False
 
-        # Check if there are queued jobs for this worksheet
-        storage = WorksheetQueueStorage(self.context)
-        if storage.uids:
-            return False
+        # Check whether this worksheet contains queued analyses
+        for obj in self.context.getAnalyses():
+            if api.is_queued(obj, include_running=False):
+                return False
 
         return True

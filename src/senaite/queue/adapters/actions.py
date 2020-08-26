@@ -19,23 +19,22 @@
 # Some rights reserved, see README and LICENSE.
 
 from senaite.queue import api
-from senaite.queue.queue import queue_action
 
 from bika.lims.browser.workflow import WorkflowActionGenericAdapter
 
 
 class WorkflowActionGenericQueueAdapter(WorkflowActionGenericAdapter):
-    """Adapter in charge of submission of results from a worksheet,
-    adding them into a queue for async submission
+    """Adapter in charge of adding a transition/action to be performed for a
+    single object or multiple objects to the queue
     """
 
     def do_action(self, action, objects):
-        # Process the first chunk as usual
-        chunks = api.get_chunks(action, objects)
-        super(WorkflowActionGenericQueueAdapter, self)\
-            .do_action(action, chunks[0])
 
-        # Process the rest in a queue
-        queue_action(self.context, self.request, action, chunks[1])
+        if api.is_queue_enabled(action):
+            # Add to the queue
+            api.queue_action(objects, action, self.context, self.request)
+            return objects
 
-        return objects
+        # Delegate to base do_action
+        return super(WorkflowActionGenericQueueAdapter, self).do_action(
+            action, objects)

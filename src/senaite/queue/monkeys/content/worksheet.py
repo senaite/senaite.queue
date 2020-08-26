@@ -18,11 +18,11 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
+from bika.lims import api as _api
+from senaite.queue import api
+
 from bika.lims.catalog.worksheet_catalog import CATALOG_WORKSHEET_LISTING
 from bika.lims.interfaces.analysis import IRequestAnalysis
-from senaite.queue import api
-from senaite.queue.interfaces import IQueued
-from senaite.queue.queue import queue_assign_analyses
 
 
 def _apply_worksheet_template_routine_analyses(self, wst):
@@ -38,7 +38,7 @@ def _apply_worksheet_template_routine_analyses(self, wst):
     :param wst: worksheet template used as the layout
     :returns: None
     """
-    bac = api.get_tool("bika_analysis_catalog")
+    bac = _api.get_tool("bika_analysis_catalog")
     services = wst.getService()
     wst_service_uids = [s.UID() for s in services]
     query = {
@@ -78,11 +78,11 @@ def _apply_worksheet_template_routine_analyses(self, wst):
     ar_fixed_slots = dict()
 
     for brain in analyses:
-        obj = api.get_object(brain)
+        obj = _api.get_object(brain)
 
         # SENAITE.QUEUE-Specific
         # Discard analyses that are in a processing queue
-        if IQueued.providedBy(obj):
+        if api.is_queued(obj):
             continue
 
         arid = obj.getRequestID()
@@ -147,11 +147,8 @@ def _apply_worksheet_template_routine_analyses(self, wst):
     slots = sorted(ar_slots.values(), reverse=True)
 
     # SENAITE.QUEUE-SPECIFIC
-    queue_uids = list()
-    queue_slots = list()
-    num = 0
-    chunk_size = api.get_chunk_size("task_assign_analyses")
-    queue = chunk_size > 0 and api.is_queue_enabled()
+    to_queue = list()
+    queue_enabled = api.is_queue_enabled("task_assign_analyses")
 
     # Add regular analyses
     for ar_id in sorted_ar_ids:
@@ -161,56 +158,43 @@ def _apply_worksheet_template_routine_analyses(self, wst):
         ar_ans = ar_analyses[ar_id]
         for ar_an in ar_ans:
             # SENAITE.QUEUE-SPECIFIC
-            # was: self.addAnalysis(ar_an, slot)
-            if num < chunk_size:
-                self.addAnalysis(ar_an, slot)
-
-            elif not IRequestAnalysis.providedBy(ar_an):
+            if not IRequestAnalysis.providedBy(ar_an):
                 # Handle reference analyses (controls + blanks)
                 self.addAnalysis(ar_an, slot)
 
-            elif not queue:
+            elif not queue_enabled:
                 self.addAnalysis(ar_an, slot)
 
             else:
-                queue_uids.append(api.get_uid(ar_an))
-                queue_slots.append(str(slot))
+                to_queue.append(ar_an)
 
-            num += 1
-
-    # Mark the worksheet with IQueued and send to async job
-    if queue_uids:
-        wst_uid = wst and api.get_uid(wst) or None
-        queue_assign_analyses(self, api.get_request(), queue_uids, queue_slots,
-                              wst_uid=wst_uid)
+    # Add them to the queue
+    if to_queue:
+        api.queue_assign_analyses(self, to_queue, ws_template=wst)
 
 
 def get_routine_analyses(worksheet):
     """Returns the routine analyses assigned to the worksheet passed-in
     """
     query = dict(portal_type="Analysis",
-                 getWorksheetUID=api.get_uid(worksheet))
-    return api.search(query, CATALOG_WORKSHEET_LISTING)
+                 getWorksheetUID=_api.get_uid(worksheet))
+    return _api.search(query, CATALOG_WORKSHEET_LISTING)
 
 
 def addAnalyses(self, analyses):
     """Adds a collection of analyses to the Worksheet at once
     """
-    queue_uids = list()
-    queue_slots = list()
-    chunk_size = api.get_chunk_size("task_assign_analyses")
-    queue = chunk_size > 0 and api.is_queue_enabled()
+    to_queue = list()
+    queue_enabled = api.is_queue_enabled("task_assign_analyses")
     for num, analysis in enumerate(analyses):
-        analysis = api.get_object(analysis)
-        if num < chunk_size:
-            self.addAnalysis(analysis)
-        elif not queue:
+        analysis = _api.get_object(analysis)
+        if not queue_enabled:
             self.addAnalysis(analysis)
         elif not IRequestAnalysis.providedBy(analysis):
             self.addAnalysis(analysis)
         else:
-            queue_uids.append(api.get_uid(analysis))
-            queue_slots.append(None)
+            to_queue.append(analysis)
 
-    if queue_uids:
-        queue_assign_analyses(self, api.get_request(), queue_uids, queue_slots)
+    # Add them to the queue
+    if to_queue:
+        api.queue_assign_analyses(self, to_queue)

@@ -24,9 +24,9 @@ from Products.Archetypes.atapi import listTypes
 from Products.Archetypes.atapi import process_types
 from Products.CMFCore.permissions import AddPortalContent
 from Products.CMFCore.utils import ContentInit
+from senaite.queue.interfaces import IQueueUtility
 from senaite.queue.interfaces import ISenaiteQueueLayer
 from zope.i18nmessageid import MessageFactory
-
 
 PRODUCT_NAME = "senaite.queue"
 PROFILE_ID = "profile-{}:default".format(PRODUCT_NAME)

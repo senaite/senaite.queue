@@ -47,7 +47,22 @@ class IQueueControlPanel(Interface):
             "as failed and removed from the queue. A value of 0 disables the"
             "re-queue of failing tasks."
         ),
-        default=5,
+        default=3,
+        required=True,
+    )
+
+    min_seconds_task = schema.Int(
+        title=_(u"Minimum seconds per task"),
+        description=_(
+            "Minimum number of seconds to book per task. If the task is "
+            "performed very rapidly, it will have priority over a transaction "
+            "done from userland. In case of conflict, the transaction from "
+            "userland will fail and will be retried up to 3 times. This "
+            "setting makes the thread that handles the task to take some time "
+            "to complete, thus preventing threads from userland to be delayed "
+            "or fail. Default value: 2"
+        ),
+        default=2,
         required=True,
     )
 
@@ -126,7 +141,7 @@ class IQueueControlPanel(Interface):
             "Number of seconds to wait for a process in queue to be finished "
             "before being considered as failed. Failed processes will be "
             "enqueued again"),
-        default=600,
+        default=300,
         required=True,
     )
 

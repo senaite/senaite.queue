@@ -21,8 +21,8 @@
 import pygal
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile
 from pygal.style import LightenStyle
+from senaite.queue import api
 from senaite.queue import messageFactory as _
-from senaite.queue.storage import QueueStorageTool
 
 from bika.lims.browser import BrowserView
 
@@ -63,9 +63,7 @@ class TasksView(BrowserView):
 
     @property
     def queue_tool(self):
-        if not self._queue_tool:
-            self._queue_tool = QueueStorageTool()
-        return self._queue_tool
+        return api.get_queue()
 
     def remove_task(self, tuid):
         qtool = self.queue_tool
