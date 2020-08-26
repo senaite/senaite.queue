@@ -55,7 +55,10 @@ class QueueConsumerView(BrowserView):
         """
         task_uid = self.request.get("tuid")
         if task_uid:
-            return self.queue.get_task(task_uid)
+            task = self.queue.get_task(task_uid)
+            if task and task.status != "running":
+                return None
+            return task
         return self.queue.pop()
 
     def __call__(self):
@@ -82,7 +85,7 @@ class QueueConsumerView(BrowserView):
         # Do the work
         # At this point, current user matches with task's user
         log_mode = "info"
-        msg = "Task '{}' for '{}' processed".format(task.name, task.context_uid)
+        msg = "Task '{}' for '{}' processed".format(task.name, task.context_path)
         try:
             # Process the task
             self.process_task(task)

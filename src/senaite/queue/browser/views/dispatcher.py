@@ -26,6 +26,7 @@ from senaite.queue import api
 from senaite.queue import logger
 
 from bika.lims import api as _api
+from bika.lims.decorators import synchronized
 
 
 class QueueDispatcherView(BrowserView):
@@ -37,6 +38,7 @@ class QueueDispatcherView(BrowserView):
         self.context = context
         self.request = request
 
+    @synchronized(max_connections=1)
     def __call__(self):
         logger.info("Starting Queue Dispatcher ...")
         queue = api.get_queue()

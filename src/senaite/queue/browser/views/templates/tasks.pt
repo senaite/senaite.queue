@@ -54,7 +54,7 @@
 
       <div class="col-sm-12">
         <div class="monitor-chart">
-          <div tal:replace="structure view/get_statistics_chart"></div>
+          <!--div tal:replace="structure view/get_statistics_chart"></div-->
         </div>
       </div>
 
@@ -62,6 +62,7 @@
         <thead>
           <tr>
             <th i18n:translate="">TUID</th>
+            <th i18n:translate="">Created</th>
             <th i18n:translate="">User</th>
             <th i18n:translate="">Remote Addr</th>
             <th i18n:translate="">Context</th>
@@ -73,31 +74,28 @@
         </thead>
         <tbody>
           <tal:row repeat="task view/get_tasks">
-            <tr tal:attributes="class task/task_status_id">
+            <tr tal:attributes="class task/status">
               <td>
                 <div class="task_uid" >
                   <a tal:attributes="href python: view.get_task_json(task)" tal:content="task/task_uid"></a>
                 </div>
               </td>
-              <td tal:content="task/username"></td>
+              <td tal:content="task/created_date|None"></td>
+              <td tal:content="task/request/AUTHENTICATED_USER|None"></td>
               <td tal:content="task/request/REMOTE_ADDR"></td>
-              <td tal:define="obj python:task.context">
-                <a tal:content="python: obj.getId()"
-                   tal:condition="python: obj"
-                   tal:attributes="href python:obj.absolute_url()"></a>
-              </td>
+              <td tal:content="task/context_path"></td>
               <td tal:content="task/name"></td>
-              <td tal:content="task/task_status"></td>
+              <td tal:content="task/status"></td>
               <td tal:content="task/retries"></td>
               <td>
                 <a class="btn btn-default btn-primary btn-sm"
                    i18n:translate=""
-                   tal:condition="python: task['task_status_id'] in ['queued', 'failed']"
-                   tal:attributes="href python: 'queue_tasks?remove={}'.format(task.task_uid)">Remove</a>
+                   tal:condition="python: task['status'] in ['queued', 'failed']"
+                   tal:attributes="href python: 'queue_tasks?remove={}'.format(task['task_uid'])">Remove</a>
                 <a class="btn btn-danger btn-sm"
                    i18n:translate=""
-                   tal:condition="python: task['task_status_id'] in ['failed']"
-                   tal:attributes="href python: 'queue_tasks?requeue={}'.format(task.task_uid)">Requeue</a>
+                   tal:condition="python: task['status'] in ['failed']"
+                   tal:attributes="href python: 'queue_tasks?requeue={}'.format(task['task_uid'])">Requeue</a>
               </td>
             </tr>
           </tal:row>

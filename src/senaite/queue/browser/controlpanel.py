@@ -36,7 +36,7 @@ class IQueueControlPanel(Interface):
             "Default number of objects that will be handled in a single task. "
             "A value of 0 disables queuing of tasks functionality at all, "
             "specific tasks below included."),
-        default=5,
+        default=10,
         required=True,
     )
 
@@ -81,7 +81,7 @@ class IQueueControlPanel(Interface):
             "Number of analyses that will be handled in a single task when "
             "assigned to a worksheet. Overrides default's for action 'assign'. "
             "A value of 0 disables the queue for this specific action."),
-        default=5,
+        default=10,
         required=True,
     )
 
@@ -101,7 +101,7 @@ class IQueueControlPanel(Interface):
             "Number of analyses that will be handled in a single task when "
             "result is submitted. Overrides default's for 'submit' action. "
             "A value of 0 disables the queue for this specific action."),
-        default=5,
+        default=10,
         required=True,
     )
 
@@ -121,7 +121,7 @@ class IQueueControlPanel(Interface):
             "Number of analyses that will be handled in a single task when "
             "the analysis is retracted. Overrides default's for 'retract' "
             "action. A value of 0 disables the queue for this specific action"),
-        default=5,
+        default=10,
         required=True,
     )
 
@@ -140,7 +140,7 @@ class IQueueControlPanel(Interface):
         description=_(
             "Number of seconds to wait for a process in queue to be finished "
             "before being considered as failed. Failed processes will be "
-            "enqueued again"),
+            "enqueued again. Minimum value is 30"),
         default=300,
         required=True,
     )

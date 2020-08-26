@@ -37,10 +37,6 @@ from bika.lims.utils import tmpID
 # task is added to the queue while another task is being processed
 TASKS_QUEUE_STORAGE_TOOL_ID = "senaite.queue.main.storage.tasks"
 
-# Registry key containing the number of seconds to wait for a queued task
-# before being considered as failed
-MAX_SECONDS_UNLOCK_ID = "senaite.queue.max_seconds_unlock"
-
 # Maximum number of concurrent tasks to be processed at a time
 MAX_CONCURRENT_TASKS = 1
 
@@ -140,13 +136,10 @@ class QueueUtility(object):
             self._purge()
 
     def _purge(self):
-        # Get the number of seconds to wait for a queued task before being
-        # considered as failed
-        max_sec = api.get_registry_record(MAX_SECONDS_UNLOCK_ID, default=300)
-
         def is_stuck(task):
+            max_sec = task.get("max_seconds", 60)
             started = task.get("started", time.time() - max_sec - 1)
-            return started + max_sec > time.time()
+            return started + max_sec < time.time()
 
         # Get non-stuck tasks
         tasks = self._storage.running_tasks
@@ -224,7 +217,8 @@ class QueueUtility(object):
     def get_task(self, task_uid):
         """Returns the task for for the TUID passed in
         """
-        tasks = self._storage.tasks + self._storage.running_tasks
+        tasks = self._storage.tasks + self._storage.running_tasks + \
+                self._storage.failed_tasks
         for task in tasks:
             if task.task_uid == task_uid:
                 return task
@@ -268,6 +262,23 @@ class QueueUtility(object):
         with self.__lock:
             return self._add(task, unique=unique)
 
+    def remove(self, task_uid):
+        """Removes a task from the queue
+        """
+        with self.__lock:
+            task = self.get_task(task_uid)
+            if not task:
+                return
+
+            if task.status == "queued":
+                self._storage.tasks = filter(
+                    lambda t: t.task_uid != task_uid,
+                    self._storage.tasks)
+            elif task.status == "failed":
+                self._storage.failed_tasks = filter(
+                    lambda t: t.task_uid != task_uid,
+                    self._storage.failed_tasks)
+
     def _add(self, task, unique=False):
         # Only QueueTask type is supported
         if not isinstance(task, QueueTask):
@@ -291,8 +302,9 @@ class QueueUtility(object):
         task.update({"status": "queued"})
         tasks.append(task)
 
-        # Sort by priority reversed
-        tasks = sorted(tasks, key=itemgetter("priority"), reverse=True)
+        # Sort by priority + created reversed
+        tasks = sorted(tasks, key=lambda t: (t.created + (300 * t.priority)),
+                       reverse=True)
 
         # Assign the tasks to the queue
         # Note _storage does a _p_changed already
@@ -316,8 +328,9 @@ class QueueTask(dict):
             "context_path": api.get_path(context),
             "request": self._get_request_data(request),
             "retries": kw.get("retries", 3),
-            "priority": kw.get("priority", 10),
+            "priority": api.to_int(kw.get("priority"), default=10),
             "uids": kw.get("uids", []),
+            "created": time.time(),
             "status": None,
         })
 
@@ -382,6 +395,10 @@ class QueueTask(dict):
     @property
     def status(self):
         return self["status"]
+
+    @property
+    def created(self):
+        return self["created"]
 
     @property
     def retries(self):

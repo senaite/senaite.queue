@@ -18,10 +18,10 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-from bika.lims import api as _api
 from senaite.queue import api
 
-from bika.lims.catalog.worksheet_catalog import CATALOG_WORKSHEET_LISTING
+from bika.lims import api as _api
+from bika.lims.catalog import CATALOG_ANALYSIS_LISTING
 from bika.lims.interfaces.analysis import IRequestAnalysis
 
 
@@ -40,7 +40,7 @@ def _apply_worksheet_template_routine_analyses(self, wst):
     """
     bac = _api.get_tool("bika_analysis_catalog")
     services = wst.getService()
-    wst_service_uids = [s.UID() for s in services]
+    wst_service_uids = map(_api.get_uid, services)
     query = {
         "portal_type": "Analysis",
         "getServiceUID": wst_service_uids,
@@ -78,14 +78,13 @@ def _apply_worksheet_template_routine_analyses(self, wst):
     ar_fixed_slots = dict()
 
     for brain in analyses:
-        obj = _api.get_object(brain)
-
         # SENAITE.QUEUE-Specific
         # Discard analyses that are in a processing queue
-        if api.is_queued(obj):
+        if api.is_queued(brain):
             continue
 
-        arid = obj.getRequestID()
+        obj = _api.get_object(brain)
+        arid = brain.getRequestID
 
         if instrument and not obj.isInstrumentAllowed(instrument):
             # Exclude those analyses for which the worksheet's template
@@ -178,7 +177,7 @@ def get_routine_analyses(worksheet):
     """
     query = dict(portal_type="Analysis",
                  getWorksheetUID=_api.get_uid(worksheet))
-    return _api.search(query, CATALOG_WORKSHEET_LISTING)
+    return _api.search(query, CATALOG_ANALYSIS_LISTING)
 
 
 def addAnalyses(self, analyses):

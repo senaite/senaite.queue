@@ -24,6 +24,7 @@ from Products.CMFPlone.utils import _createObjectByType
 from senaite.queue import api
 from senaite.queue import messageFactory as _
 
+from bika.lims import api as _api
 from bika.lims.browser.worksheet.views.add_worksheet import AddWorksheetView
 from bika.lims.utils import tmpID
 
@@ -77,9 +78,9 @@ class AddWorksheetQueueView(AddWorksheetView):
             self.request.RESPONSE.redirect(ws.absolute_url() + "/manage_results")
 
         elif api.is_queued(ws):
-            msg = _("Analyses for {} have been queued".format(api.get_id(ws)))
+            msg = _("Analyses for {} have been queued".format(_api.get_id(ws)))
             self.context.plone_utils.addPortalMessage(msg)
-            self.request.RESPONSE.redirect(api.get_url(ws.aq_parent))
+            self.request.RESPONSE.redirect(_api.get_url(ws.aq_parent))
 
         else:
             msg = _("No analyses were added")

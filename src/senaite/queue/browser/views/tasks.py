@@ -19,6 +19,8 @@
 # Some rights reserved, see README and LICENSE.
 
 import pygal
+import time
+from datetime import datetime
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile
 from pygal.style import LightenStyle
 from senaite.queue import api
@@ -66,40 +68,31 @@ class TasksView(BrowserView):
         return api.get_queue()
 
     def remove_task(self, tuid):
-        qtool = self.queue_tool
-        task = qtool.get_task(tuid)
-        if task:
-            qtool.remove(task)
+        self.queue_tool.remove(tuid)
 
     def requeue_task(self, tuid):
         qtool = self.queue_tool
         task = qtool.get_task(tuid)
         if task:
-            task.retries = 0
-            qtool.requeue(task)
+            qtool.remove(tuid)
+            task.retries = api.get_max_retries()
+            qtool.add(task)
 
     def get_tasks(self):
         # Failed tasks
-        failed = self.queue_tool.failed
-        tasks = map(lambda task: self.get_task_data(task, "failed"), failed)
-
-        processed = self.queue_tool.processed
-        current = self.queue_tool.current
-
-        # Last processed task
-        if processed and processed != current:
-            processed = self.get_task_data(processed, "processed")
-            tasks.append(processed)
+        failed = self.queue_tool._storage.failed_tasks
+        tasks = map(lambda task: self.get_task_data(dict(task), "failed"), failed)
 
         # Undergoing task
-        current = self.get_task_data(current, "active")
+        current = self.queue_tool._storage.running_tasks
+        current = current and self.get_task_data(dict(current[0]), "active") or None
         if current:
             tasks.append(current)
 
         # Awaiting tasks
-        queued = self.queue_tool.tasks
-        queued = map(lambda task: self.get_task_data(task, "queued"), queued)
-        tasks.extend(queued)
+        queued = self.queue_tool._storage.tasks
+        queued = map(lambda task: self.get_task_data(dict(task), "queued"), queued)
+        tasks.extend(reversed(queued))
 
         # Remove empties
         return filter(None, tasks)
@@ -109,14 +102,16 @@ class TasksView(BrowserView):
         """
         if not task:
             return None
+        created = task.get("created") or time.time()
         task["task_status_id"] = status_id
         task["task_status"] = _(status_id)
+        task["created_date"] = datetime.fromtimestamp(int(created)).isoformat()
         return task
 
     def get_task_json(self, task):
         """Returns the url that displays the task in JSON format
         """
-        return "{}/queue_task?uid={}".format(self.portal_url, task.task_uid)
+        return "{}/queue_task?uid={}".format(self.portal_url, task["task_uid"])
 
     def get_statistics_chart(self):
         """Generates a SVG with queue statistics

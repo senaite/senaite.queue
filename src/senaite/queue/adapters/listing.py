@@ -48,7 +48,7 @@ class QueuedWorksheetsViewAdapter(object):
             item["disabled"] = True
             icon = api.get_queue_image("queued.gif", width="55px")
             item["replace"]["state_title"] = _("Queued")
-            item["replace"]["Progress"] = icon
+            item["replace"]["getProgressPercentage"] = icon
         return item
 
 
