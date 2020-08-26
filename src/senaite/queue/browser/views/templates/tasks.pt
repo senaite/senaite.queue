@@ -51,13 +51,6 @@
 
     <!-- Content -->
     <metal:core fill-slot="content-core">
-
-      <div class="col-sm-12">
-        <div class="monitor-chart">
-          <!--div tal:replace="structure view/get_statistics_chart"></div-->
-        </div>
-      </div>
-
       <table class="table table-bordered">
         <thead>
           <tr>

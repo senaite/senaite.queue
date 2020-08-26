@@ -18,11 +18,10 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-import pygal
 import time
 from datetime import datetime
+
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile
-from pygal.style import LightenStyle
 from senaite.queue import api
 from senaite.queue import messageFactory as _
 
@@ -112,40 +111,3 @@ class TasksView(BrowserView):
         """Returns the url that displays the task in JSON format
         """
         return "{}/queue_task?uid={}".format(self.portal_url, task["task_uid"])
-
-    def get_statistics_chart(self):
-        """Generates a SVG with queue statistics
-        """
-        # Chart style
-        style = LightenStyle('#254a55',
-                             step=5,
-                             background='transparent',
-                             legend_font_size=12)
-
-        # Stacked bar chart
-        chart = pygal.StackedBar(fill=True,
-                                 style=style,
-                                 height=200,
-                                 spacing=5,
-                                 margin_left=0,
-                                 margin_right=0,
-                                 max_scale=5,
-                                 legend_at_bottom=True,
-                                 legend_box_size=8,
-                                 pretty_print=True,
-                                 explicit_size=True)
-
-        # Get the data lines from queue's statistics
-        statistics = self.queue_tool.statistics
-        keys = statistics[0].keys()
-        transposed = {k: map(lambda item: item[k], statistics) for k in keys}
-
-        # Add the data lines to the chart
-        chart.add(_("Queued"), transposed["queued"])
-        chart.add(_("Added"), transposed["added"])
-        chart.add(_("Removed"), transposed["removed"])
-        chart.add(_("Processed"), transposed["processed"])
-        chart.add(_("Failed"), transposed["failed"])
-
-        # Render the SVG
-        return chart.render()
