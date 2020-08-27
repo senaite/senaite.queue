@@ -175,22 +175,26 @@ class QueueUtility(object):
             self._storage.running_tasks = running
 
             # Return the task
+            logger.info("Pop task {}: {}".format(task.name, task.context_path))
             return task
 
-    def fail(self, task):
+    def fail(self, task, error_message=None):
         """Removes the task from the running tasks. Is re-queued if there are
         remaining retries still. Otherwise, adds the task to the pool of failed
         """
         with self.__lock:
-            self._fail(task)
+            self._fail(task, error_message=error_message)
 
-    def _fail(self, task):
+    def _fail(self, task, error_message=None):
         # Get the running tasks, but the current one
         tasks = self._storage.running_tasks
         other_tasks = filter(lambda t: t.task_uid != task.task_uid, tasks)
         if len(other_tasks) != len(tasks):
             # Remove the task from the pool of running tasks
             self._storage.running_tasks = other_tasks
+
+            # Set the error message
+            task["error_message"] = error_message
 
             # Check if we've reached the max number of remaining retries
             if task.retries > 0:
@@ -202,6 +206,8 @@ class QueueUtility(object):
                 task.update({"status": "failed"})
                 failed_tasks.append(task)
                 self._storage.failed_tasks = failed_tasks
+                logger.warn("Failed task {}: {}".format(task.name,
+                                                        task.context_path))
 
     def success(self, task):
         """Removes the task from the running tasks
@@ -309,7 +315,9 @@ class QueueUtility(object):
         # Assign the tasks to the queue
         # Note _storage does a _p_changed already
         self._storage.tasks = tasks
-        return False
+
+        logger.info("Added task {}: {}".format(task.name, task.context_path))
+        return True
 
 
 class QueueTask(dict):
@@ -332,6 +340,7 @@ class QueueTask(dict):
             "uids": kw.get("uids", []),
             "created": time.time(),
             "status": None,
+            "error_message": None,
         })
 
     def _get_request_data(self, request):

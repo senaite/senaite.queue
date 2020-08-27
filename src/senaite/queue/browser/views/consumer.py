@@ -78,8 +78,8 @@ class QueueConsumerView(BrowserView):
                 return self.request.response.redirect(url)
             else:
                 # Cannot login as this user!
-                self.queue.fail(task)
                 msg = "Cannot login with '{}'".format(task.username)
+                self.queue.fail(task, error_message=msg)
                 return self.response(msg, log_mode="error")
 
         # Do the work
@@ -95,8 +95,9 @@ class QueueConsumerView(BrowserView):
 
         except (RuntimeError, Exception) as e:
             self.queue.fail(task)
-            log_mode = "error"
             tbex = traceback.format_exc()
+            self.queue.fail(task, error_message="\n".join([e.mesage, tbex]))
+            log_mode = "error"
             msg = "{}: {} [SKIP]\n{}".format(task.name, e.message, tbex)
 
         # Close the session for current user
@@ -117,7 +118,8 @@ class QueueConsumerView(BrowserView):
         user_ob = self.get_senaite_user(username)
         if user_ob is None:
             if self.get_zope_user(username):
-                logger.error("User '{}' belongs to Zope's acl_users root!")
+                logger.error("User '{}' belongs to Zope's acl_users root!"
+                             .format(username))
             else:
                 logger.error("No valid user '{}'".format(username))
             return False

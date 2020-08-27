@@ -25,6 +25,10 @@
           overflow: hidden;
           white-space: nowrap;
         }
+        .err_msg {
+          font-family: monospace;
+          font-size:0.9em;
+        }
         tr.processed, tr.processed a {
           color: #999;
         }
@@ -61,8 +65,9 @@
             <th i18n:translate="">Context</th>
             <th i18n:translate="">Type</th>
             <th i18n:translate="">Status</th>
+            <th i18n:translate="">Error message</th>
             <th i18n:translate="">Retries</th>
-            <th></th>
+            <th/>
           </tr>
         </thead>
         <tbody>
@@ -70,16 +75,17 @@
             <tr tal:attributes="class task/status">
               <td>
                 <div class="task_uid" >
-                  <a tal:attributes="href python: view.get_task_json(task)" tal:content="task/task_uid"></a>
+                  <a tal:attributes="href python: view.get_task_json(task)" tal:content="task/task_uid"/>
                 </div>
               </td>
-              <td tal:content="task/created_date|None"></td>
-              <td tal:content="task/request/AUTHENTICATED_USER|None"></td>
-              <td tal:content="task/request/REMOTE_ADDR"></td>
-              <td tal:content="task/context_path"></td>
-              <td tal:content="task/name"></td>
-              <td tal:content="task/status"></td>
-              <td tal:content="task/retries"></td>
+              <td tal:content="task/created_date|None"/>
+              <td tal:content="task/request/AUTHENTICATED_USER|None"/>
+              <td tal:content="task/request/REMOTE_ADDR"/>
+              <td tal:content="task/context_path"/>
+              <td tal:content="task/name"/>
+              <td tal:content="task/status"/>
+              <td class="err_msg" tal:content="task/error_message|None"/>
+              <td tal:content="task/retries"/>
               <td>
                 <a class="btn btn-default btn-primary btn-sm"
                    i18n:translate=""

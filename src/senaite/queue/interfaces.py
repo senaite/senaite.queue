@@ -49,6 +49,10 @@ class IQueuedTaskAdapter(Interface):
     """Marker interface for adapters in charge of processing queued tasks
     """
 
+    def __init__(self, context):
+        """Initializes the adapter with the context adapted
+        """
+
     def process(self, task):
         """Process the task from the queue
         """
@@ -74,7 +78,7 @@ class IQueueUtility(Interface):
         """Returns whether the queue is busy
         """
 
-    def fail(self, task):
+    def fail(self, task, error_message=None):
         """Notifies that the task failed
         """
 

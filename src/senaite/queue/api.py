@@ -115,9 +115,16 @@ def get_chunks(task_name, items):
     first chunk and the second element contains the rest of the items
     """
     chunk_size = get_chunk_size(task_name)
+    return chunks(items, chunk_size)
+
+
+def chunks(items, chunk_size):
+    """Returns the items splitted into a list of two items. The first element
+    contains the first chunk and the second element contains the rest of the
+    items
+    """
     if chunk_size <= 0 or chunk_size >= len(items):
         return [items, []]
-
     return [items[:chunk_size], items[chunk_size:]]
 
 
