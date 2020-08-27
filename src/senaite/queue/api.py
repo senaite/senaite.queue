@@ -204,25 +204,24 @@ def get_queue():
     return getUtility(IQueueUtility)
 
 
-def is_queued(brain_object_uid, include_running=True):
+def is_queued(brain_object_uid, task_name=None, include_running=True):
     """Returns whether the object passed-in is queued
     :param brain_object_uid: the object to check for
+    :param task_name: filter by task_name
     :param include_running: whether to look for in running tasks or not
     :return: True if the object is in the queue
     """
-    uid = _api.get_uid(brain_object_uid)
     queued = False
+    uid = _api.get_uid(brain_object_uid)
     queue = get_queue()
-    if include_running:
-        queued = queue.has_tasks_for(uid)
-    else:
-        # Bail out running tasks
-        for task in queue.get_tasks_for(uid):
-            if task.status == "running":
-                continue
-            else:
-                queued = True
-                break
+    for task in queue.get_tasks_for(uid):
+        if not include_running and task.status == "running":
+            continue
+        elif task_name and task_name != task.name:
+            continue
+        else:
+            queued = True
+            break
     return queued
 
 
