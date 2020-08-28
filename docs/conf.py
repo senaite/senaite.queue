@@ -53,7 +53,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'senaite.quue'
+project = u'senaite.queue'
 copyright = u'2019-2020, Riding Bytes & Naralabs'
 
 # The version info for the project you're documenting, acts as replacement for
