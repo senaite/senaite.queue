@@ -55,9 +55,18 @@ directly by your own:
 
 .. code-block:: python
 
-    task_id = "my.addon.task_dispatch"
-    params = {"uids": uids}
-    api.queue_task(DISPATCH_TASK_ID, self.request, self.context, **params)
+    class DispatchSamplesView(BrowserView):
+
+        def __call__(self):
+            ...
+
+            # Get the selected samples from the form
+            uids = self.request.form.get("selected_uids", [])
+
+            # Queue the task
+            task_id = "my.addon.task_dispatch"
+            params = {"uids": uids}
+            api.queue_task(DISPATCH_TASK_ID, self.request, self.context, **params)
 
 
 Note the following:
