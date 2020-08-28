@@ -1,5 +1,5 @@
 Assignment of analyses to a Worksheet
-=====================================
+-------------------------------------
 
 SENAITE Queue supports the `assign` transition for analyses, either for when
 the analyses are assigned manually (via `Add analyses` view from Worksheet) or
@@ -10,7 +10,7 @@ Running this test from the buildout directory:
     bin/test test_textual_doctests -t WorksheetAnalysesAssign
 
 Test Setup
-----------
+~~~~~~~~~~
 
 Needed imports:
 
@@ -55,7 +55,7 @@ Create some basic objects for the test:
     >>> Cu = _api.create(setup.bika_analysisservices, "AnalysisService", title="Copper", Keyword="Cu", Price="15", Category=category.UID(), Accredited=True)
 
 Manual assignment of analyses to a Worksheet
---------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Set the number of analyses to be transitioned in a single queued task:
 
@@ -191,7 +191,7 @@ Since all analyses have been processed, the worksheet is no longer queued:
     False
 
 Assignment of analyses through Worksheet Template
--------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Analyses can be assigned to a worksheet by making use of a Worksheet Template.
 In such case, the system must behave exactly the same way as before.

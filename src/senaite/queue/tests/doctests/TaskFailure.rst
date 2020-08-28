@@ -1,5 +1,5 @@
 Queued task failure
-===================
+-------------------
 
 When a queued task fails, the system re-queues the task as many times as set
 in the `max_retries` setting from the registry before considering the task
@@ -10,7 +10,7 @@ Running this test from the buildout directory:
     bin/test test_textual_doctests -t TaskFailure
 
 Test Setup
-----------
+~~~~~~~~~~
 
 Needed imports:
 
@@ -59,7 +59,7 @@ Create some basic objects for the test:
     >>> Cu = _api.create(setup.bika_analysisservices, "AnalysisService", title="Copper", Keyword="Cu", Price="15", Category=category.UID(), Accredited=True)
 
 Failure while assigning analyses to a Worksheet
------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Set the number of max retries on failure:
 

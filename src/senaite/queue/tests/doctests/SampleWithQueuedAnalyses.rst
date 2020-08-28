@@ -1,5 +1,5 @@
 Sample with queued analyses
-===========================
+---------------------------
 
 Samples that contain queued analyses cannot be transitioned until all analyses
 it contains are successfully processed.
@@ -10,7 +10,7 @@ Running this test from buildout directory::
 
 
 Test Setup
-----------
+~~~~~~~~~~
 
 Needed imports:
 
@@ -80,7 +80,7 @@ against a Sample in "received" status.
 
 
 Queued analyses
----------------
+~~~~~~~~~~~~~~~
 
 Set the number of analyses to be transitioned in a single queued task:
 

@@ -1,5 +1,5 @@
 Submit transition (analyses from worksheet)
-===========================================
+-------------------------------------------
 
 SENAITE Queue comes with an adapter for generic actions (e.g. submit, unassign).
 Generic actions don't require additional logic other than transitioning and this
@@ -14,7 +14,7 @@ Running this test from the buildout directory:
 
 
 Test Setup
-----------
+~~~~~~~~~~
 
 Needed imports:
 
@@ -72,7 +72,7 @@ a worksheet, slot positions, etc.).
 
 
 Submit transition
------------------
+~~~~~~~~~~~~~~~~~
 
 Set the number of analyses to be transitioned in a single queued task:
 
