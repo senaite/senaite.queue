@@ -33,6 +33,8 @@ Table of Contents:
 
    installation
    quickstart
+   extend
+   doctests
 
 
 .. Links

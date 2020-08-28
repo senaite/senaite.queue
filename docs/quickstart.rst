@@ -106,7 +106,7 @@ above is a link to the full detail of the task:
             },
             "HTTP_REFERER": "http://localhost:8080/senaite/worksheets/WS-018/manage_results",
             "REMOTE_ADDR": "127.0.0.1",
-            "AUTHENTICATED_USER": "labman1",
+            "AUTHENTICATED_USER": "analyst1",
             "X_FORWARDED_FOR": "",
             "_ZopeId": "68044235A9oxFuzwE6o"
         },
@@ -119,10 +119,12 @@ above is a link to the full detail of the task:
 
 The fields displayed might vary depending on the type of task (the "name" field
 defines the type of the task). In the example above, the task refers to the
-verification action of 6 analyses from worksheet with id "WS-018", triggered by
-the user with id "labman1". The "uids" field contains the unique identifiers of
-the analyses to be verified, and the "context_uid" indicates the unique
-identifier of the object from which the action/task has been triggered.
+submission (field `action`) of results for 6 analyses from worksheet with id
+"WS-018" (field `context_path`). This action has been triggered by the user
+with id "analyst1" (field `AUTHENTICATED_USER`). The field `uids`
+contains the unique identifiers of the analyses to be submitted, and the
+`context_uid` indicates the unique identifier of the object from which the
+action/task has been triggered.
 
 
 .. note:: There are plenty of add-ons for browsers that beautify the generated
