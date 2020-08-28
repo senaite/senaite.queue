@@ -12,10 +12,10 @@ Once installed, this add-on enables asynchronous processing of those tasks that
 usually have a heavier footprint regarding performance, and with highest chance
 of transaction conflicts:
 
-    - Assignment of analyses to worksheets
-    - Assignment of worksheet template to a worksheet
-    - Creation of a worksheet by using a worksheet template
-    - Workflow actions (submit, verify, etc.) for analyses assigned to worksheets
+* Assignment of analyses to worksheets
+* Assignment of worksheet template to a worksheet
+* Creation of a worksheet by using a worksheet template
+* Workflow actions (submit, verify, etc.) for analyses assigned to worksheets
 
 This add-on neither provides support for workflow transitions/actions at Sample
 level nor for Sample creation. However, this add-on can be extended easily to
