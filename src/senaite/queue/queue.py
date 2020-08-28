@@ -20,7 +20,6 @@
 
 import threading
 import time
-from operator import itemgetter
 
 import six
 from BTrees.OOBTree import OOBTree
@@ -45,8 +44,6 @@ class QueueStorage(object):
     """Storage that provides access to the tasks from a queue
     """
 
-    _annotations = None
-
     @property
     def container(self):
         """The container the annotations storage belongs to
@@ -55,50 +52,50 @@ class QueueStorage(object):
 
     @property
     def annotations(self):
-        if self._annotations is None:
-            annotations = IAnnotations(self.container)
-            if annotations.get(TASKS_QUEUE_STORAGE_TOOL_ID) is None:
-                annotations[TASKS_QUEUE_STORAGE_TOOL_ID] = OOBTree()
-            self._annotations = annotations
-        return self._annotations[TASKS_QUEUE_STORAGE_TOOL_ID]
+        """Returns the annotation's storage of the queue
+        """
+        annotations = IAnnotations(self.container)
+        if annotations.get(TASKS_QUEUE_STORAGE_TOOL_ID) is None:
+            annotations[TASKS_QUEUE_STORAGE_TOOL_ID] = OOBTree()
+        return annotations[TASKS_QUEUE_STORAGE_TOOL_ID]
 
     def get(self, key, default=None):
-        if self.annotations.get(key) is None:
-            self.annotations[key] = default
-        return self.annotations[key]
+        return self.annotations.get(key, default)
+
+    def set(self, key, value):
+        annotations = self.annotations
+        annotations[key] = value
+        annotations._p_changed = True
 
     @property
     def tasks(self):
         """The outstanding tasks from the queue
         """
-        return list(self.get("tasks", default=[]))
+        return self.get("tasks", default=[])[:]
 
     @property
     def running_tasks(self):
         """The ongoing tasks
         """
-        return list(self.get("running_tasks", default=[]))
+        return self.get("running_tasks", default=[])[:]
 
     @property
     def failed_tasks(self):
         """The ongoing tasks
         """
-        return self.get("failed_tasks", list())
+        return self.get("failed_tasks", default=[])[:]
 
     @tasks.setter
     def tasks(self, value):
-        self.annotations["tasks"] = value
-        self.annotations._p_changed = True
+        self.set("tasks", value)
 
     @running_tasks.setter
     def running_tasks(self, value):
-        self.annotations["running_tasks"] = value
-        self.annotations._p_changed = True
+        self.set("running_tasks", value)
 
     @failed_tasks.setter
     def failed_tasks(self, value):
-        self.annotations["failed_tasks"] = value
-        self.annotations._p_changed = True
+        self.set("failed_tasks", value)
 
 
 class QueueUtility(object):

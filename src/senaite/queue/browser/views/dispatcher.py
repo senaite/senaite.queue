@@ -38,18 +38,23 @@ class QueueDispatcherView(BrowserView):
         self.context = context
         self.request = request
 
+    @property
+    def queue(self):
+        """Returns the queue utility
+        """
+        return api.get_queue()
+
     @synchronized(max_connections=1)
     def __call__(self):
         logger.info("Starting Queue Dispatcher ...")
-        queue = api.get_queue()
 
-        if queue.is_busy():
+        if self.queue.is_busy():
             # Purge the queue from tasks that got stuck
-            queue.purge()
+            self.queue.purge()
             logger.info("Queue is busy [SKIP]")
             return "Queue is busy"
 
-        if queue.is_empty():
+        if self.queue.is_empty():
             logger.info("Queue is empty [SKIP]")
             return "Queue is empty"
 

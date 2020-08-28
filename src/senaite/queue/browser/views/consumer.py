@@ -48,6 +48,8 @@ class QueueConsumerView(BrowserView):
 
     @property
     def queue(self):
+        """Returns the queue utility
+        """
         return api.get_queue()
 
     def get_task(self):
