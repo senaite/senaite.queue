@@ -79,10 +79,10 @@ directly by your own:
 
 Note the following:
 
-    - We use a "uids" field to store the objects to be processed
-    - We've set a custom task id `my.addon.task_dispatch`. This task id will be
-      used by `senaite.queue` to look for a suitable adapter able to handle
-      tasks with this id.
+* We use a "uids" field to store the objects to be processed
+* We've set a custom task id `my.addon.task_dispatch`. This task id will be used
+  by `senaite.queue` to look for a suitable adapter able to handle tasks with
+  this id.
 
 Create an adapter in charge of handling the task:
 

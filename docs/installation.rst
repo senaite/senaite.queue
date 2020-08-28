@@ -40,33 +40,33 @@ Then, add a new client in your buildout configuration:
 
 .. code-block:: ini
 
-  # Reserved user for dispatching queued tasks
-  # See https://pypi.org/project/senaite.queue
-  queue-user-name=queue_daemon
-  queue-user-password=queue_daemon_password
+    # Reserved user for dispatching queued tasks
+    # See https://pypi.org/project/senaite.queue
+    queue-user-name=queue_daemon
+    queue-user-password=queue_daemon_password
 
-  parts =
-      ....
-      client_queue
+    parts =
+        ....
+        client_queue
 
 
 and configure a reserved client:
 
 .. code-block:: ini
 
-  [client_queue]
-  # Client reserved as a worker for async tasks
-  <= client_base
-  recipe = plone.recipe.zope2instance
-  http-address = 127.0.0.1:8089
-  zope-conf-additional =
-      <clock-server>
-          method /senaite/queue_dispatcher
-          period 5
-          user ${buildout:queue-user-name}
-          password ${buildout:queue-user-password}
-          host localhost:8089
-      </clock-server>
+    [client_queue]
+    # Client reserved as a worker for async tasks
+    <= client_base
+    recipe = plone.recipe.zope2instance
+    http-address = 127.0.0.1:8089
+    zope-conf-additional =
+        <clock-server>
+            method /senaite/queue_dispatcher
+            period 5
+            user ${buildout:queue-user-name}
+            password ${buildout:queue-user-password}
+            host localhost:8089
+        </clock-server>
 
 
 .. note:: This client will listen to port 8089 and is meant to be a reserved
