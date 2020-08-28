@@ -80,6 +80,7 @@ Create an adapter in charge of handling the task:
 
 .. code-block:: python
 
+    from bika.lims import api as _api
     from Products.Archetypes.interfaces.base import IBaseObject
     from senaite.queue import api
     from senaite.queue.interfaces import IQueuedTaskAdapter
