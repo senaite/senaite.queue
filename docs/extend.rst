@@ -56,7 +56,7 @@ directly by your own:
 .. code-block:: python
 
     task_id = "my.addon.task_dispatch"
-    params = {"uids": map(api.get_uid(objects))}
+    params = {"uids": uids}
     api.queue_task(DISPATCH_TASK_ID, self.request, self.context, **params)
 
 
