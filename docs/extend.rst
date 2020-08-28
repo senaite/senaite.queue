@@ -9,8 +9,8 @@ asynchronously by `senaite.queue`_. The process or logic to be handled by
 `SENAITE`-specific add-on.
 
 
-Feed queue with actions
------------------------
+Queued task for a workflow action
+---------------------------------
 
 Let's imagine you have your own add-on with a custom transition/action (e.g.
 *dispatch*) in sample's workflow, that transitions the sample to a *dispatched*
@@ -42,11 +42,20 @@ is called. Note that `for` field is neither context-specific nor layer specific,
 so this adapter will always be called when the action `dispatch` is triggered,
 regardless of context and layer.
 
-Remember to restart the zeo clients after registering the adapter.
+Alternatively, you can directly feed the queue programmatically:
+
+.. code-block:: python
+
+    from senaite.queue import api
+    api.queue_action(objects, action)
 
 
-Feed queue with tasks that rely on custom logic
------------------------------------------------
+Parameter objects can be either a brain, an object, a uid or a list/tuple of any
+of them.
+
+
+Queued task for custom logic
+----------------------------
 
 Imagine that instead of having a workflow action "dispatch" in place, you rather
 have a simple view from which the user can choose samples and generate a
