@@ -64,9 +64,8 @@ directly by your own:
             uids = self.request.form.get("selected_uids", [])
 
             # Queue the task
-            task_id = "my.addon.task_dispatch"
             params = {"uids": uids}
-            api.queue_task(DISPATCH_TASK_ID, self.request, self.context, **params)
+            api.queue_task("my.addon.task_dispatch", self.request, self.context, **params)
 
 
 Note the following:
