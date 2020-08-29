@@ -49,8 +49,7 @@ setup(
     zip_safe=False,
     install_requires=[
         "setuptools",
-        "senaite.lims>=1.3.0",
-        "senaite.lims<2.0.0",
+        "senaite.lims>=1.3.4",
         "requests",
     ],
     extras_require={
