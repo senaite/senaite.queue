@@ -35,7 +35,9 @@ class IQueueControlPanel(Interface):
         description=_(
             "Default number of objects that will be handled in a single task. "
             "A value of 0 disables queuing of tasks functionality at all, "
-            "specific tasks below included."),
+            "specific tasks below included. "
+            "Default value: 10"
+        ),
         default=10,
         required=True,
     )
@@ -44,8 +46,8 @@ class IQueueControlPanel(Interface):
         title=_(u"Maximum retries"),
         description=_(
             "Number of times a task will be re-queued before being considered "
-            "as failed and removed from the queue. A value of 0 disables the"
-            "re-queue of failing tasks."
+            "as failed. A value of 0 disables the re-queue of failing tasks. "
+            "Default value: 3"
         ),
         default=3,
         required=True,
@@ -60,18 +62,9 @@ class IQueueControlPanel(Interface):
             "userland will fail and will be retried up to 3 times. This "
             "setting makes the thread that handles the task to take some time "
             "to complete, thus preventing threads from userland to be delayed "
-            "or fail. Default value: 2"
+            "or fail. Default value: 3"
         ),
-        default=2,
-        required=True,
-    )
-
-    max_stats_hours = schema.Int(
-        title=_(u"Hours to keep in statistics"),
-        description=_(
-            "Maximum number of hours backwards to keep statistics"
-        ),
-        default=8,
+        default=3,
         required=True,
     )
 
@@ -80,7 +73,9 @@ class IQueueControlPanel(Interface):
         description=_(
             "Number of analyses that will be handled in a single task when "
             "assigned to a worksheet. Overrides default's for action 'assign'. "
-            "A value of 0 disables the queue for this specific action."),
+            "A value of 0 disables the queue for this specific action. "
+            "Default value: 10"
+        ),
         default=10,
         required=True,
     )
@@ -90,7 +85,9 @@ class IQueueControlPanel(Interface):
         description=_(
             "Number of analyses that will be handled in a single task when "
             "unassigned from a worksheet. Overrides default's for 'unassign' "
-            "action. A value of 0 disables the queue for this specific action."),
+            "action. A value of 0 disables the queue for this specific action. "
+            "Default value: 10"
+        ),
         default=10,
         required=True,
     )
@@ -99,8 +96,10 @@ class IQueueControlPanel(Interface):
         title=_(u"Number of analyses to submit per task"),
         description=_(
             "Number of analyses that will be handled in a single task when "
-            "result is submitted. Overrides default's for 'submit' action. "
-            "A value of 0 disables the queue for this specific action."),
+            "results are submitted. Overrides default's for 'submit' action. "
+            "A value of 0 disables the queue for this specific action. "
+            "Default value: 10"
+        ),
         default=10,
         required=True,
     )
@@ -110,7 +109,9 @@ class IQueueControlPanel(Interface):
         description=_(
             "Number of analyses that will be handled in a single task when "
             "the analysis is verified. Overrides default's for 'reject' "
-            "action. A value of 0 disables the queue for this specific action"),
+            "action. A value of 0 disables the queue for this specific action. "
+            "Default value: 10"
+        ),
         default=10,
         required=True,
     )
@@ -120,7 +121,9 @@ class IQueueControlPanel(Interface):
         description=_(
             "Number of analyses that will be handled in a single task when "
             "the analysis is retracted. Overrides default's for 'retract' "
-            "action. A value of 0 disables the queue for this specific action"),
+            "action. A value of 0 disables the queue for this specific action. "
+            "Default value: 10"
+        ),
         default=10,
         required=True,
     )
@@ -130,7 +133,9 @@ class IQueueControlPanel(Interface):
         description=_(
             "Number of analyses that will be handled in a single task when "
             "the analysis is rejected. Overrides default's for 'reject' "
-            "action. A value of 0 disables the queue for this specific action"),
+            "action. A value of 0 disables the queue for this specific action. "
+            "Default value: 10"
+        ),
         default=10,
         required=True,
     )
@@ -140,8 +145,10 @@ class IQueueControlPanel(Interface):
         description=_(
             "Number of seconds to wait for a process in queue to be finished "
             "before being considered as failed. Failed processes will be "
-            "enqueued again. Minimum value is 30"),
-        default=300,
+            "enqueued again. "
+            "Minimum value: 30, Default value: 120"
+        ),
+        default=120,
         required=True,
     )
 
