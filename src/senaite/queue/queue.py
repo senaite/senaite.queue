@@ -290,13 +290,13 @@ class QueueUtility(object):
             logger.warn(
                 "Task {} ({}) in the queue already".format(
                 task.task_uid, task.name))
-            return False
+            return None
 
         # Do not add the task if unique and task for same context and name
         if unique and self.has_tasks_for(task.context_uid, name=task.name):
             logger.debug("Task for {} and {} in the queue already".format(
                     task.name, task.context_path))
-            return False
+            return None
 
         # Append to the list of tasks
         tasks = self._storage.tasks

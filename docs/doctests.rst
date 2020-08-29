@@ -2,6 +2,7 @@ Doctests
 ========
 
 .. include:: ../src/senaite/queue/tests/doctests/API.rst
+.. include:: ../src/senaite/queue/tests/doctests/TaskFailure.rst
 .. include:: ../src/senaite/queue/tests/doctests/WorksheetAnalysesAssign.rst
 .. include:: ../src/senaite/queue/tests/doctests/WorksheetAnalysesUnassign.rst
 .. include:: ../src/senaite/queue/tests/doctests/WorksheetAnalysesSubmit.rst
@@ -9,4 +10,3 @@ Doctests
 .. include:: ../src/senaite/queue/tests/doctests/WorksheetAnalysesRetract.rst
 .. include:: ../src/senaite/queue/tests/doctests/WorksheetAnalysesVerify.rst
 .. include:: ../src/senaite/queue/tests/doctests/SampleWithQueuedAnalyses.rst
-.. include:: ../src/senaite/queue/tests/doctests/TaskFailure.rst

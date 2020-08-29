@@ -295,8 +295,7 @@ def queue_task(name, request, context, username=None, unique=False,
         task.username = username
 
     # Add the task to the queue
-    queue = get_queue()
-    return queue.add(task, unique=unique)
+    return get_queue().add(task, unique=unique)
 
 
 def queue_action(brain_object_uid, action, context=None, request=None):

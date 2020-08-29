@@ -43,6 +43,27 @@ Create some basic objects for the test:
     >>> category = _api.create(setup.bika_analysiscategories, "AnalysisCategory", title="Metals", Department=department)
     >>> Cu = _api.create(setup.bika_analysisservices, "AnalysisService", title="Copper", Keyword="Cu", Price="15", Category=category.UID(), Accredited=True)
 
+
+Retrieve the Queue Utility
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The queue utility is the engine from `senaite.queue` that is responsible of
+providing access to the queue storage. Is a global utility, acting like a
+singleton, that guarantees no conflicts when multiple threads operate against
+the queue. The following function from the `api` returns the queue utility:
+
+    >>> api.get_queue()
+    <senaite.queue.queue.QueueUtility object at ...
+
+As a rule of thumb, always use `api.get_queue()` to operate with this utility
+and don't store it in local variables. Otherwise you might get a
+`StorageTransactionError: Duplicate tpc_begin calls for same transaction`.
+
+This error is rised because of a deadlock when same transaction opens
+multiple connections to same storage. Further information:
+https://github.com/zopefoundation/ZODB/issues/258
+
+
 Queue a workflow action
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -89,7 +110,6 @@ And the queue is empty:
     >>> api.get_queue().is_empty()
     True
 
-
 Queue a task
 ~~~~~~~~~~~~
 
@@ -113,6 +133,57 @@ The task has been added to the queue:
     >>> queued_task = api.get_queue().get_task(task.task_uid)
     >>> queued_task == task
     True
+
+Do a manual dispatch to flush the queue:
+
+    >>> test_utils.dispatch()
+    "Task 'task_generic_action' for ... processed"
+
+    >>> api.is_queued(sample)
+    False
+
+    >>> api.get_queue().is_empty()
+    True
+
+
+Queue a task twice
+~~~~~~~~~~~~~~~~~~
+
+By default, system allows us to queue multiple tasks for same object, even with
+same task name:
+
+    >>> sample = new_sample()
+    >>> request = _api.get_request()
+    >>> task_name = api.get_action_task_name("receive")
+    >>> task1 = api.queue_task(task_name, request, sample)
+    >>> task1
+    {...}
+
+    >>> len(api.get_queue())
+    1
+
+    >>> task2 = api.queue_task(task_name, request, sample)
+    >>> task2
+    {...}
+
+    >>> task1 == task2
+    False
+
+    >>> task1.task_uid == task.task_uid
+    False
+
+    >>> len(api.get_queue())
+    2
+
+But we can force the task to only be added if there is no other task for same
+object:
+
+    >>> task3 = api.queue_task(task_name, request, sample, unique=True)
+    >>> task3 is None
+    True
+
+    >>> len(api.get_queue())
+    2
 
 Queue a task without adapter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
