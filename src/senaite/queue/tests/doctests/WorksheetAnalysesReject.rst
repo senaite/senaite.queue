@@ -23,7 +23,6 @@ Needed imports:
     >>> from plone.app.testing import TEST_USER_ID
     >>> from plone.app.testing import TEST_USER_PASSWORD
     >>> from senaite.queue import api
-    >>> from senaite.queue.interfaces import IQueued
     >>> from senaite.queue.tests import utils as test_utils
 
 Functional Helpers:

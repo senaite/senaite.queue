@@ -18,12 +18,9 @@ Needed imports:
     >>> from plone.app.testing import TEST_USER_ID
     >>> from plone.app.testing import TEST_USER_PASSWORD
     >>> from senaite.queue import api
-    >>> from senaite.queue.interfaces import IQueued
     >>> from senaite.queue.tests import utils as test_utils
     >>> from bika.lims import api as _api
     >>> from bika.lims.workflow import doActionFor
-    >>> from zope.interface import alsoProvides
-    >>> from zope.interface import noLongerProvides
 
 Functional Helpers:
 
