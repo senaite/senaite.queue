@@ -35,6 +35,8 @@ Table of Contents:
    quickstart
    extend
    doctests
+   release_notes
+   changelog
 
 
 .. Links

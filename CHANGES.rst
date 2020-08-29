@@ -4,13 +4,12 @@ Changelog
 1.0.2 (unreleased)
 ------------------
 
+- #7 Redux and better performance
 - #6 Allow the prioritization of tasks
 - #5 No actions can be done to worksheets with queued jobs
 
 1.0.1 (2020-02-09)
 ------------------
-
-**Added**
 
 - Allow to manually assign the username to the task to be queued
 - Support for failed tasks
