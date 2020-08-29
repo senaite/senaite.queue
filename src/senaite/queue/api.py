@@ -70,10 +70,25 @@ def is_queue_enabled(task_name_or_action=_DEFAULT_CHUNK_SIZE_ID):
     return get_chunk_size(task_name_or_action) > 0
 
 
-def disable_queue_for(task_name_or_action):
+def disable_queue(task_name_or_action=_DEFAULT_CHUNK_SIZE_ID):
     """Disables the queue for the given action
     """
     set_chunk_size(task_name_or_action, 0)
+
+
+def enable_queue(task_name_or_action=_DEFAULT_CHUNK_SIZE_ID):
+    """Enable the queue for the given action
+    """
+    default = get_chunk_size(_DEFAULT_CHUNK_SIZE_ID)
+    if default <= 0:
+        default = 10
+    set_chunk_size(task_name_or_action, default)
+
+
+def set_default_chunk_size(value):
+    """Sets the default chunk size
+    """
+    set_chunk_size(_DEFAULT_CHUNK_SIZE_ID, value)
 
 
 def set_chunk_size(task_name_or_action, chunk_size):
@@ -85,7 +100,7 @@ def set_chunk_size(task_name_or_action, chunk_size):
         plone_api.portal.set_registry_record(registry_id, chunk_size)
 
 
-def get_chunk_size(task_name_or_action):
+def get_chunk_size(task_name_or_action=_DEFAULT_CHUNK_SIZE_ID):
     """Returns the default chunk size for a given task. If the queue is not
     enabled for the task or for the whole queue, returns 0
     """
@@ -167,7 +182,7 @@ def get_action_task_name(action):
     return "task_action_{}".format(action)
 
 
-def get_min_seconds_task(default=2):
+def get_min_seconds_task(default=3):
     """Returns the minimum number of seconds to book per task
     """
     min_seconds = get_queue_registry_record(_MIN_SECONDS_TASK_ID)
@@ -177,7 +192,7 @@ def get_min_seconds_task(default=2):
     return min_seconds
 
 
-def get_max_seconds_task(default=300):
+def get_max_seconds_task(default=120):
     """Returns the max number of seconds to wait for a task to finish
     """
     max_seconds = get_queue_registry_record(_MAX_SECONDS_TASK_ID)
@@ -251,6 +266,14 @@ def queue_task(name, request, context, username=None, unique=False,
     # Check if there is a registered adapter able to handle this task
     adapter = queryAdapter(context, IQueuedTaskAdapter, name=name)
     if not adapter:
+        # If this is an action, try to fallback to default action adapter
+        if name.startswith("task_action_"):
+            action = name.replace("task_action_", "")
+            kw = kw or {}
+            uids = kw.get("uids") or [_api.get_uid(context)]
+            kw.update({"action": action, "uids": uids})
+            return queue_task("task_generic_action", request, context, username,
+                              unique=unique, priority=priority, **kw)
         raise ValueError(
             "No IQueuedTaskAdapter found for task '{}' and context '{}'".format(
                 name, _api.get_path(context))
@@ -304,8 +327,7 @@ def queue_action(brain_object_uid, action, context=None, request=None):
         "retries": get_max_retries(),
         "uids": uids,
     }
-    queue_task(task_name, request, context, **kwargs)
-    return True
+    return queue_task(task_name, request, context, **kwargs)
 
 
 def queue_assign_analyses(worksheet, analyses, ws_template=None, request=None):

@@ -68,7 +68,7 @@ Disable the queue for `task_assign_analyses` so we can create Worksheets to test
 generic actions (`assign` action is not a generic one because involves handling
 a worksheet, slot positions, etc.).
 
-    >>> api.disable_queue_for("task_assign_analyses")
+    >>> api.disable_queue("task_assign_analyses")
     >>> api.is_queue_enabled("task_assign_analyses")
     False
 
@@ -78,6 +78,9 @@ against a Sample in "received" status.
     >>> rejection_reasons = [{"checkbox": "on", "textfield-1": "Invalid"}]
     >>> setup.setRejectionReasons(rejection_reasons)
 
+Make the test a bit faster by reducing the min_seconds:
+
+    >>> test_utils.set_min_seconds(1)
 
 Queued analyses
 ~~~~~~~~~~~~~~~

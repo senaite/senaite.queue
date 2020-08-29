@@ -20,6 +20,7 @@
 
 import transaction
 from DateTime import DateTime
+from plone import api as plone_api
 from senaite.queue import api
 from senaite.queue.browser.views.consumer import QueueConsumerView
 
@@ -92,3 +93,10 @@ def filter_by_state(brains_or_objects, state):
     """
     objs = map(_api.get_object, brains_or_objects)
     return filter(lambda obj: _api.get_review_status(obj) == state, objs)
+
+
+def set_min_seconds(min_seconds):
+    """Set the minimum seconds to book per task
+    """
+    registry_id = api.resolve_queue_registry_record("min_seconds_task")
+    plone_api.portal.set_registry_record(registry_id, min_seconds)

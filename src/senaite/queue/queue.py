@@ -312,7 +312,7 @@ class QueueUtility(object):
         self._storage.tasks = tasks
 
         logger.info("Added task {}: {}".format(task.name, task.context_path))
-        return True
+        return task
 
 
 class QueueTask(dict):

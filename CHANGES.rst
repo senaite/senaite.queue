@@ -4,6 +4,7 @@ Changelog
 1.0.2 (unreleased)
 ------------------
 
+- #7 Allow to queue generic worflow actions without an specific adapter
 - #7 Redux and better performance
 - #6 Allow the prioritization of tasks
 - #5 No actions can be done to worksheets with queued jobs

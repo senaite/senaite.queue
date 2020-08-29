@@ -65,9 +65,13 @@ Disable the queue for `task_assign_analyses` so we can create Worksheets to test
 generic actions (`assign` action is not a generic one because involves handling
 a worksheet, slot positions, etc.).
 
-    >>> api.disable_queue_for("task_assign_analyses")
+    >>> api.disable_queue("task_assign_analyses")
     >>> api.is_queue_enabled("task_assign_analyses")
     False
+
+Make the test a bit faster by reducing the min_seconds:
+
+    >>> test_utils.set_min_seconds(1)
 
 
 Submit transition
@@ -200,7 +204,7 @@ As we've seen, the queue for this task is enabled:
 But we can disable the queue for this task if we set the number of items to
 process per task to 0:
 
-    >>> api.disable_queue_for(action)
+    >>> api.disable_queue(action)
     >>> api.is_queue_enabled(action)
     False
     >>> api.get_chunk_size(action)

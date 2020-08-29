@@ -54,6 +54,10 @@ Create some basic objects for the test:
     >>> category = _api.create(setup.bika_analysiscategories, "AnalysisCategory", title="Metals", Department=department)
     >>> Cu = _api.create(setup.bika_analysisservices, "AnalysisService", title="Copper", Keyword="Cu", Price="15", Category=category.UID(), Accredited=True)
 
+Make the test a bit faster by reducing the min_seconds:
+
+    >>> test_utils.set_min_seconds(1)
+
 Manual assignment of analyses to a Worksheet
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -159,7 +163,7 @@ As we've seen, the queue for this task is enabled:
 But we can disable the queue for this task if we set the number of items to
 process per task to 0:
 
-    >>> api.disable_queue_for(task_name)
+    >>> api.disable_queue(task_name)
     >>> api.is_queue_enabled(task_name)
     False
     >>> api.get_chunk_size(task_name)

@@ -98,7 +98,7 @@ class QueueConsumerView(BrowserView):
         except (RuntimeError, Exception) as e:
             self.queue.fail(task)
             tbex = traceback.format_exc()
-            self.queue.fail(task, error_message="\n".join([e.mesage, tbex]))
+            self.queue.fail(task, error_message="\n".join([e.message, tbex]))
             log_mode = "error"
             msg = "{}: {} [SKIP]\n{}".format(task.name, e.message, tbex)
 

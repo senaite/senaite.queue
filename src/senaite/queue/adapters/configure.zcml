@@ -9,6 +9,13 @@
     provides="senaite.queue.interfaces.IQueuedTaskAdapter"
     for="bika.lims.interfaces.IWorksheet" />
 
+  <!-- Adapter for workflow generic actions -->
+  <adapter
+    name="task_generic_action"
+    factory=".QueuedActionTaskAdapter"
+    provides="senaite.queue.interfaces.IQueuedTaskAdapter"
+    for="*" />
+
   <!-- Adapter for analyses action queue task -->
   <adapter
     name="task_action_submit"
