@@ -1,5 +1,5 @@
-Assignment of analyses to a Worksheet
--------------------------------------
+Assignment of analyses
+----------------------
 
 SENAITE Queue supports the `assign` transition for analyses, either for when
 the analyses are assigned manually (via `Add analyses` view from Worksheet) or
