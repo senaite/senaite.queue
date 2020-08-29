@@ -93,21 +93,18 @@ def remove_legacy_storage(portal):
 
     # Main legacy tool for queue management of tasks
     legacy_storage_tool_id = "senaite.queue.main.storage"
+    legacy_storage_tasks_id = "senaite.queue.main.storage.tasks"
     setup = _api.get_setup()
     annotations = IAnnotations(setup)
-    main_storage = annotations.get(legacy_storage_tool_id) or {}
-    if not main_storage:
-        logger.info("No legacy storage found [SKIP]")
-        return
 
     # Walk through the tasks and remove IQueued marker interface
-    tasks_storage = main_storage.get("senaite.queue.main.storage.tasks") or {}
+    tasks_storage = annotations.get(legacy_storage_tasks_id) or {}
 
     # Queued tasks
-    map(remove_queued_task, tasks_storage.get("tasks"))
+    map(remove_queued_task, tasks_storage.get("tasks", []))
 
     # Failed tasks
-    map(remove_queued_task, tasks_storage.get("failed"))
+    map(remove_queued_task, tasks_storage.get("failed", []))
 
     # Current task
     remove_queued_task(tasks_storage.get("current"))
@@ -116,7 +113,11 @@ def remove_legacy_storage(portal):
     remove_queued_task(tasks_storage.get("processed"))
 
     # Flush main storage annotation
-    del annotations[legacy_storage_tool_id]
+    if annotations.get(legacy_storage_tool_id) is not None:
+        del annotations[legacy_storage_tool_id]
+
+    if annotations.get(legacy_storage_tasks_id) is not None:
+        del annotations[legacy_storage_tasks_id]
 
     logger.info("Removing legacy storage [DONE]")
 
