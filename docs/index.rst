@@ -23,8 +23,6 @@ match additional requirements.
 
 This documentation is divided in different parts. We recommend that you get
 started with :doc:`installation` and then head over to the :doc:`quickstart`.
-Please check out the :doc:`api` documentation for internals about
-`senaite.jsonapi`.
 
 Table of Contents:
 
