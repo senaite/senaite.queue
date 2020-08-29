@@ -31,9 +31,7 @@ from zope.interface import implements
 from bika.lims import api
 from bika.lims.utils import tmpID
 
-# The id of the storage of queued tasks. Having a different storage for the
-# queue itself and the tasks reduces the chance of database conflicts when a
-# task is added to the queue while another task is being processed
+# The id of the storage for queued tasks
 TASKS_QUEUE_STORAGE_TOOL_ID = "senaite.queue.main.storage.tasks"
 
 # Maximum number of concurrent tasks to be processed at a time
