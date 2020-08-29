@@ -1,5 +1,5 @@
-Retract transition (analyses from worksheet)
---------------------------------------------
+Retract transition
+------------------
 
 SENAITE Queue comes with an adapter for generic actions (e.g. submit, unassign).
 Generic actions don't require additional logic other than transitioning and this
