@@ -1,9 +1,6 @@
 <?xml version="1.0"?>
 <layers>
-
-  <!-- Remove Browser Layer -->
   <layer name="senaite.queue"
          interface="senaite.panic.interfaces.ISenaiteQueueLayer"
-         remove="True"/>
-
+         remove="true" />
 </layers>

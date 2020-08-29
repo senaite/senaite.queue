@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<object xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+	name="portal_actions"
+	meta_type="Plone Actions Tool">
+
+	<object name="portal_tabs">
+		<object name="queue_tasks" remove="true" />
+	</object>
+</object>

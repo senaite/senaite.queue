@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<componentregistry>
+  <utilities>
+    <utility interface="senaite.queue.interfaces.IQueueUtility" remove="true" />
+  </utilities>
+</componentregistry>
