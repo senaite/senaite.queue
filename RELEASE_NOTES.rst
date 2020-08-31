@@ -10,7 +10,7 @@ interface is no longer used neither. Most of the base code has been refactored
 keeping in mind the following objectives:
 
 * Less complexity: less code, better code
-* Less chance of transaction commits
+* Less chance of transaction commit conflicts
 * Boost performance: better experience, with no delays
 
 All these changes also makes the add-on easier to extend and maintain. The
