@@ -54,8 +54,7 @@ Contribute
 ----------
 
 We want contributing to SENAITE.QUEUE to be fun, enjoyable, and educational
-for anyone, and everyone. This project adheres to the `Contributor Covenant
-<https://github.com/senaite/senaite.queue/blob/master/CODE_OF_CONDUCT.md>`_.
+for anyone, and everyone. This project adheres to the `Contributor Covenant`_.
 
 By participating, you are expected to uphold this code. Please report
 unacceptable behavior.
@@ -64,19 +63,17 @@ Contributions go far beyond pull requests and commits. Although we love giving
 you the opportunity to put your stamp on SENAITE.QUEUE, we also are thrilled
 to receive a variety of other contributions.
 
-Please, read `Contributing to senaite.queue document
-<https://github.com/senaite/senaite.queue/blob/master/CONTRIBUTING.md>`_.
+Please, read `Contributing to senaite.queue document`_.
 
-If you wish to contribute with translations, check the project site on
-`Transifex <https://www.transifex.com/senaite/senaite-queue/>`_.
+If you wish to contribute with translations, check the project site on `Transifex`_.
 
 
 Feedback and support
 --------------------
 
-* `Community site <https://community.senaite.org/>`_
-* `Gitter channel <https://gitter.im/senaite/Lobby>`_
-* `Users list <https://sourceforge.net/projects/senaite/lists/senaite-users>`_
+* `Community site`_
+* `Gitter channel`_
+* `Users list`_
 
 
 License
@@ -85,15 +82,20 @@ License
 **SENAITE.QUEUE** Copyright (C) 2019-2020 RIDING BYTES & NARALABS
 
 This program is free software; you can redistribute it and/or modify it under
-the terms of the `GNU General Public License version 2
-<https://github.com/senaite/senaite.queue/blob/master/LICENSE>`_ as published
+the terms of the `GNU General Public License version 2`_ as published
 by the Free Software Foundation.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 .. Links
 
 .. _SENAITE LIMS: https://www.senaite.com
+.. _Contributor Covenant: https://github.com/senaite/senaite.queue/blob/master/CODE_OF_CONDUCT.md
+.. _Contributing to senaite.queue document: https://github.com/senaite/senaite.queue/blob/master/CONTRIBUTING.md
+.. _Transifex: https://www.transifex.com/senaite/senaite-queue
+.. _Community site: https://community.senaite.org/
+.. _Gitter channel: https://gitter.im/senaite/Lobby
+.. _Users list: https://sourceforge.net/projects/senaite/lists/senaite-users
+.. _GNU General Public License version 2: https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt

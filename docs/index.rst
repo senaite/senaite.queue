@@ -36,6 +36,7 @@ Table of Contents:
    doctests
    release_notes
    changelog
+   license
 
 
 .. Links
