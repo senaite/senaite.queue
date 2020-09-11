@@ -44,7 +44,7 @@
       </style>
     </metal:block>
   </head>
-  <body>
+  <body tal:define="portal_url nocall:context/portal_url">
 
     <!-- Title -->
     <metal:title fill-slot="content-title">
@@ -81,7 +81,10 @@
               <td tal:content="task/created_date|None"/>
               <td tal:content="task/request/AUTHENTICATED_USER|None"/>
               <td tal:content="task/request/REMOTE_ADDR"/>
-              <td tal:content="task/context_path"/>
+              <td tal:define="context_path task/context_path">
+                <a tal:attributes="href python: '{}{}'.format(portal_url, context_path)"
+                   tal:content="context_path"/>
+              </td>
               <td tal:content="task/name"/>
               <td tal:content="task/status"/>
               <td class="err_msg" tal:content="task/error_message|None"/>
