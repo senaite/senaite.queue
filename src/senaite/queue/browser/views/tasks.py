@@ -60,12 +60,18 @@ class TasksView(BrowserView):
         # Form submit toggle
         form_submitted = form.get("submitted", False)
         form_remove_failed = form.get("button_remove_failed", False)
+        form_requeue_failed = form.get("button_requeue_failed", False)
 
         # Handle remove all failed tasks
         if form_submitted and form_remove_failed:
             failed = self.get_failed_tasks()
             tuids = map(lambda t: t.get("task_uid"), failed)
             map(self.remove_task, tuids)
+
+        elif form_submitted and form_requeue_failed:
+            failed = self.get_failed_tasks()
+            tuids = map(lambda t: t.get("task_uid"), failed)
+            map(self.requeue_task, tuids)
 
         return self.template()
 

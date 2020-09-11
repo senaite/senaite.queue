@@ -114,6 +114,14 @@
           <input type="hidden" name="submitted" value="1"/>
           <input tal:replace="structure context/@@authenticator/authenticator"/>
 
+          <!-- Requeue all failed -->
+          <input class="btn btn-default btn-primary btn-sm"
+                type="submit"
+                id="button_requeue_failed"
+                name="button_requeue_failed"
+                i18n:attributes="value"
+                value="Requeue failed tasks"/>
+
           <!-- Remove all failed -->
           <input class="btn btn-danger btn-sm"
                  type="submit"
@@ -121,6 +129,7 @@
                  name="button_remove_failed"
                  i18n:attributes="value"
                  value="Remove failed tasks"/>
+
         </form>
       </div>
     </metal:core>
