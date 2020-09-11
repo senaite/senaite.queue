@@ -303,7 +303,13 @@ class QueueUtility(object):
         task.update({"status": "queued"})
         tasks.append(task)
 
-        # Sort by priority + created reversed
+        # Sort by priority + created reverse
+        # We multiply the priority for 300 sec. (5 minutes) and then we sum the
+        # result to the time the task was created. This way, we ensure tasks
+        # priority at the same time we guarantee older, with low priority
+        # tasks don't fall into the cracks.
+        # We sort the list reversed because pop() always return the last item
+        # of the list and we are sorting by priority (lesser value, the better)
         tasks = sorted(tasks, key=lambda t: (t.created + (300 * t.priority)),
                        reverse=True)
 
