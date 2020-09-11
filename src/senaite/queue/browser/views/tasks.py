@@ -55,6 +55,18 @@ class TasksView(BrowserView):
             self.requeue_task(requeue_uid)
             return self.redirect()
 
+        form = self.request.form
+
+        # Form submit toggle
+        form_submitted = form.get("submitted", False)
+        form_remove_failed = form.get("button_remove_failed", False)
+
+        # Handle remove all failed tasks
+        if form_submitted and form_remove_failed:
+            failed = self.get_failed_tasks()
+            tuids = map(lambda t: t.get("task_uid"), failed)
+            map(self.remove_task, tuids)
+
         return self.template()
 
     def redirect(self, url=None):
@@ -79,8 +91,7 @@ class TasksView(BrowserView):
 
     def get_tasks(self):
         # Failed tasks
-        failed = self.queue_tool._storage.failed_tasks
-        tasks = map(lambda task: self.get_task_data(dict(task), "failed"), failed)
+        tasks = self.get_failed_tasks()
 
         # Undergoing task
         current = self.queue_tool._storage.running_tasks
@@ -95,6 +106,11 @@ class TasksView(BrowserView):
 
         # Remove empties
         return filter(None, tasks)
+
+    def get_failed_tasks(self):
+        failed = self.queue_tool._storage.failed_tasks
+        tasks = map(lambda task: self.get_task_data(dict(task), "failed"), failed)
+        return tasks
 
     def get_task_data(self, task, status_id):
         """Adds additional metadata to the task for the template
