@@ -41,9 +41,6 @@ _DEFAULT_MAX_RETRIES_ID = "senaite.queue.max_retries"
 # Registry key for the minimum seconds to book per task
 _MIN_SECONDS_TASK_ID = "senaite.queue.min_seconds_task"
 
-# Registry key for the number of seconds to wait for a queued task to succeed
-_MAX_SECONDS_TASK_ID = "senaite.queue.max_seconds_unlock"
-
 
 def get_queue_image(name, **kwargs):
     """Returns a well-formed image
@@ -195,7 +192,8 @@ def get_min_seconds_task(default=3):
 def get_max_seconds_task(default=120):
     """Returns the max number of seconds to wait for a task to finish
     """
-    max_seconds = get_queue_registry_record(_MAX_SECONDS_TASK_ID)
+    registry_id = "senaite.queue.max_seconds_unlock"
+    max_seconds = _api.get_registry_record(registry_id)
     max_seconds = _api.to_int(max_seconds, default)
     if max_seconds < 30:
         max_seconds = 30
@@ -322,7 +320,6 @@ def queue_action(brain_object_uid, action, context=None, request=None):
     task_name = get_action_task_name(action)
     kwargs = {
         "action": action,
-        "max_seconds": 60,
         "retries": get_max_retries(),
         "uids": uids,
     }
@@ -348,7 +345,6 @@ def queue_assign_analyses(worksheet, analyses, ws_template=None, request=None):
     task_name = "task_assign_analyses"
     kwargs = {
         "uids": uids,
-        "max_seconds": 60,
         "wst_uid": ws_template and _api.get_uid(ws_template) or None,
     }
     queue_task(task_name, request, worksheet, **kwargs)

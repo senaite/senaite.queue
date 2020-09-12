@@ -194,6 +194,12 @@ class QueueUtility(object):
             # Check if we've reached the max number of remaining retries
             if task.retries > 0:
                 task["retries"] -= 1
+                # Increase the max number of seconds to wait before this task
+                # is being considered stuck. Might happen the task is considered
+                # failed because there was no enought time for the task to
+                # complete
+                max_sec = task.get("max_seconds", 60)
+                task.update({"max_seconds": max_sec * 2})
                 self._add(task)
             else:
                 # Add in failed tasks
