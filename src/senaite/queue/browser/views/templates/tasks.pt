@@ -92,13 +92,13 @@
               <td class="err_msg" tal:content="task/error_message|None"/>
               <td tal:content="task/retries"/>
               <td>
-                <a class="btn btn-default btn-primary btn-sm"
+                <a class="btn btn-danger btn-sm"
                    i18n:translate=""
                    tal:condition="python: task['status'] in ['queued', 'failed']"
                    tal:attributes="href python: 'queue_tasks?remove={}'.format(task['task_uid'])">Remove</a>
-                <a class="btn btn-danger btn-sm"
+                <a class="btn btn-default btn-primary btn-sm"
                    i18n:translate=""
-                   tal:condition="python: task['status'] in ['failed']"
+                   tal:condition="python: task['status'] in ['queued', 'failed']"
                    tal:attributes="href python: 'queue_tasks?requeue={}'.format(task['task_uid'])">Requeue</a>
               </td>
             </tr>
