@@ -127,6 +127,10 @@ class TasksView(BrowserView):
         task["task_status_id"] = status_id
         task["task_status"] = _(status_id)
         task["created_date"] = datetime.fromtimestamp(int(created)).isoformat()
+        started = task.get("started")
+        if started:
+            started = datetime.fromtimestamp(int(started)).isoformat()
+        task["started"] = started
         return task
 
     def get_task_json(self, task):
