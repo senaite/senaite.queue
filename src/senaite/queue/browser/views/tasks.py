@@ -130,7 +130,7 @@ class TasksView(BrowserView):
         started = task.get("started")
         if started:
             started = datetime.fromtimestamp(int(started)).isoformat()
-        task["started"] = started
+        task["started_date"] = started
         return task
 
     def get_task_json(self, task):
