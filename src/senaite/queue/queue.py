@@ -219,15 +219,10 @@ class QueueUtility(object):
                                                         task.context_path))
 
     def success(self, task):
-        """Removes the task from the running tasks
+        """Removes the task from the queue
         """
         with self.__lock:
-            # Get the running tasks, but the current one
-            tasks = self._storage.running_tasks
-            other_tasks = filter(lambda t: t.task_uid != task.task_uid, tasks)
-            if len(other_tasks) != len(tasks):
-                # Remove the task from the pool of running tasks
-                self._storage.running_tasks = other_tasks
+            self._remove(task.task_uid)
 
     def get_task(self, task_uid):
         """Returns the task for for the TUID passed in
@@ -281,18 +276,27 @@ class QueueUtility(object):
         """Removes a task from the queue
         """
         with self.__lock:
-            task = self.get_task(task_uid)
-            if not task:
-                return
+            self._remove(task_uid)
 
-            if task.status == "queued":
-                self._storage.tasks = filter(
-                    lambda t: t.task_uid != task_uid,
-                    self._storage.tasks)
-            elif task.status == "failed":
-                self._storage.failed_tasks = filter(
-                    lambda t: t.task_uid != task_uid,
-                    self._storage.failed_tasks)
+    def _remove(self, task_uid):
+        task = self.get_task(task_uid)
+        if not task:
+            return
+
+        if task.status == "queued":
+            self._storage.tasks = filter(
+                lambda t: t.task_uid != task_uid,
+                self._storage.tasks)
+
+        elif task.status == "failed":
+            self._storage.failed_tasks = filter(
+                lambda t: t.task_uid != task_uid,
+                self._storage.failed_tasks)
+
+        elif task.status == "running":
+            self._storage.running_tasks = filter(
+                lambda t: task_uid != task_uid,
+                self._storage.running_tasks)
 
     def _add(self, task, unique=False):
         # Only QueueTask type is supported
