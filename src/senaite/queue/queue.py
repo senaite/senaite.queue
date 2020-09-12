@@ -144,7 +144,7 @@ class QueueUtility(object):
             return
 
         # Re-queue or add to pool of failed
-        map(self._fail, stuck)
+        map(lambda t: self._fail(t, "Timeout"), stuck)
 
     def pop(self):
         """Returns the next task to process, if any. Otherwise, return None
