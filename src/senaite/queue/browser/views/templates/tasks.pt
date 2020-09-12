@@ -62,6 +62,7 @@
             <th i18n:translate="">Created</th>
             <th i18n:translate="">User</th>
             <th i18n:translate="">Remote Addr</th>
+            <th i18n:translate="">Started</th>
             <th i18n:translate="">Context</th>
             <th i18n:translate="">Type</th>
             <th i18n:translate="">Status</th>
@@ -81,6 +82,7 @@
               <td tal:content="task/created_date|None"/>
               <td tal:content="task/request/AUTHENTICATED_USER|None"/>
               <td tal:content="task/request/REMOTE_ADDR"/>
+              <td tal:content="task/started|None"/>
               <td tal:define="context_path task/context_path">
                 <a tal:attributes="href python: '{}{}'.format(portal_url, context_path)"
                    tal:content="context_path"/>
