@@ -199,7 +199,15 @@ class QueueUtility(object):
                 # failed because there was no enought time for the task to
                 # complete
                 max_sec = task.get("max_seconds", 60)
-                task.update({"max_seconds": max_sec * 2})
+
+                # Update the create timemillis to make room for other tasks,
+                # even if it keeps failing again and again (create is used to
+                # sort tasks, together with priority)
+                created = time.time()
+                task.update({
+                    "created": created,
+                    "max_seconds": max_sec * 2
+                })
                 self._add(task)
             else:
                 # Add in failed tasks
