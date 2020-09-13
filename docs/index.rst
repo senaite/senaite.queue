@@ -23,7 +23,8 @@ match additional requirements.
 
 This documentation is divided in different parts. We recommend that you get
 started with :doc:`installation` and then head over to the :doc:`quickstart`.
-Please check out the :doc:`doctests` for internals about `senaite.queue`.
+Please check out :doc:`handling` and :doc:`doctests` for internals about
+`senaite.queue`.
 
 Table of Contents:
 
@@ -32,6 +33,7 @@ Table of Contents:
 
    installation
    quickstart
+   handling
    extend
    doctests
    release_notes

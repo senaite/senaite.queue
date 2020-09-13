@@ -6,6 +6,8 @@ have `SENAITE LIMS`_ and `senaite.queue` already installed, with a reserved zeo
 client listening at port 8089 and a regular zeo client listening at port 8080.
 Please read the :doc:`installation` for further details.
 
+.. _QueueControlPanel:
+
 Queue control panel
 -------------------
 
