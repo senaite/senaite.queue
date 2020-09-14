@@ -106,6 +106,7 @@ class QueueUtility(object):
 
     def __init__(self):
         self.__lock = threading.Lock()
+        self._locked = None
         self._storage = QueueStorage()
 
     def __len__(self):
@@ -121,8 +122,18 @@ class QueueUtility(object):
         """Returns whether a task is being processed
         """
         with self.__lock:
+            # Check if the queue has been locked
+            if self._locked is not None:
+                return True
+
             # Check if the number of running tasks is above max
             return len(self._storage.running_tasks) >= MAX_CONCURRENT_TASKS
+
+    def lock(self, timeout=300):
+        """Locks the queue
+        """
+        with self.__lock:
+            self._locked = int(time.time()) + timeout
 
     def purge(self):
         """Purges running tasks that got stuck for too long
@@ -140,7 +151,9 @@ class QueueUtility(object):
         tasks = self._storage.running_tasks
         stuck = filter(is_stuck, tasks)
         if not stuck:
-            # No running tasks got stuck. Do nothing
+            # No running tasks got stuck. Check _locked
+            if api.to_int(self._locked, 0) > int(time.time()):
+                self._locked = None
             return
 
         # Re-queue or add to pool of failed
@@ -179,6 +192,7 @@ class QueueUtility(object):
         """
         with self.__lock:
             self._fail(task, error_message=error_message)
+            self._locked = None
 
     def _fail(self, task, error_message=None):
         # Get the running tasks, but the current one
@@ -223,6 +237,7 @@ class QueueUtility(object):
         """
         with self.__lock:
             self._remove(task.task_uid)
+            self._locked = None
 
     def get_task(self, task_uid):
         """Returns the task for for the TUID passed in

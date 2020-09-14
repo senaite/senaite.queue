@@ -49,7 +49,8 @@ class QueueDispatcherView(BrowserView):
         logger.info("Starting Queue Dispatcher ...")
 
         if self.queue.is_busy():
-            # Purge the queue from tasks that got stuck
+            # Purge the queue from tasks that got stuck. It also unlocks the
+            # queue if it has been in a dead-lock status for too long
             self.queue.purge()
             logger.info("Queue is busy [SKIP]")
             return "Queue is busy"
@@ -57,6 +58,39 @@ class QueueDispatcherView(BrowserView):
         if self.queue.is_empty():
             logger.info("Queue is empty [SKIP]")
             return "Queue is empty"
+
+        # Check if the site is accessible first. We do not want to knock-out the
+        # zeo client with more work!. For this we just visit an static resource
+        # to make the thing faster, with a timeout of 2 seconds
+        dummy_url = api.get_queue_image_url("queued.gif")
+        try:
+            response = requests.get(dummy_url, timeout=2)
+            response.raise_for_status()
+        except Exception as e:
+            logger.info("{}: {}".format("Server not available", e.message))
+            return "Cannot notify the consumer. Server not available"
+
+        # We set a timeout to prevent the thread to hang indefinitely.
+        # Note this timeout is not a time limit on the entire response download;
+        # rather, an exception is raised if the server has not issued a response
+        # for timeout seconds. The consumer will probably get notified, even if
+        # we don't receive an entire response
+
+        # Safe-lock the queue. Dispatcher has been called by a clock, and
+        # another thread might be waken-up while we were here, so is awaiting
+        # (see synchronized decorator), but will enter as soon as we exit from
+        # this function. However, for the changes to take effect, the whole
+        # HTTPResponse life-cycle has to resume first. If we don't lock the
+        # queue with a timeout,  we are at risk that other threads that are now
+        # waiting, will notify consumer as soon as we leave this call.
+        # In such case, we would end up with different consumers working at
+        # same time.
+        # The queue is unlocked automatically as soon as the consumer notifies
+        # that a task has failed or succeeded. If the client was stopped while
+        # processing a task, the queue automatically unlocks on purge when
+        # notices the queue was locked the timeout seconds ago.
+        timeout = api.get_max_seconds_task()
+        self.queue.lock(timeout)
 
         # Notify the consumer. We do this because even that we can login with
         # the user that fired the task here, the new user session will only
@@ -67,10 +101,7 @@ class QueueDispatcherView(BrowserView):
         # task to be processed and login with the proper user thereafter.
         base_url = _api.get_url(_api.get_portal())
         url = "{}/queue_consumer".format(base_url)
-
-        # We set a timeout of 300 to prevent the thread to hang indefinitely
-        # in case the url happens to be not reachable for some reason
-        kwargs = dict(url=url, allow_redirects=True, timeout=300)
+        kwargs = dict(url=url, allow_redirects=True, timeout=5)
         consumer = threading.Thread(target=requests.get, kwargs=kwargs)
         consumer.start()
 
