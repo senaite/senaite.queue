@@ -70,12 +70,6 @@ class QueueDispatcherView(BrowserView):
             logger.info("{}: {}".format("Server not available", e.message))
             return "Cannot notify the consumer. Server not available"
 
-        # We set a timeout to prevent the thread to hang indefinitely.
-        # Note this timeout is not a time limit on the entire response download;
-        # rather, an exception is raised if the server has not issued a response
-        # for timeout seconds. The consumer will probably get notified, even if
-        # we don't receive an entire response
-
         # Safe-lock the queue. Dispatcher has been called by a clock, and
         # another thread might be waken-up while we were here, so is awaiting
         # (see synchronized decorator), but will enter as soon as we exit from
