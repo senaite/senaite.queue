@@ -55,7 +55,7 @@
 
     <!-- Content -->
     <metal:core fill-slot="content-core">
-      <table class="table table-bordered">
+      <table class="table table-bordered" tal:define="tasks view/get_tasks">
         <thead>
           <tr>
             <th i18n:translate="">TUID</th>
@@ -72,7 +72,7 @@
           </tr>
         </thead>
         <tbody>
-          <tal:row repeat="task view/get_tasks">
+          <tal:row repeat="task tasks">
             <tr tal:attributes="class task/status">
               <td>
                 <div class="task_uid" >
@@ -104,6 +104,16 @@
             </tr>
           </tal:row>
         </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">Total</th>
+            <td tal:define="failed_tasks python:len(filter(lambda t: t['status']=='failed', tasks));
+                            running_tasks python:len(filter(lambda t: t['status']=='running', tasks));
+                            queued_tasks python:len(filter(lambda t: t['status']=='queued', tasks))"
+                tal:content="python: '{} failed, {} running, {} queued'.format(failed_tasks, running_tasks, queued_tasks)"
+                colspan="9"/>
+          </tr>
+        </tfoot>
       </table>
 
       <div>
