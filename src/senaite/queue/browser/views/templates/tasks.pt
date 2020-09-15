@@ -32,7 +32,7 @@
         tr.processed, tr.processed a {
           color: #999;
         }
-        tr.active, tr.active a {
+        tr.running, tr.running a {
           color: #666;
         }
         tr.failed, tr.failed a {
