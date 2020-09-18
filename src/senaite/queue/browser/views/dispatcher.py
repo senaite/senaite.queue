@@ -19,6 +19,7 @@
 # Some rights reserved, see README and LICENSE.
 
 import threading
+import time
 
 import requests
 from Products.Five.browser import BrowserView
@@ -27,6 +28,10 @@ from senaite.queue import logger
 
 from bika.lims import api as _api
 from bika.lims.decorators import synchronized
+
+
+# Prefix for the name of the thread in charge of notifying consumer
+CONSUMER_THREAD_PREFIX = "queue.consumer."
 
 
 class QueueDispatcherView(BrowserView):
@@ -48,9 +53,15 @@ class QueueDispatcherView(BrowserView):
     def __call__(self):
         logger.info("Starting Queue Dispatcher ...")
 
+        consumer_thread = self.get_consumer_thread()
+        if consumer_thread:
+            # There is a consumer working already
+            name = consumer_thread.getName()
+            logger.info("Consumer running: {} [SKIP]".format(name))
+            return "Consumer running"
+
         if self.queue.is_busy():
-            # Purge the queue from tasks that got stuck. It also unlocks the
-            # queue if it has been in a dead-lock status for too long
+            # Purge the queue from tasks that got stuck
             self.queue.purge()
             logger.info("Queue is busy [SKIP]")
             return "Queue is busy"
@@ -59,33 +70,6 @@ class QueueDispatcherView(BrowserView):
             logger.info("Queue is empty [SKIP]")
             return "Queue is empty"
 
-        # Check if the site is accessible first. We do not want to knock-out the
-        # zeo client with more work!. For this we just visit an static resource
-        # to make the thing faster, with a timeout of 2 seconds
-        dummy_url = api.get_queue_image_url("queued.gif")
-        try:
-            response = requests.get(dummy_url, timeout=2)
-            response.raise_for_status()
-        except Exception as e:
-            logger.info("{}: {}".format("Server not available", e.message))
-            return "Cannot notify the consumer. Server not available"
-
-        # Safe-lock the queue. Dispatcher has been called by a clock, and
-        # another thread might be waken-up while we were here, so is awaiting
-        # (see synchronized decorator), but will enter as soon as we exit from
-        # this function. However, for the changes to take effect, the whole
-        # HTTPResponse life-cycle has to resume first. If we don't lock the
-        # queue with a timeout,  we are at risk that other threads that are now
-        # waiting, will notify consumer as soon as we leave this call.
-        # In such case, we would end up with different consumers working at
-        # same time.
-        # The queue is unlocked automatically as soon as the consumer notifies
-        # that a task has failed or succeeded. If the client was stopped while
-        # processing a task, the queue automatically unlocks on purge when
-        # notices the queue was locked the timeout seconds ago.
-        timeout = api.get_max_seconds_task()
-        self.queue.lock(timeout)
-
         # Notify the consumer. We do this because even that we can login with
         # the user that fired the task here, the new user session will only
         # take effect after this request life-cycle. We cannot redirect to a
@@ -93,10 +77,30 @@ class QueueDispatcherView(BrowserView):
         # worker. Thus, we open a new thread and call the consumer view, that
         # does not require privileges, except that will check the tuid with the
         # task to be processed and login with the proper user thereafter.
+        consumer = self.start_consumer_thread()
+
+        msg = "Consumer notified: {}".format(consumer.getName())
+        logger.info(msg)
+        return msg
+
+    def start_consumer_thread(self):
+        """Starts an returns a new thread that notifies the consumer
+        """
         base_url = _api.get_url(_api.get_portal())
         url = "{}/queue_consumer".format(base_url)
-        kwargs = dict(url=url, allow_redirects=True, timeout=5)
-        consumer = threading.Thread(target=requests.get, kwargs=kwargs)
-        consumer.start()
+        name = "{}.{}".format(CONSUMER_THREAD_PREFIX, int(time.time()))
+        kwargs = dict(url=url, timeout=api.get_max_seconds_task())
+        t = threading.Thread(name=name, target=requests.get, kwargs=kwargs)
+        t.start()
+        return t
 
-        return "Consumer notified"
+    def get_consumer_thread(self):
+        """Returns whether there the consumer thread is running
+        """
+        def is_consumer_thread(t):
+            return t.getName().startswith(CONSUMER_THREAD_PREFIX)
+
+        threads = filter(is_consumer_thread, threading.enumerate())
+        if len(threads) > 0:
+            return threads[0]
+        return None

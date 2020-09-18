@@ -64,6 +64,14 @@ class QueueStorage(object):
         annotations = self.annotations
         annotations[key] = value
         annotations._p_changed = True
+        self.container._p_changed = True
+
+    def sync(self):
+        objs = [self.annotations, self.container]
+        for obj in objs:
+            p_jar = obj._p_jar
+            if p_jar is not None:
+                p_jar.sync()
 
     @property
     def tasks(self):
@@ -106,12 +114,15 @@ class QueueUtility(object):
 
     def __init__(self):
         self.__lock = threading.Lock()
-        self._locked = None
         self._storage = QueueStorage()
 
     def __len__(self):
         with self.__lock:
             return len(self._storage.tasks)
+
+    def sync(self):
+        with self.__lock:
+            self._storage.sync()
 
     def is_empty(self):
         """Returns whether there are no remaining tasks in the queue
@@ -122,18 +133,8 @@ class QueueUtility(object):
         """Returns whether a task is being processed
         """
         with self.__lock:
-            # Check if the queue has been locked
-            if self._locked is not None:
-                return True
-
             # Check if the number of running tasks is above max
             return len(self._storage.running_tasks) >= MAX_CONCURRENT_TASKS
-
-    def lock(self, timeout=300):
-        """Locks the queue
-        """
-        with self.__lock:
-            self._locked = int(time.time()) + timeout
 
     def purge(self):
         """Purges running tasks that got stuck for too long
@@ -151,9 +152,7 @@ class QueueUtility(object):
         tasks = self._storage.running_tasks
         stuck = filter(is_stuck, tasks)
         if not stuck:
-            # No running tasks got stuck. Check _locked
-            if api.to_int(self._locked, 0) > int(time.time()):
-                self._locked = None
+            # No running tasks got stuck
             return
 
         # Re-queue or add to pool of failed
@@ -183,7 +182,9 @@ class QueueUtility(object):
             self._storage.running_tasks = running
 
             # Return the task
-            logger.info("Pop task {}: {}".format(task.name, task.context_path))
+            logger.info("Pop task {} ({}): {}"
+                        .format(task.name, task.task_short_uid,
+                                task.context_path))
             return task
 
     def fail(self, task, error_message=None):
@@ -192,7 +193,6 @@ class QueueUtility(object):
         """
         with self.__lock:
             self._fail(task, error_message=error_message)
-            self._locked = None
 
     def _fail(self, task, error_message=None):
         # Get the running tasks, but the current one
@@ -229,15 +229,15 @@ class QueueUtility(object):
                 task.update({"status": "failed"})
                 failed_tasks.append(task)
                 self._storage.failed_tasks = failed_tasks
-                logger.warn("Failed task {}: {}".format(task.name,
-                                                        task.context_path))
+                logger.warn("Failed task {} ({}): {}"
+                            .format(task.name, task.task_short_uid,
+                                    task.context_path))
 
     def success(self, task):
         """Removes the task from the queue
         """
         with self.__lock:
             self._remove(task.task_uid)
-            self._locked = None
 
     def get_task(self, task_uid):
         """Returns the task for for the TUID passed in
@@ -320,9 +320,8 @@ class QueueUtility(object):
 
         # Don't add to the queue if the task is already in there
         if self.has_task(task):
-            logger.warn(
-                "Task {} ({}) in the queue already".format(
-                task.task_uid, task.name))
+            logger.warn("Task {} ({}) in the queue already"
+                        .format(task.name, task.task_short_uid))
             return None
 
         # Do not add the task if unique and task for same context and name
@@ -350,7 +349,8 @@ class QueueUtility(object):
         # Note _storage does a _p_changed already
         self._storage.tasks = tasks
 
-        logger.info("Added task {}: {}".format(task.name, task.context_path))
+        logger.info("Added task {} ({}): {}"
+                    .format(task.name, task.task_short_uid, task.context_path))
         return task
 
 
@@ -422,6 +422,10 @@ class QueueTask(dict):
     @property
     def task_uid(self):
         return self["task_uid"]
+
+    @property
+    def task_short_uid(self):
+        return self.task_uid[:9]
 
     @property
     def context_uid(self):
