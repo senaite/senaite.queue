@@ -61,6 +61,7 @@ class TasksView(BrowserView):
         form_submitted = form.get("submitted", False)
         form_remove_failed = form.get("button_remove_failed", False)
         form_requeue_failed = form.get("button_requeue_failed", False)
+        form_remove_all = form.get("button_remove_all", False)
 
         # Handle remove all failed tasks
         if form_submitted and form_remove_failed:
@@ -72,6 +73,10 @@ class TasksView(BrowserView):
             failed = self.get_failed_tasks()
             tuids = map(lambda t: t.get("task_uid"), failed)
             map(self.requeue_task, tuids)
+
+        elif form_submitted and form_remove_all:
+            self.queue_tool._storage.tasks = []
+            self.queue_tool._storage.failed_tasks = []
 
         return self.template()
 

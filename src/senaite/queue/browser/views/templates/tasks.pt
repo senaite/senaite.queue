@@ -135,12 +135,20 @@
                 value="Requeue failed tasks"/>
 
           <!-- Remove all failed -->
-          <input class="btn btn-danger btn-sm"
+          <input class="btn btn-secondary btn-sm"
                  type="submit"
                  id="button_remove_failed"
                  name="button_remove_failed"
                  i18n:attributes="value"
                  value="Remove failed tasks"/>
+
+          <!-- Remove all except running -->
+          <input class="btn btn-danger btn-sm"
+                 type="submit"
+                 id="button_remove_all"
+                 name="button_remove_all"
+                 i18n:attributes="value"
+                 value="Remove all tasks" />
 
         </form>
       </div>
