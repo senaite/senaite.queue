@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "POT-Creation-Date: 2020-08-29 11:02+0000\n"
-"PO-Revision-Date: 2019-11-10 12:48+0000\n"
+"PO-Revision-Date: 2019-09-30 22:55+0200\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: German (https://www.transifex.com/senaite/teams/104679/de/)\n"
 "MIME-Version: 1.0\n"
@@ -20,181 +20,181 @@ msgstr ""
 
 #: senaite/queue/browser/views/worksheet.py:81
 msgid "Analyses for {} have been queued"
-msgstr ""
+msgstr "Analysen für {} wurden zur Warteschlange hinzugefügt"
 
 #: senaite/queue/browser/views/worksheet.py:45
 msgid "Analyst must be specified."
-msgstr ""
+msgstr "Analyst muss angegeben werden"
 
 #: senaite/queue/configure.zcml:45
 msgid "Asynchronous tasks for SENAITE"
-msgstr ""
+msgstr "Asynchrone Aufgabe für SENAITE"
 
 #: senaite/queue/browser/views/templates/tasks.pt:65
 msgid "Context"
-msgstr ""
+msgstr "Kontext"
 
 #: senaite/queue/browser/views/templates/tasks.pt:62
 msgid "Created"
-msgstr ""
+msgstr "Hinzugefügt"
 
 #: senaite/queue/browser/controlpanel.py:35
 msgid "Default number of objects that will be handled in a single task. A value of 0 disables queuing of tasks functionality at all, specific tasks below included. Default value: 10"
-msgstr ""
+msgstr "Standardanzahl an Objekten, die in einer einzigen Aufgabe verarbeitet werden. Ein Wert von 0 deaktiviert das hinzufügen von Aufgaben, untergeordnete Aufgaben eingeschlossen. Standardwert: 10"
 
 #: senaite/queue/browser/controlpanel.py:34
 msgid "Default number of objects to process per task"
-msgstr ""
+msgstr "Standardanzahl an Objekten die pro Aufgabe verarbeitet werden soll"
 
 #: senaite/queue/browser/views/templates/tasks.pt:68
 msgid "Error message"
-msgstr ""
+msgstr "Fehlermeldung"
 
 #: senaite/queue/browser/controlpanel.py:46
 msgid "Maximum retries"
-msgstr ""
+msgstr "Maximale Wiederholungen"
 
 #: senaite/queue/browser/controlpanel.py:58
 msgid "Minimum number of seconds to book per task. If the task is performed very rapidly, it will have priority over a transaction done from userland. In case of conflict, the transaction from userland will fail and will be retried up to 3 times. This setting makes the thread that handles the task to take some time to complete, thus preventing threads from userland to be delayed or fail. Default value: 3"
-msgstr ""
+msgstr "Mindestanzahl an Sekunden, die pro Aufgabe gebucht werden müssen. Wird die Aufgabe sehr schnell ausgeführt, wird diese gegenüber Transaktionen aus dem Userland bevorzugt. Im Konfliktfall wird die Transaktion aus dem Userland fehlschlagen und bis zu 3 mal wiederholt. Durch diese Einstellung dauert es einige Zeit, bis der Thread, der die Aufgabe bearbeitet, abgeschlossen ist, sodass Threads aus dem Userland nicht verzögert werden oder fehlschlagen. Standardwert: 3 "
 
 #: senaite/queue/browser/controlpanel.py:57
 msgid "Minimum seconds per task"
-msgstr ""
+msgstr "Minimale Sekunden pro Aufgabe"
 
 #: senaite/queue/browser/views/worksheet.py:86
 msgid "No analyses were added"
-msgstr ""
+msgstr "Es wurden keine Analysen hinzugefügt"
 
 #: senaite/queue/browser/controlpanel.py:73
 msgid "Number of analyses that will be handled in a single task when assigned to a worksheet. Overrides default's for action 'assign'. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr ""
+msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn sie einem Arbeitsblatt zugewiesen werden. Überschreibt die Standardeinstellungen für die Aktion 'Zuweisen'. Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
 
 #: senaite/queue/browser/controlpanel.py:97
 msgid "Number of analyses that will be handled in a single task when results are submitted. Overrides default's for 'submit' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr ""
+msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn die Ergebnisse übermittelt werden. Überschreibt die Standardeinstellungen für die Aktion "Senden". Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
 
 #: senaite/queue/browser/controlpanel.py:133
 msgid "Number of analyses that will be handled in a single task when the analysis is rejected. Overrides default's for 'reject' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr ""
+msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn die Analyse abgelehnt wird. Überschreibt die Standardeinstellungen für die Aktion "Ablehnen". Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
 
 #: senaite/queue/browser/controlpanel.py:121
 msgid "Number of analyses that will be handled in a single task when the analysis is retracted. Overrides default's for 'retract' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr ""
+msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn die Analyse zurückgezogen wird. Überschreibt die Standardeinstellungen für die Aktion "Zurückziehen". Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
 
 #: senaite/queue/browser/controlpanel.py:109
 msgid "Number of analyses that will be handled in a single task when the analysis is verified. Overrides default's for 'reject' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr ""
+msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn die Analyse überprüft wird. Überschreibt die Standardeinstellungen für die Aktion "Ablehnen". Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
 
 #: senaite/queue/browser/controlpanel.py:85
 msgid "Number of analyses that will be handled in a single task when unassigned from a worksheet. Overrides default's for 'unassign' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr ""
+msgstr "Number of analyses that will be handled in a single task when unassigned from a worksheet. Overrides default's for 'unassign' action. A value of 0 disables the queue for this specific action. Default value: 10"
 
 #: senaite/queue/browser/controlpanel.py:72
 msgid "Number of analyses to assign per task"
-msgstr ""
+msgstr "Anzahl der pro Aufgabe zuzuweisenden Analysen"
 
 #: senaite/queue/browser/controlpanel.py:132
 msgid "Number of analyses to reject per task"
-msgstr ""
+msgstr "Anzahl der pro Aufgabe abzulehnenden Analysen"
 
 #: senaite/queue/browser/controlpanel.py:120
 msgid "Number of analyses to retract per task"
-msgstr ""
+msgstr "Anzahl der Analysen, die pro Aufgabe zurückgezogen werden müssen"
 
 #: senaite/queue/browser/controlpanel.py:96
 msgid "Number of analyses to submit per task"
-msgstr ""
+msgstr "Anzahl der pro Aufgabe einzureichenden Analysen"
 
 #: senaite/queue/browser/controlpanel.py:84
 msgid "Number of analyses to unassign per task"
-msgstr ""
+msgstr "Anzahl der Analysen, deren Zuordnung pro Aufgabe aufgehoben werden soll"
 
 #: senaite/queue/browser/controlpanel.py:108
 msgid "Number of analyses to verify per task"
-msgstr ""
+msgstr "Anzahl der pro Aufgabe zu überprüfenden Analysen"
 
 #: senaite/queue/browser/controlpanel.py:145
 msgid "Number of seconds to wait for a process in queue to be finished before being considered as failed. Failed processes will be enqueued again. Minimum value: 30, Default value: 120"
-msgstr ""
+msgstr "Anzahl der Sekunden, die gewartet werden muss, bis ein Prozess in der Warteschlange abgeschlossen ist, bevor er als fehlgeschlagen betrachtet wird. Fehlgeschlagene Prozesse werden erneut in die Warteschlange gestellt. Mindestwert: 30, Standardwert: 120"
 
 #: senaite/queue/browser/controlpanel.py:47
 msgid "Number of times a task will be re-queued before being considered as failed. A value of 0 disables the re-queue of failing tasks. Default value: 3"
-msgstr ""
+msgstr "Häufigkeit, mit der eine Aufgabe erneut in die Warteschlange gestellt wird, bevor sie als fehlgeschlagen betrachtet wird. Der Wert 0 deaktiviert die erneute Warteschlange für fehlgeschlagene Aufgaben. Standardwert: 3"
 
 #: senaite/queue/profiles/default/actionicons.xml
 #: senaite/queue/profiles/default/controlpanel.xml
 msgid "Queue Settings"
-msgstr ""
+msgstr "Warteschlangeneinstellungen"
 
 #: senaite/queue/adapters/listing.py:50
 msgid "Queued"
-msgstr ""
+msgstr "In Warteschlange"
 
 #: senaite/queue/browser/views/templates/tasks.pt:51
 msgid "Queued tasks"
-msgstr ""
+msgstr "Aufgaben in der Warteschlange"
 
 #: senaite/queue/browser/views/templates/tasks.pt:64
 msgid "Remote Addr"
-msgstr ""
+msgstr "Remote-Adresse"
 
 #: senaite/queue/browser/views/templates/tasks.pt:90
 msgid "Remove"
-msgstr ""
+msgstr "Entfernen"
 
 #: senaite/queue/browser/views/templates/tasks.pt:94
 msgid "Requeue"
-msgstr ""
+msgstr "Erneut in Warteschlange"
 
 #: senaite/queue/browser/views/templates/tasks.pt:69
 msgid "Retries"
-msgstr ""
+msgstr "Wiederholungen"
 
 #: senaite/queue/configure.zcml:45
 msgid "SENAITE QUEUE"
-msgstr ""
+msgstr "SENAITE QUEUE"
 
 #: senaite/queue/configure.zcml:61
 msgid "SENAITE QUEUE (uninstall)"
-msgstr ""
+msgstr "SENAITE QUEUE (deinstallieren)"
 
 #: senaite/queue/browser/controlpanel.py:159
 msgid "SENAITE QUEUE Settings"
-msgstr ""
+msgstr "SENAITE QUEUE Einstellungen"
 
 #: senaite/queue/browser/controlpanel.py:144
 msgid "Seconds to wait before unlock"
-msgstr ""
+msgstr "Wartezeit vor dem Entsperren in Sekunden"
 
 #: senaite/queue/browser/views/templates/tasks.pt:67
 msgid "Status"
-msgstr ""
+msgstr "Status"
 
 #: senaite/queue/browser/views/templates/tasks.pt:61
 msgid "TUID"
-msgstr ""
+msgstr "TUID"
 
 #: senaite/queue/browser/views/templates/tasks.pt:66
 msgid "Type"
-msgstr ""
+msgstr "Typ"
 
 #: senaite/queue/browser/views/templates/tasks.pt:63
 msgid "User"
-msgstr ""
+msgstr "Benutzer"
 
 #: senaite/queue/browser/viewlets/templates/queued_analyses_sample_viewlet.pt:17
 msgid "analyses are being processed in background"
-msgstr ""
+msgstr "Analysen werden im Hintergrund verarbeitet"
 
 #: senaite/queue/browser/viewlets/templates/queued_analyses_viewlet.pt:17
 msgid "analyses are being processed in background."
-msgstr ""
+msgstr "Analysen werden im Hintergrund verarbeitet"
 
 #: senaite/queue/browser/viewlets/templates/queued_analyses_sample_viewlet.pt:16
 msgid "analysis is being processed in background"
-msgstr ""
+msgstr "Analysen werden im Hintergrund verarbeitet"
 
 #: senaite/queue/browser/viewlets/templates/queued_analyses_viewlet.pt:16
 msgid "analysis is being processed in background."
-msgstr ""
+msgstr "Analysen werden im Hintergrund verarbeitet"
