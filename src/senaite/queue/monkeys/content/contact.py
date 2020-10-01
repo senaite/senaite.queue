@@ -18,10 +18,28 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
+from Acquisition import aq_base
+
+from bika.lims import api as _api
+
 from senaite.queue import api
 
 
 def _recursive_reindex_object_security(self, obj):
     """Reindex object security recursively, but using the queue
     """
-    api.queue_reindex_object_security(obj)
+    if api.is_queue_enabled("task_reindex_object_security"):
+        api.queue_reindex_object_security(obj)
+        return
+
+    # Do classic reindex
+    _recursive_reindex_object_security_wo_queue(self, obj)
+
+
+def _recursive_reindex_object_security_wo_queue(self, obj):
+    """Classic reindex object security, without queue
+    """
+    if hasattr(aq_base(obj), "objectValues"):
+        for child_obj in obj.objectValues():
+            _recursive_reindex_object_security_wo_queue(self, child_obj)
+    obj.reindexObjectSecurity()
