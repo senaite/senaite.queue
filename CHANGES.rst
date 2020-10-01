@@ -4,6 +4,7 @@ Changelog
 1.0.2 (unreleased)
 ------------------
 
+- Delegate the reindex object security to queue when linking contacts to users
 - #7 Allow to queue generic worflow actions without an specific adapter
 - #7 Redux and better performance
 - #6 Allow the prioritization of tasks
