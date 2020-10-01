@@ -72,19 +72,19 @@ msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, 
 
 #: senaite/queue/browser/controlpanel.py:97
 msgid "Number of analyses that will be handled in a single task when results are submitted. Overrides default's for 'submit' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn die Ergebnisse übermittelt werden. Überschreibt die Standardeinstellungen für die Aktion "Senden". Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
+msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn die Ergebnisse übermittelt werden. Überschreibt die Standardeinstellungen für die Aktion 'Senden'. Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
 
 #: senaite/queue/browser/controlpanel.py:133
 msgid "Number of analyses that will be handled in a single task when the analysis is rejected. Overrides default's for 'reject' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn die Analyse abgelehnt wird. Überschreibt die Standardeinstellungen für die Aktion "Ablehnen". Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
+msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn die Analyse abgelehnt wird. Überschreibt die Standardeinstellungen für die Aktion 'Ablehnen'. Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
 
 #: senaite/queue/browser/controlpanel.py:121
 msgid "Number of analyses that will be handled in a single task when the analysis is retracted. Overrides default's for 'retract' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn die Analyse zurückgezogen wird. Überschreibt die Standardeinstellungen für die Aktion "Zurückziehen". Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
+msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn die Analyse zurückgezogen wird. Überschreibt die Standardeinstellungen für die Aktion 'Zurückziehen'. Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
 
 #: senaite/queue/browser/controlpanel.py:109
 msgid "Number of analyses that will be handled in a single task when the analysis is verified. Overrides default's for 'reject' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn die Analyse überprüft wird. Überschreibt die Standardeinstellungen für die Aktion "Ablehnen". Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
+msgstr "Anzahl der Analysen, die in einer einzelnen Aufgabe verarbeitet werden, wenn die Analyse überprüft wird. Überschreibt die Standardeinstellungen für die Aktion 'Ablehnen'. Der Wert 0 deaktiviert die Warteschlange für diese bestimmte Aktion. Standardwert: 10"
 
 #: senaite/queue/browser/controlpanel.py:85
 msgid "Number of analyses that will be handled in a single task when unassigned from a worksheet. Overrides default's for 'unassign' action. A value of 0 disables the queue for this specific action. Default value: 10"
