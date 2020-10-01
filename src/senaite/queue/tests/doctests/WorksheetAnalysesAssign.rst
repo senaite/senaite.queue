@@ -207,22 +207,40 @@ Set the number of analyses to be transitioned in a single queued task:
     >>> api.get_chunk_size(task_name)
     5
 
-Create 15 Samples with 1 analysis each:
+Create 20 Samples with 1 analysis each:
 
-    >>> samples = new_samples(15)
+    >>> samples = new_samples(20)
     >>> analyses = get_analyses_from(samples)
 
-Create a Worksheet Template with 15 slots reserved for `Cu` analysis:
+Create a Worksheet Template with 20 slots reserved for `Cu` analysis:
 
     >>> template = _api.create(setup.bika_worksheettemplates, "WorksheetTemplate")
     >>> template.setService([Cu])
-    >>> layout = map(lambda idx: {"pos": idx + 1, "type": "a"}, range(15))
+    >>> layout = map(lambda idx: {"pos": idx + 1, "type": "a"}, range(20))
     >>> template.setLayout(layout)
 
 Use the template for Worksheet creation:
 
     >>> worksheet = _api.create(portal.worksheets, "Worksheet")
     >>> worksheet.applyWorksheetTemplate(template)
+
+Five analyses (chunk size) have been assigned:
+
+    >>> assigned = worksheet.getAnalyses()
+    >>> len(assigned)
+    5
+
+    >>> list(set(map(_api.get_review_status, assigned)))
+    ['assigned']
+
+And none of these assigned analyses are queued:
+
+    >>> any(map(api.is_queued, assigned))
+    False
+
+Remove these assigned analyses from the list:
+
+    >>> analyses = filter(lambda a: a not in assigned, analyses)
 
 The worksheet is now queued, as well as the not-yet assigned analyses:
 
