@@ -29,6 +29,7 @@ from zope.component import getUtility
 from zope.component import queryAdapter
 
 from bika.lims import api as _api
+from bika.lims.interfaces import IWorksheet
 from bika.lims.utils import render_html_attributes
 
 
@@ -314,38 +315,30 @@ def queue_action(brain_object_uid, action, context=None, request=None):
         return False
 
     context = context or _api.get_portal()
-    request = request or _api.get_request()
+    if action == "assign" and IWorksheet.providedBy(context):
+        return queue_assign_analyses(context, analyses=uids, request=request)
 
     # Queue the task
     task_name = get_action_task_name(action)
     kwargs = {
         "action": action,
-        "retries": get_max_retries(),
         "uids": uids,
     }
+    request = request or _api.get_request()
     return queue_task(task_name, request, context, **kwargs)
 
 
-def queue_assign_analyses(worksheet, analyses, ws_template=None, request=None):
+def queue_assign_analyses(worksheet, analyses, slots=None, request=None):
     """Adds analyses to the queue for analyses assignment
     :param worksheet: the worksheet object the analyses have to be assigned to
     :param analyses: list of analyses objects, brains or uids
-    :param ws_template: worksheet template (object, brain or uid)
+    :param slots: list of slots each analysis has to be assigned to
     :param request: the HTTPRequest
     """
-    # Remove empties and duplicates while keeping the order
-    uids = filter(None, map(_api.get_uid, analyses))
-    uids = list(OrderedDict.fromkeys(uids))
-    if not uids:
-        return False
-
-    request = request or _api.get_request()
-
-    # Queue the task
     task_name = "task_assign_analyses"
     kwargs = {
-        "uids": uids,
-        "wst_uid": ws_template and _api.get_uid(ws_template) or None,
+        "uids": map(_api.get_uid, analyses),
+        "slots": slots or [],
     }
-    queue_task(task_name, request, worksheet, **kwargs)
-    return True
+    request = request or _api.get_request()
+    return queue_task(task_name, request, worksheet, **kwargs)
