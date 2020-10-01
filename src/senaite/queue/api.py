@@ -362,11 +362,12 @@ def queue_reindex_object_security(obj, request=None, priority=20):
 
         return all_children
 
-    # Get all children reversed, so recent objects are processed first
-    uids = get_children_uids(obj)[::-1]
-
-    # Append current object at the end of the list (last one to process)
+    # Get all children reversed, and append current one
+    uids = get_children_uids(obj)
     uids.append(_api.get_uid(obj))
+
+    # Get all reversed, so recent objects are processed first
+    uids = uids[::-1]
 
     task_name = "task_reindex_object_security"
     kwargs = {"uids": uids, "priority": priority}
