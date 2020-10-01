@@ -116,20 +116,21 @@ def _apply_worksheet_template_routine_analyses(self, wst):
         samples_slots[sample_uid] = slot
 
     # SENAITE.QUEUE-SPECIFIC
-    to_queue = list()
-    queue_enabled = api.is_queue_enabled("task_assign_analyses")
+    # Process the first chunk right now
+    task_name = "task_assign_analyses"
+    if api.is_queue_enabled(task_name):
+        chunks = api.get_chunks(task_name, new_analyses)
+    else:
+        chunks = (new_analyses, [])
 
     # Add analyses to the worksheet
-    for analysis, sample_uid in new_analyses:
+    for analysis, sample_uid in chunks[0]:
         slot = samples_slots[sample_uid]
-        if queue_enabled:
-            to_queue.append((analysis, slot))
-        else:
-            self.addAnalysis(analysis, slot)
+        self.addAnalysis(analysis, slot)
 
-    # Add them to the queue
-    if to_queue:
-        analyses, slots = zip(*to_queue)
+    # Add the rest to the queue
+    if chunks[1]:
+        analyses, slots = zip(*chunks[1])
         api.queue_assign_analyses(self, analyses=analyses, slots=slots)
 
 
