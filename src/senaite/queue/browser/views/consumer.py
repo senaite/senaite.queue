@@ -20,6 +20,7 @@
 
 import time
 import traceback
+import transaction
 
 from Products.Five.browser import BrowserView
 from senaite.queue import api
@@ -92,11 +93,14 @@ class QueueConsumerView(BrowserView):
             # Process the task
             self.process_task(task)
 
-            # Mark the task as succeded
+            # Do a transaction commit, better to handle a transaction commit
+            # conflict before we mark the task as succeeded
+            transaction.commit()
+
+            # Mark the task as succeeded
             self.queue.success(task)
 
         except (RuntimeError, Exception) as e:
-            self.queue.fail(task)
             tbex = traceback.format_exc()
             self.queue.fail(task, error_message="\n".join([e.message, tbex]))
             log_mode = "error"
