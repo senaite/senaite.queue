@@ -19,4 +19,12 @@
      replacement=".content.worksheet.addAnalyses"
   />
 
+  <!-- Monkey patch for asynchronous reindex obj security (Contact) -->
+  <monkey:patch
+     description=""
+     class="bika.lims.content.contact.Contact"
+     original="_recursive_reindex_object_security"
+     replacement=".content.contact._recursive_reindex_object_security"
+  />
+
 </configure>

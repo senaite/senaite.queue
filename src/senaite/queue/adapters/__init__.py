@@ -24,6 +24,7 @@ from bika.lims.interfaces.analysis import IRequestAnalysis
 from bika.lims.workflow import doActionFor
 
 from senaite.queue import api
+from senaite.queue.queue import QueueTask
 from senaite.queue.interfaces import IQueuedTaskAdapter
 
 from Products.Archetypes.interfaces.base import IBaseObject
@@ -98,3 +99,40 @@ class QueuedAssignAnalysesTaskAdapter(object):
             # Unpack the remaining analyses-slots and add them to the queue
             uids, slots = zip(*chunks[1])
             api.queue_assign_analyses(worksheet, analyses=uids, slots=slots)
+
+
+class QueueObjectSecurityAdapter(object):
+    """Adapter in charge of doing a reindexObjectSecurity recursively
+    """
+    implements(IQueuedTaskAdapter)
+    adapts(IBaseObject)
+
+    def __init__(self, context):
+        self.context = context
+
+    def process(self, task):
+        """Process the task from the queue
+        """
+        # If there are too many objects to process, split them in chunks to
+        # prevent the task to take too much time to complete
+        chunks = api.chunks(task["uids"], 50)
+
+        # Process the first chunk
+        map(self.reindex_security, chunks[0])
+
+        # Add remaining objects to the queue
+        request = _api.get_request()
+        context = task.get_context()
+        kwargs = {
+            "uids": chunks[1],
+            "priority": task.priority,
+        }
+        new_task = QueueTask(task.name, request, context, uids=chunks[1])
+        api.get_queue().add(new_task)
+
+    def reindex_security(self, uid):
+        """Reindex object security for the object passed-in
+        """
+        obj = _api.get_object(uid, None)
+        if obj:
+            obj.reindexObject(idxs=["allowedRolesAndUsers", ])

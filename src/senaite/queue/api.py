@@ -18,6 +18,8 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
+from Acquisition import aq_base
+
 from collections import OrderedDict
 
 from plone import api as plone_api
@@ -342,3 +344,31 @@ def queue_assign_analyses(worksheet, analyses, slots=None, request=None):
     }
     request = request or _api.get_request()
     return queue_task(task_name, request, worksheet, **kwargs)
+
+
+def queue_reindex_object_security(obj, request=None, priority=20):
+    """Queues a task for the recursive object security reindexing
+    """
+    def get_children_uids(obj):
+        """Returns the uids from the obj hierarchy
+        """
+        if not hasattr(aq_base(obj), "objectValues"):
+            return []
+
+        all_children = []
+        for child_obj in obj.objectValues():
+            all_children.extend(get_children_uids(child_obj))
+            all_children.append(_api.get_uid(child_obj))
+
+        return all_children
+
+    # Get all children reversed, so recent objects are processed first
+    uids = get_children_uids(obj)[::-1]
+
+    # Append current object at the end of the list (last one to process)
+    uids.append(_api.get_uid(obj))
+
+    task_name = "task_reindex_object_security"
+    kwargs = {"uids": uids, "priority": priority}
+    request = request or _api.get_request()
+    return queue_task(task_name, request, obj, **kwargs)

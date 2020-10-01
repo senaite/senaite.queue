@@ -51,6 +51,13 @@
     provides="senaite.queue.interfaces.IQueuedTaskAdapter"
     for="bika.lims.interfaces.IWorksheet" />
 
+  <!-- Adapter to handle recursive_reindex_object tasks -->
+  <adapter
+    name="task_reindex_object_security"
+    factory=".QueueObjectSecurityAdapter"
+    provides="senaite.queue.interfaces.IQueuedTaskAdapter"
+    for="*" />
+
   <!-- Worksheet: "unassign"
   Submits the analyses from a worksheet by using a queue -->
   <adapter
