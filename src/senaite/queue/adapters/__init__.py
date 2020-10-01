@@ -121,14 +121,15 @@ class QueueObjectSecurityAdapter(object):
         map(self.reindex_security, chunks[0])
 
         # Add remaining objects to the queue
-        request = _api.get_request()
-        context = task.get_context()
-        kwargs = {
-            "uids": chunks[1],
-            "priority": task.priority,
-        }
-        new_task = QueueTask(task.name, request, context, uids=chunks[1])
-        api.get_queue().add(new_task)
+        if chunks[1]:
+            request = _api.get_request()
+            context = task.get_context()
+            kwargs = {
+                "uids": chunks[1],
+                "priority": task.priority,
+            }
+            new_task = QueueTask(task.name, request, context, **kwargs)
+            api.get_queue().add(new_task)
 
     def reindex_security(self, uid):
         """Reindex object security for the object passed-in
