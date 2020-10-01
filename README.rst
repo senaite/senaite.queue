@@ -38,6 +38,7 @@ of transaction conflicts:
 * Assignment of worksheet template to a worksheet
 * Creation of a worksheet by using a worksheet template
 * Workflow actions (submit, verify, etc.) for analyses assigned to worksheets
+* Recursive permissions assignment on client contacts creation
 
 This add-on neither provides support for workflow transitions/actions at Sample
 level nor for Sample creation. However, this add-on can be extended easily to
