@@ -19,6 +19,7 @@
 # Some rights reserved, see README and LICENSE.
 
 from senaite.queue import api
+from senaite.queue import logger
 
 from bika.lims import api as _api
 from bika.lims.catalog import CATALOG_ANALYSIS_LISTING
