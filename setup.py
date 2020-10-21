@@ -48,6 +48,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
+        "cryptography",
         "setuptools",
         "senaite.lims>=1.3.4",
         "requests",

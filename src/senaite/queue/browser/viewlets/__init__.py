@@ -23,6 +23,7 @@ import itertools
 from plone.app.layout.viewlets import ViewletBase
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile
 from senaite.queue import api
+from senaite.queue.mixin import IsQueuedMixin
 
 
 class QueuedAnalysesViewlet(ViewletBase):
@@ -39,15 +40,17 @@ class QueuedAnalysesViewlet(ViewletBase):
         self.view = view
 
     def get_num_pending(self):
-        queue = api.get_queue()
+        if not api.is_queue_active():
+            return 0
 
         # We are only interested in tasks with uids
+        queue = api.get_queue()
         uids = map(lambda t: t.get("uids"), queue.get_tasks_for(self.context))
         uids = filter(None, list(itertools.chain.from_iterable(uids)))
         return len(set(uids))
 
 
-class QueuedAnalysesSampleViewlet(ViewletBase):
+class QueuedAnalysesSampleViewlet(ViewletBase, IsQueuedMixin):
     """Prints a viewlet to display a message stating there are some analyses
     that are in queue to be assigned to a worksheet
     """
@@ -63,6 +66,16 @@ class QueuedAnalysesSampleViewlet(ViewletBase):
     def get_num_analyses_pending(self):
         """Returns the number of analyses pending
         """
+        if not self.is_queue_active():
+            return 0
+
         analyses = self.context.getAnalyses()
-        queued = filter(api.is_queued, analyses)
+        queued = filter(self.is_queued, analyses)
         return len(queued)
+
+
+class QueueCheckServerConnection(ViewletBase):
+    """Prints a viewlet to display a message stating the Queue server is not
+    reachable
+    """
+    pass

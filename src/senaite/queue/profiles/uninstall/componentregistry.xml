@@ -2,5 +2,6 @@
 <componentregistry>
   <utilities>
     <utility interface="senaite.queue.interfaces.IQueueUtility" remove="true" />
+    <utility interface="senaite.queue.interfaces.IClientQueueUtility" remove="true" />
   </utilities>
 </componentregistry>

@@ -11,19 +11,20 @@
     permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 
-  <!-- Queue dispatcher view -->
+  <!-- Queue dispatcher view
   <browser:page
     for="*"
     name="queue_dispatcher"
     class=".views.dispatcher.QueueDispatcherView"
     permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+    -->
 
-  <!-- Queue consumer view -->
+  <!-- Processor view -->
   <browser:page
     for="*"
-    name="queue_consumer"
-    class=".views.consumer.QueueConsumerView"
+    name="queue_task_processor"
+    class=".views.processor.TaskProcessorView"
     permission="zope2.View"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
 

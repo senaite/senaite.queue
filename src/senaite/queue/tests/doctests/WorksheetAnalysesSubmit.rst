@@ -66,7 +66,7 @@ generic actions (`assign` action is not a generic one because involves handling
 a worksheet, slot positions, etc.).
 
     >>> api.disable_queue("task_assign_analyses")
-    >>> api.is_queue_enabled("task_assign_analyses")
+    >>> api.is_queue_active("task_assign_analyses")
     False
 
 Make the test a bit faster by reducing the min_seconds:
@@ -198,14 +198,14 @@ Now, only 2 analyses have been transitioned:
 
 As we've seen, the queue for this task is enabled:
 
-    >>> api.is_queue_enabled(action)
+    >>> api.is_queue_active(action)
     True
 
 But we can disable the queue for this task if we set the number of items to
 process per task to 0:
 
     >>> api.disable_queue(action)
-    >>> api.is_queue_enabled(action)
+    >>> api.is_queue_active(action)
     False
     >>> api.get_chunk_size(action)
     0

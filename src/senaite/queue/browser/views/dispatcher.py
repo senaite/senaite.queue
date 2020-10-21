@@ -18,6 +18,7 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
+import json
 import threading
 import time
 
@@ -86,11 +87,15 @@ class QueueDispatcherView(BrowserView):
     def start_consumer_thread(self):
         """Starts an returns a new thread that notifies the consumer
         """
-        base_url = _api.get_url(_api.get_portal())
-        url = "{}/queue_consumer".format(base_url)
-        name = "{}.{}".format(CONSUMER_THREAD_PREFIX, int(time.time()))
-        kwargs = dict(url=url, timeout=api.get_max_seconds_task())
-        t = threading.Thread(name=name, target=requests.get, kwargs=kwargs)
+        portal_url = _api.get_url(_api.get_portal())
+        name = "{}{}".format(CONSUMER_THREAD_PREFIX, int(time.time()))
+        task = api.get_queue().pop()
+        kwargs = {
+            "portal_url": portal_url,
+            "task_uid": task.task_uid,
+            "timeout": task.get("max_seconds", api.get_max_seconds_task()),
+        }
+        t = threading.Thread(name=name, target=notify_consumer, kwargs=kwargs)
         t.start()
         return t
 
@@ -104,3 +109,26 @@ class QueueDispatcherView(BrowserView):
         if len(threads) > 0:
             return threads[0]
         return None
+
+
+def notify_consumer(portal_url, task_uid, timeout):
+    url = "{}/queue_task_processor".format(portal_url)
+    thread_name = threading.currentThread().getName()
+
+    # Process the task
+    payload = {
+        "uid": task_uid,
+        "action": "process",
+        "thread": thread_name,
+    }
+    response = requests.get(url, params=payload, timeout=timeout, verify=False)
+
+    if response.text == "Task {} processed".format(task_uid):
+        # Task succeded
+        payload.update({"action": "success"})
+    else:
+        # Task failed
+        payload.update({"action": "fail"})
+
+    # Notify the task whether succeeded or failed
+    requests.get(url, params=payload, timeout=timeout, verify=False)

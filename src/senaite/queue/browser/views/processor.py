@@ -18,10 +18,10 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-import time
+import copy
 import traceback
-import transaction
 
+import time
 from Products.Five.browser import BrowserView
 from senaite.queue import api
 from senaite.queue import logger
@@ -31,6 +31,11 @@ from zope.component import queryAdapter
 from bika.lims import api as _api
 from bika.lims.interfaces import IWorksheet
 
+_marker = object()
+
+ALLOWED_ACTIONS = ["process", "success", "fail"]
+
+
 # If the tasks is performed very rapidly, the task will get priority over a
 # transaction done from userland. In case of conflict, the transaction from
 # userland will fail and will be retried 3 times. We do not want the user to
@@ -39,13 +44,15 @@ from bika.lims.interfaces import IWorksheet
 MIN_SECONDS_TASK = 2
 
 
-class QueueConsumerView(BrowserView):
-    """View responsible of consuming a task from the queue
+class TaskProcessorView(BrowserView):
+    """View responsible of processing tasks from the queue
     """
+
     def __init__(self, context, request):
-        super(QueueConsumerView, self).__init__(context, request)
+        super(TaskProcessorView, self).__init__(context, request)
         self.context = context
         self.request = request
+        self._task = _marker
 
     @property
     def queue(self):
@@ -53,69 +60,107 @@ class QueueConsumerView(BrowserView):
         """
         return api.get_queue()
 
-    def get_task(self):
-        """Returns the task to be processed
+    @property
+    def task_uid(self):
+        """Returns the task uid param value from the request
         """
-        task_uid = self.request.get("tuid")
-        if task_uid:
-            task = self.queue.get_task(task_uid)
-            if task and task.status != "running":
-                return None
-            return task
-        return self.queue.pop()
+        return self.request.get("uid") or None
+
+    @property
+    def action(self):
+        """Returns the action param value from the request
+        """
+        return self.request.get("action") or None
+
+    @property
+    def task(self):
+        """Returns the task to process, if any
+        """
+        if self._task is _marker:
+           task = self.task_uid and self.queue.get_task(self.task_uid) or None
+           if task and task.status == "running":
+               # TODO Check consumer thread id here!
+               self._task = task
+           else:
+               self._task = None
+
+        return self._task
 
     def __call__(self):
-        task = self.get_task()
-        if not task:
-            # No tasks remaining or task not found, do nothing
-            return self.response("No task available", log_mode="info")
+        # Is there any valid action passed-in?
+        action_func = self.get_action_func()
+        if not action_func:
+            return "No valid action"
 
-        # Check if current user matches with task's user
-        if _api.get_current_user().id != task.username:
+        # Is there any valid task passed-in?
+        if not self.task:
+            return "No valid task"
 
-            # Login as the user who initially fired the task and redirect to
-            # consumer again for the authentication to be in force
-            if self.login_as(task.username):
-                base_url = _api.get_url(_api.get_portal())
-                url = "{}/queue_consumer?tuid={}".format(base_url, task.task_uid)
-                return self.request.response.redirect(url)
-            else:
-                # Cannot login as this user!
-                msg = "Cannot login with '{}'".format(task.username)
-                self.queue.fail(task, error_message=msg)
-                return self.response(msg, log_mode="error")
+        # Is an authorized user
+        if not self.is_authorized():
+            # Try to authorize
+            return self.auth()
 
-        # Do the work
-        # At this point, current user matches with task's user
-        log_mode = "info"
-        msg = "Task '{}' for '{}' processed".format(task.name, task.context_path)
-        try:
-            # Process the task
-            self.process_task(task)
-
-            # Do a transaction commit, better to handle a transaction commit
-            # conflict before we mark the task as succeeded
-            transaction.commit()
-
-            # Mark the task as succeeded
-            self.queue.success(task)
-
-        except (RuntimeError, Exception) as e:
-            tbex = traceback.format_exc()
-            self.queue.fail(task, error_message="\n".join([e.message, tbex]))
-            log_mode = "error"
-            msg = "{}: {} [SKIP]\n{}".format(task.name, e.message, tbex)
+        # Call the process function
+        result = action_func()
 
         # Close the session for current user
-        # Quite necessary for when this view is called directly from a browser
-        # by an anonymous user that somehow, figured out the TUID
         acl = _api.get_tool("acl_users")
         acl.resetCredentials(self.request, self.request.response)
-        return self.response(msg, log_mode=log_mode)
 
-    def response(self, msg, log_mode="info"):
-        getattr(logger, log_mode)(msg)
-        return msg
+        return result
+
+    def get_action_func(self):
+        """Returns the function to use for task processing
+        """
+        if self.action in ALLOWED_ACTIONS:
+            return getattr(self, self.action)
+        return None
+
+    def is_authorized(self):
+        """Returns whether the current user is authorized or not
+        """
+        return _api.get_current_user().id == self.task.username
+
+    def auth(self):
+        """Tries to authenticate with the user that triggered the task
+        """
+        if self.login_as(self.task.username):
+            # Redirect to the processor, but logged as new user
+            base_url = _api.get_url(_api.get_portal())
+            url = "{}/queue_task_processor?uid={}&action={}".format(
+                base_url, self.task_uid, self.action)
+            return self.request.response.redirect(url)
+        else:
+            # Cannot login as this user!
+            msg = "Cannot login with '{}'".format(self.task.username)
+            self.queue.fail(self.task, error_message=msg)
+            return self.response(msg, log_mode="error")
+
+    def process(self):
+        """Process the task passed-in through the request
+        """
+        try:
+            self.process_task(self.task)
+            return self.response("Task {} processed".format(self.task_uid))
+        except (RuntimeError, Exception) as e:
+            # Label the task as failed
+            tbex = traceback.format_exc()
+            self.queue.fail(self.task, error_message="\n".join([e.message, tbex]))
+            msg = "{}: {} [SKIP]\n{}".format(self.task.name, e.message, tbex)
+            return self.response(msg, log_mode="error")
+
+    def success(self):
+        """Labels the task passed-in through the request as succeeded
+        """
+        self.queue.success(self.task)
+        return self.response("Task {} succeeded".format(self.task_uid))
+
+    def fail(self):
+        """Labels the task passed-in through the request as failed
+        """
+        self.queue.fail(self.task)
+        return self.response("Task {} labeled as failed".format(self.task_uid))
 
     def login_as(self, username):
         """Login Plone user (without password)
@@ -147,6 +192,10 @@ class QueueConsumerView(BrowserView):
         portal = _api.get_portal()
         zope_acl_users = portal.getPhysicalRoot().acl_users
         return zope_acl_users.getUserById(username)
+
+    def response(self, msg, log_mode="info"):
+        getattr(logger, log_mode)(msg)
+        return msg
 
     def process_task(self, task):
         # Start the timer

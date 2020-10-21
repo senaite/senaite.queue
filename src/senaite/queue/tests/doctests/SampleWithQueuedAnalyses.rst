@@ -69,7 +69,7 @@ generic actions (`assign` action is not a generic one because involves handling
 a worksheet, slot positions, etc.).
 
     >>> api.disable_queue("task_assign_analyses")
-    >>> api.is_queue_enabled("task_assign_analyses")
+    >>> api.is_queue_active("task_assign_analyses")
     False
 
 Enable rejection workflow, so at least the transition "reject" can be performed

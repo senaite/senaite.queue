@@ -57,17 +57,87 @@ class IQueuedTaskAdapter(Interface):
         """
 
 
-class IQueueUtility(Interface):
-    """Marker interface for Queue global utility (singleton)
+class IBaseQueueUtility(Interface):
+    """Interface that provide basic signatures for Queue utilities
     """
 
-    def pop(self):
-        """Returns the next task to process, if any
+    def add(self, task):
+        """Adds a task to the queue
+        :param task: the QueueTask to add
         """
 
-    def add(self):
-        """Adds a task to the queue
+    def pop(self, consumer_id):
+        """Returns the next task to process, if any
+        :param consumer_id: id of the consumer thread that will process the task
+        :return: the task to be processed or None
+        :rtype: queue.QueueTask
         """
+
+    def done(self, task):
+        """Notifies the queue that the task has been processed successfully
+        :param task: task's unique id (task_uid) or QueueTask object
+        """
+
+    def fail(self, task, error_message=None):
+        """Notifies the queue that the processing of the task failed
+        :param task: task's unique id (task_uid) or QueueTask object
+        :param error_message: (Optional) the error/traceback
+        """
+
+    def get_task(self, task_uid):
+        """Returns the task with the given tuid
+        :param task_uid: task's unique id
+        :return: the task from the queue
+        :rtype: queue.QueueTask
+        """
+
+    def get_tasks(self, status=None):
+        """Returns an iterable with the tasks from the queue
+        :param status: (Optional) a string or list with status. If None, only
+            "running" and "queued" are considered
+        :return iterable of QueueTask objects
+        :rtype: listiterator
+        """
+
+    def get_uids(self, status=None):
+        """Returns a list with the uids from the queue
+        :param status: (Optional) a string or list with status. If None, only
+            "running" and "queued" are considered
+        :return list of uids
+        :rtype: list
+        """
+
+    def get_tasks_for(self, context_or_uid, name=None):
+        """Returns an iterable with the queued or running tasks the queue
+        contains for the given context and name, if provided.
+        Failed tasks are not considered
+        :param context_or_uid: object/brain/uid to look for in the queue
+        :param name: (Optional) name of the type of the task to look for
+        :return: iterable of QueueTask objects
+        :rtype: listiterator
+        """
+
+    def has_task(self, task):
+        """Returns whether the queue contains a task for the given tuid
+        :param task: task's unique id (task_uid) or QueueTask object
+        :return: True if the queue contains the task
+        :rtype: bool
+        """
+
+    def has_tasks_for(self, context_or_uid, name=None):
+        """Returns whether the queue contains a task for the given context and
+        name if provided.
+        :param context_or_uid: object/brain/uid to look for in the queue
+        :param name: (Optional) name of the type of the task to look for
+        :return: True if the queue contains the task
+        :rtype: bool
+        """
+
+
+class IQueueUtility(IBaseQueueUtility):
+    """Marker interface for Queue global utility (singleton) used by the zeo
+    client that acts as the server
+    """
 
     def is_empty(self):
         """Returns whether the queue is empty
@@ -77,28 +147,13 @@ class IQueueUtility(Interface):
         """Returns whether the queue is busy
         """
 
-    def fail(self, task, error_message=None):
-        """Notifies that the task failed
-        """
-
-    def success(self, task):
-        """Notifies that the task succeed
-        """
-
     def purge(self):
         """Purges the queue of invalid/stuck tasks
         """
 
-    def get_task(self, task_uid):
-        """Returns the task with the given tuid
-        """
 
-    def get_tasks_for(self, context_or_uid, name=None):
-        """Returns an iterable with the tasks the queue contains for the given
-        context and name if provided
-        """
+class IClientQueueUtility(IBaseQueueUtility):
+    """Marker interface for the Queue global utility (singleton) used by the
+    zeo clients that act as queue clients
+    """
 
-    def has_tasks_for(self, context_or_uid, name=None):
-        """Returns whether the queue contains a task for the given context and
-        name if provided.
-        """

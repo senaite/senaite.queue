@@ -23,6 +23,7 @@ from datetime import datetime
 
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile
 from senaite.queue import api
+from senaite.queue import IQueueUtility
 from senaite.queue import messageFactory as _
 
 from bika.lims.browser import BrowserView
@@ -87,7 +88,9 @@ class TasksView(BrowserView):
 
     @property
     def queue_tool(self):
-        return api.get_queue()
+        from zope.component import getUtility
+        return getUtility(IQueueUtility)
+
 
     def remove_task(self, tuid):
         self.queue_tool.remove(tuid)

@@ -204,30 +204,30 @@ Enable/Disable queue
 
 By default, the queue is enabled:
 
-    >>> api.is_queue_enabled()
+    >>> api.is_queue_active()
     True
 
 And for default supported actions as well:
 
     >>> actions = ["submit", "unassign", "reject", "retract", "verify", "task_assign_analyses"]
-    >>> all(map(api.is_queue_enabled, actions))
+    >>> all(map(api.is_queue_active, actions))
     True
 
 We can disable a queue for an specific action:
 
     >>> api.disable_queue("verify")
-    >>> api.is_queue_enabled("verify")
+    >>> api.is_queue_active("verify")
     False
 
 While keeping the queue for the rest of tasks enabled:
 
     >>> enabled_actions = filter(lambda a: a != "verify", actions)
-    >>> all(map(api.is_queue_enabled, enabled_actions))
+    >>> all(map(api.is_queue_active, enabled_actions))
     True
 
 And the whole queue as well:
 
-    >>> api.is_queue_enabled()
+    >>> api.is_queue_active()
     True
 
 Disabling a queue for a given action, resets its chunk size to 0:
@@ -238,7 +238,7 @@ Disabling a queue for a given action, resets its chunk size to 0:
 We can re-enable the queue for that specific task:
 
     >>> api.enable_queue("verify")
-    >>> api.is_queue_enabled("verify")
+    >>> api.is_queue_active("verify")
     True
 
 And the chunk size for that specific task is now default's:
@@ -259,14 +259,14 @@ If we disable and re-enable the task for this task, the chunksize becomes
 default though:
 
     >>> api.disable_queue("verify")
-    >>> api.is_queue_enabled("verify")
+    >>> api.is_queue_active("verify")
     False
 
     >>> api.get_chunk_size("verify")
     0
 
     >>> api.enable_queue("verify")
-    >>> api.is_queue_enabled("verify")
+    >>> api.is_queue_active("verify")
     True
 
     >>> api.get_chunk_size("verify")
@@ -275,12 +275,12 @@ default though:
 We can disable the whole queue too:
 
     >>> api.disable_queue()
-    >>> api.is_queue_enabled()
+    >>> api.is_queue_active()
     False
 
 And the queue for all tasks becomes disabled too:
 
-    >>> any(map(api.is_queue_enabled, actions))
+    >>> any(map(api.is_queue_active, actions))
     False
 
 The default chunk size becomes 0, as well as task-specific chunk sizes:
@@ -293,10 +293,10 @@ The default chunk size becomes 0, as well as task-specific chunk sizes:
 If we re-enable the whole queue, the task-specific queue are also enabled:
 
     >>> api.enable_queue()
-    >>> api.is_queue_enabled()
+    >>> api.is_queue_active()
     True
 
-    >>> all(map(api.is_queue_enabled, actions))
+    >>> all(map(api.is_queue_active, actions))
     True
 
 And their chunk sizes are preserved:

@@ -157,14 +157,14 @@ Only 2 analyses are transitioned now:
 
 As we've seen, the queue for this task is enabled:
 
-    >>> api.is_queue_enabled(task_name)
+    >>> api.is_queue_active(task_name)
     True
 
 But we can disable the queue for this task if we set the number of items to
 process per task to 0:
 
     >>> api.disable_queue(task_name)
-    >>> api.is_queue_enabled(task_name)
+    >>> api.is_queue_active(task_name)
     False
     >>> api.get_chunk_size(task_name)
     0

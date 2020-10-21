@@ -18,13 +18,13 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-from senaite.queue import api
+from senaite.queue.mixin import IsQueuedMixin
 from zope.interface import implements
 
 from bika.lims.interfaces import IGuardAdapter
 
 
-class SampleGuardAdapter(object):
+class SampleGuardAdapter(IsQueuedMixin):
     implements(IGuardAdapter)
 
     def __init__(self, context):
@@ -33,19 +33,23 @@ class SampleGuardAdapter(object):
     def guard(self, action):
         """Returns False if the sample is queued or contains queued analyses
         """
+        # Don't do anything if senaite.queue is not enabled
+        if not self.is_queue_active():
+            return True
+
         # Check if the sample is queued
-        if api.is_queued(self.context, include_running=False):
+        if self.is_queued(self.context, status=["queued"]):
             return False
 
         # Check whether the sample contains queued analyses
         for brain in self.context.getAnalyses():
-            if api.is_queued(brain, include_running=False):
+            if self.is_queued(brain, status=["queued"]):
                 return False
 
         return True
 
 
-class WorksheetGuardAdapter(object):
+class WorksheetGuardAdapter(IsQueuedMixin):
     implements(IGuardAdapter)
 
     def __init__(self, context):
@@ -54,13 +58,17 @@ class WorksheetGuardAdapter(object):
     def guard(self, action):
         """Returns False if the worksheet has queued jobs
         """
+        # Don't do anything if senaite.queue is not enabled
+        if not self.is_queue_active():
+            return True
+
         # Check if the worksheet is queued
-        if api.is_queued(self.context, include_running=False):
+        if self.is_queued(self.context, status=["queued"]):
             return False
 
         # Check whether this worksheet contains queued analyses
         for obj in self.context.getAnalyses():
-            if api.is_queued(obj, include_running=False):
+            if self.is_queued(obj, status=["queued"]):
                 return False
 
         return True

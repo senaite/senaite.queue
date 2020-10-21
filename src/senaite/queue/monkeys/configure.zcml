@@ -3,6 +3,14 @@
     xmlns:monkey="http://namespaces.plone.org/monkey"
     i18n_domain="senaite.queue">
 
+  <!-- Monkey patch for the WorksheetTemplate assignment form -->
+  <monkey:patch
+     description=""
+     class="bika.lims.browser.worksheet.views.add_analyses.AddAnalysesView"
+     original="handle_submit"
+     replacement=".browser.worksheet.handle_submit"
+  />
+
   <!-- Monkey patch for asynchronous assignment of Worksheet Template -->
   <monkey:patch
      description=""

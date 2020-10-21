@@ -20,17 +20,21 @@
 
 import logging
 
+from AccessControl.Permissions import manage_users as ManageUsers
 from Products.Archetypes.atapi import listTypes
 from Products.Archetypes.atapi import process_types
 from Products.CMFCore.permissions import AddPortalContent
 from Products.CMFCore.utils import ContentInit
+from Products.PluggableAuthService import PluggableAuthService
 from senaite.queue.interfaces import IQueueUtility
 from senaite.queue.interfaces import ISenaiteQueueLayer
+from senaite.queue.pas import add_queue_auth_plugin
 from zope.i18nmessageid import MessageFactory
 
 PRODUCT_NAME = "senaite.queue"
 PROFILE_ID = "profile-{}:default".format(PRODUCT_NAME)
 UNINSTALL_PROFILE_ID = "profile-{}:uninstall".format(PRODUCT_NAME)
+PAS_PLUGIN_ID = "senaite_queue_auth"
 
 # Defining a Message Factory for when this product is internationalized.
 messageFactory = MessageFactory(PRODUCT_NAME)
@@ -56,6 +60,15 @@ def initialize(context):
                     extra_constructors=(constructor, ),
                     fti=ftis,
                     ).initialize(context)
+
+    # Register Queue's PAS plugin
+    from pas import QueueAuthPlugin
+    PluggableAuthService.registerMultiPlugin(QueueAuthPlugin.meta_type)
+    context.registerClass(
+        QueueAuthPlugin,
+        permission=ManageUsers,
+        constructors=(add_queue_auth_plugin,),
+    )
 
 
 def is_installed():

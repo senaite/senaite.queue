@@ -19,6 +19,7 @@
 # Some rights reserved, see README and LICENSE.
 
 from senaite.queue import api
+from senaite.queue import logger
 
 from bika.lims import api as _api
 from bika.lims.catalog import CATALOG_ANALYSIS_LISTING
@@ -112,33 +113,29 @@ def _apply_worksheet_template_routine_analyses(self, wst):
     # Re-sort slots for new samples to display them in natural order
     new_slots = map(lambda s: samples_slots.get(s), new_sample_uids)
     sorted_slots = zip(sorted(new_sample_uids), sorted(new_slots))
-    for sample_id, slot in sorted_slots:
+    for sample_uid, slot in sorted_slots:
         samples_slots[sample_uid] = slot
 
     # SENAITE.QUEUE-SPECIFIC
-    # Process the first chunk right now
     task_name = "task_assign_analyses"
-    if api.is_queue_enabled(task_name):
-        chunks = api.get_chunks(task_name, new_analyses)
+    new_analyses = map(lambda a: (a[0], samples_slots[a[1]]), new_analyses)
+    if api.is_queue_active(task_name):
+        # Queue the assignment of analyses
+        analyses, slots = zip(*new_analyses)
+        api.add_assign_task(self, analyses=analyses, slots=slots)
+
+        # Reindex the worksheet to update the WorksheetTemplate meta column
+        self.reindexObject()
+
     else:
-        chunks = (new_analyses, [])
-
-    # Add analyses to the worksheet
-    for analysis, sample_uid in chunks[0]:
-        slot = samples_slots[sample_uid]
-        self.addAnalysis(analysis, slot)
-
-    # Add the rest to the queue
-    if chunks[1]:
-        analyses, slots = zip(*chunks[1])
-        api.queue_assign_analyses(self, analyses=analyses, slots=slots)
+        map(lambda a: self.addAnalysis(a[0], a[1]), new_analyses)
 
 
 def addAnalyses(self, analyses):
     """Adds a collection of analyses to the Worksheet at once
     """
     to_queue = list()
-    queue_enabled = api.is_queue_enabled("task_assign_analyses")
+    queue_enabled = api.is_queue_active("task_assign_analyses")
     for num, analysis in enumerate(analyses):
         analysis = _api.get_object(analysis)
         if not queue_enabled:
@@ -150,4 +147,4 @@ def addAnalyses(self, analyses):
 
     # Add them to the queue
     if to_queue:
-        api.queue_assign_analyses(self, to_queue)
+        api.add_assign_task(self, analyses=to_queue)

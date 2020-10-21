@@ -17,24 +17,3 @@
 #
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
-
-from senaite.queue import api
-
-from bika.lims.browser.workflow import WorkflowActionGenericAdapter
-
-
-class WorkflowActionGenericQueueAdapter(WorkflowActionGenericAdapter):
-    """Adapter in charge of adding a transition/action to be performed for a
-    single object or multiple objects to the queue
-    """
-
-    def do_action(self, action, objects):
-
-        if api.is_queue_active(action):
-            # Add to the queue
-            api.add_action_task(objects, action, self.context)
-            return objects
-
-        # Delegate to base do_action
-        return super(WorkflowActionGenericQueueAdapter, self).do_action(
-            action, objects)

@@ -18,19 +18,16 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-from bika.lims import api as _api
-from bika.lims.interfaces import IWorksheet
-from bika.lims.interfaces.analysis import IRequestAnalysis
-from bika.lims.workflow import doActionFor
-
-from senaite.queue import api
-from senaite.queue.queue import QueueTask
-from senaite.queue.interfaces import IQueuedTaskAdapter
-
 from Products.Archetypes.interfaces.base import IBaseObject
-
+from senaite.queue import api
+from senaite.queue.interfaces import IQueuedTaskAdapter
+from senaite.queue.queue import QueueTask
 from zope.component import adapts
 from zope.interface import implements
+
+from bika.lims import api as _api
+from bika.lims.interfaces import IWorksheet
+from bika.lims.workflow import doActionFor
 
 
 class QueuedActionTaskAdapter(object):
@@ -54,7 +51,7 @@ class QueuedActionTaskAdapter(object):
         map(lambda obj: doActionFor(obj, task["action"]), objects)
 
         # Add remaining objects to the queue
-        api.queue_action(chunks[1], task["action"], self.context)
+        api.add_action_task(chunks[1], task["action"], self.context)
 
 
 class QueuedAssignAnalysesTaskAdapter(object):
@@ -98,7 +95,7 @@ class QueuedAssignAnalysesTaskAdapter(object):
         if chunks[1]:
             # Unpack the remaining analyses-slots and add them to the queue
             uids, slots = zip(*chunks[1])
-            api.queue_assign_analyses(worksheet, analyses=uids, slots=slots)
+            api.add_assign_task(worksheet, analyses=uids, slots=slots)
 
 
 class QueueObjectSecurityAdapter(object):

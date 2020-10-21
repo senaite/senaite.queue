@@ -22,11 +22,12 @@ from senaite.core.listing.interfaces import IListingView
 from senaite.core.listing.interfaces import IListingViewAdapter
 from senaite.queue import api
 from senaite.queue import messageFactory as _
+from senaite.queue.mixin import IsQueuedMixin
 from zope.component import adapts
 from zope.interface import implements
 
 
-class QueuedWorksheetsViewAdapter(object):
+class QueuedWorksheetsViewAdapter(IsQueuedMixin):
     """Disables the worksheets with analyses awaiting for assignment (queued)
     """
     adapts(IListingView)
@@ -43,7 +44,11 @@ class QueuedWorksheetsViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
-        if api.is_queued(obj):
+        # Don't do anything if senaite.queue is not enabled
+        if not self.is_queue_active():
+            return
+
+        if self.is_queued(obj):
             item["disabled"] = True
             icon = api.get_queue_image("queued.gif", width="55px")
             item["replace"]["state_title"] = _("Queued")
@@ -51,7 +56,7 @@ class QueuedWorksheetsViewAdapter(object):
         return item
 
 
-class QueuedWorksheetAnalysesViewAdapter(object):
+class QueuedWorksheetAnalysesViewAdapter(IsQueuedMixin):
     """Disables the analyses if the worksheet still contains analyses awaiting
     for being assigned
     """
@@ -69,12 +74,16 @@ class QueuedWorksheetAnalysesViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
-        if api.is_queued(self.context):
+        # Don't do anything if senaite.queue is not enabled
+        if not self.is_queue_active():
+            return
+
+        if self.is_queued(self.context):
             item["disabled"] = True
         return item
 
 
-class QueuedAddAnalysesViewAdapter(object):
+class QueuedAddAnalysesViewAdapter(IsQueuedMixin):
     """Displays the analyses assigned to this (queued) worksheet, but disabled
     """
     adapts(IListingView)
@@ -91,20 +100,24 @@ class QueuedAddAnalysesViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
-        if api.is_queued(self.context):
+        # Don't do anything if senaite.queue is not enabled
+        if not self.is_queue_active():
+            return
+
+        if self.is_queued(self.context):
             # If the worksheet is in the queue, do not display analyses, but
             # those to be added and disabled
-            if api.is_queued(obj):
+            if self.is_queued(obj):
                 item["disabled"] = True
             else:
                 item.clear()
-        elif api.is_queued(obj):
+        elif self.is_queued(obj):
             # Return an empty dict, so listing machinery won't render this item
             item.clear()
         return item
 
 
-class QueuedAnalysesViewAdapter(object):
+class QueuedAnalysesViewAdapter(IsQueuedMixin):
     """Disables the worksheets with analyses awaiting for assignment/action
     """
     adapts(IListingView)
@@ -121,7 +134,11 @@ class QueuedAnalysesViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
-        if api.is_queued(obj):
+        # Don't do anything if senaite.queue is not enabled
+        if not self.is_queue_active():
+            return
+
+        if self.is_queued(obj):
             item["disabled"] = True
             icon = api.get_queue_image("queued.gif", title=_("Queued"),
                                       width="55px")
@@ -129,7 +146,7 @@ class QueuedAnalysesViewAdapter(object):
         return item
 
 
-class QueuedSampleAnalysisServicesViewAdapter(object):
+class QueuedSampleAnalysisServicesViewAdapter(IsQueuedMixin):
     """Disables the analyses services for which the current context (Sample) has
     at least one analysis awaiting for assignment
     """
@@ -147,12 +164,16 @@ class QueuedSampleAnalysisServicesViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
-        if api.is_queued(obj):
+        # Don't do anything if senaite.queue is not enabled
+        if not self.is_queue_active():
+            return
+
+        if self.is_queued(obj):
             item["disabled"] = True
         return item
 
 
-class QueuedSamplesViewAdapter(object):
+class QueuedSamplesViewAdapter(IsQueuedMixin):
     """Disables the checkbox for queued samples and displays a loading icon in
     progress bar column
     """
@@ -170,7 +191,11 @@ class QueuedSamplesViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
-        if api.is_queued(obj):
+        # Don't do anything if senaite.queue is not enabled
+        if not self.is_queue_active():
+            return
+
+        if self.is_queued(obj):
             item["disabled"] = True
             icon = api.get_queue_image("queued.gif", width="55px")
             item["replace"]["state_title"] = _("Queued")
