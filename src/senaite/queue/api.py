@@ -20,7 +20,6 @@
 
 import requests
 import time
-
 from Acquisition import aq_base
 from collections import OrderedDict
 from plone.memoize import ram
@@ -39,19 +38,6 @@ from bika.lims.utils import render_html_attributes
 
 _action_prefix = "task_action_"
 _marker = object()
-
-
-def _generic_cache_key(fun, *args, **kwargs):
-    """Returns an string made of the args and kwargs. Used in cache decorators
-    """
-    cache_seconds = kwargs.get("cache_seconds", 0)
-    if cache_seconds <= 1:
-        # Do not cache
-        raise ram.DontCache
-
-    params = [fun.func_name] + list(filter(None, args))
-    params += sorted(map(lambda i: "{}={}".format(i[0], i[1]), kwargs.items()))
-    return "|".join(params), time.time() // cache_seconds
 
 
 def get_server_url():
@@ -118,8 +104,6 @@ def is_queue_active(name_or_action=None):
     """Returns whether the queue is installed, properly configured and enabled
     :param name_or_action: (optional) if set, returns if the queue is enabled
             for tasks with the name or action passed in
-    :param cache_seconds: (optional) cache the result for n seconds. Don't use
-            it unless you know exactly what you are doing
     :returns: True or False
     :rtype: bool
     """
