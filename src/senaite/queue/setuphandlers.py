@@ -27,7 +27,7 @@ from senaite.queue import PAS_PLUGIN_ID
 from senaite.queue import PRODUCT_NAME
 from senaite.queue import PROFILE_ID
 from senaite.queue import UNINSTALL_PROFILE_ID
-from senaite.queue.pas import QueueAuthPlugin
+from senaite.queue.pasplugin import QueueAuthPlugin
 
 from bika.lims import api
 

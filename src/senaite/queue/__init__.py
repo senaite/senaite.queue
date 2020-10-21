@@ -28,7 +28,7 @@ from Products.CMFCore.utils import ContentInit
 from Products.PluggableAuthService import PluggableAuthService
 from senaite.queue.interfaces import IQueueUtility
 from senaite.queue.interfaces import ISenaiteQueueLayer
-from senaite.queue.pas import add_queue_auth_plugin
+from senaite.queue.pasplugin import add_queue_auth_plugin
 from zope.i18nmessageid import MessageFactory
 
 PRODUCT_NAME = "senaite.queue"
@@ -62,7 +62,7 @@ def initialize(context):
                     ).initialize(context)
 
     # Register Queue's PAS plugin
-    from pas import QueueAuthPlugin
+    from pasplugin import QueueAuthPlugin
     PluggableAuthService.registerMultiPlugin(QueueAuthPlugin.meta_type)
     context.registerClass(
         QueueAuthPlugin,
