@@ -72,10 +72,3 @@ class QueuedAnalysesSampleViewlet(ViewletBase, IsQueuedMixin):
         analyses = self.context.getAnalyses()
         queued = filter(self.is_queued, analyses)
         return len(queued)
-
-
-class QueueCheckServerConnection(ViewletBase):
-    """Prints a viewlet to display a message stating the Queue server is not
-    reachable
-    """
-    pass
