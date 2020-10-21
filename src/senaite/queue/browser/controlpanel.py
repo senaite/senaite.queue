@@ -59,12 +59,34 @@ class IQueueControlPanel(Interface):
     """Control panel Settings
     """
 
-    default = schema.Int(
-        title=_(u"Default number of objects to process per task"),
+    server = schema.TextLine(
+        title=_(u"Queue server"),
         description=_(
-            "Default number of objects that will be handled in a single task. "
-            "A value of 0 disables queuing of tasks functionality at all, "
-            "specific tasks below included. "
+            "URL of the zeo client that will act as the queue server. This is, "
+            "the zeo client others will rely on regarding tasks addition, "
+            "retrieval and removal. An empty value or a non-reachable queue "
+            "server disables the asynchronous processing of tasks. In such "
+            "case, system will behave as if senaite.queue was not installed"
+        ),
+        default=u"http://localhost:8080/senaite",
+        constraint=valid_url_constraint,
+        required=False,
+    )
+
+    default = schema.Int(
+        title=_(u"Number of objects to process per task"),
+        description=_(
+            "Default number of objects to process in a single request when the "
+            "task contains multiple items. The items from a task are processed "
+            "in chunks, and remaining are re-queued for later. For instance, "
+            "when a user selects multiple analyses for their assignment to a "
+            "worksheet, only one task is generated. If the value defined is 5, "
+            "the analyses will be assigned in chunks of this size, and the "
+            "system will keep generating tasks for the remaining analyses "
+            "all them are finally assigned. Higher values increment the chance "
+            "of transaction commit conflicts, while lower values tend to slow "
+            "down the completion of the whole task. "
+            "A value of 0 disables queueing if tasks functionality at all. "
             "Default value: {}".format(DEFAULT_OBJ_TASK)
         ),
         min=0,
@@ -87,7 +109,7 @@ class IQueueControlPanel(Interface):
     )
 
     min_seconds_task = schema.Int(
-        title=_(u"Minimum seconds per task"),
+        title=_(u"Minimum seconds"),
         description=_(
             "Minimum number of seconds to book per task. If the task is "
             "performed very rapidly, it will have priority over a transaction "
@@ -103,96 +125,14 @@ class IQueueControlPanel(Interface):
         required=True,
     )
 
-    task_assign_analyses = schema.Int(
-        title=_(u"Number of analyses to assign per task"),
-        description=_(
-            "Number of analyses that will be handled in a single task when "
-            "assigned to a worksheet. Overrides default's for action 'assign'. "
-            "A value of 0 disables the queue for this specific action. "
-            "Default value: {}".format(DEFAULT_OBJ_TASK)
-        ),
-        min=0,
-        max=10,
-        default=DEFAULT_OBJ_TASK,
-        required=True,
-    )
-
-    task_action_unassign = schema.Int(
-        title=_(u"Number of analyses to unassign per task"),
-        description=_(
-            "Number of analyses that will be handled in a single task when "
-            "unassigned from a worksheet. Overrides default's for 'unassign' "
-            "action. A value of 0 disables the queue for this specific action. "
-            "Default value: {}".format(DEFAULT_OBJ_TASK)
-        ),
-        min=0,
-        max=10,
-        default=DEFAULT_OBJ_TASK,
-        required=True,
-    )
-
-    task_action_submit = schema.Int(
-        title=_(u"Number of analyses to submit per task"),
-        description=_(
-            "Number of analyses that will be handled in a single task when "
-            "results are submitted. Overrides default's for 'submit' action. "
-            "A value of 0 disables the queue for this specific action. "
-            "Default value: {}".format(DEFAULT_OBJ_TASK)
-        ),
-        min=0,
-        max=10,
-        default=DEFAULT_OBJ_TASK,
-        required=True,
-    )
-
-    task_action_verify = schema.Int(
-        title=_(u"Number of analyses to verify per task"),
-        description=_(
-            "Number of analyses that will be handled in a single task when "
-            "the analysis is verified. Overrides default's for 'reject' "
-            "action. A value of 0 disables the queue for this specific action. "
-            "Default value: {}".format(DEFAULT_OBJ_TASK)
-        ),
-        min=0,
-        max=10,
-        default=DEFAULT_OBJ_TASK,
-        required=True,
-    )
-
-    task_action_retract = schema.Int(
-        title=_(u"Number of analyses to retract per task"),
-        description=_(
-            "Number of analyses that will be handled in a single task when "
-            "the analysis is retracted. Overrides default's for 'retract' "
-            "action. A value of 0 disables the queue for this specific action. "
-            "Default value: {}".format(DEFAULT_OBJ_TASK)
-        ),
-        min=0,
-        max=10,
-        default=DEFAULT_OBJ_TASK,
-        required=True,
-    )
-
-    task_action_reject = schema.Int(
-        title=_(u"Number of analyses to reject per task"),
-        description=_(
-            "Number of analyses that will be handled in a single task when "
-            "the analysis is rejected. Overrides default's for 'reject' "
-            "action. A value of 0 disables the queue for this specific action. "
-            "Default value: {}".format(DEFAULT_OBJ_TASK)
-        ),
-        min=0,
-        max=10,
-        default=DEFAULT_OBJ_TASK,
-        required=True,
-    )
-
     max_seconds_unlock = schema.Int(
-        title=_(u"Seconds to wait before unlock"),
+        title=_(u"Maximum seconds"),
         description=_(
-            "Number of seconds to wait for a process in queue to be finished "
-            "before being considered as failed. Failed processes will be "
-            "enqueued again. "
+            "Number of seconds to wait for a task to finish before being "
+            "re-queued or considered as failed. System will keep retrying the "
+            "task until the value set in 'Maximum retries' is reached, at"
+            "which point the task will be definitely considered as failed and "
+            "no further actions will take place. "
             "Minimum value: 30, Default value: 120"
         ),
         min=30,
@@ -201,40 +141,13 @@ class IQueueControlPanel(Interface):
         required=True,
     )
 
-    server = schema.TextLine(
-        title=_(u"Queue server"),
-        description=_(
-            "URL of the zeo client that will act as the queue server. This is, "
-            "the zeo client others will rely on regarding tasks addition, "
-            "retrieval and removal. An empty value or a non-reachable queue "
-            "server disables the asynchronous processing of tasks. In such "
-            "case, system will behave as if senaite.queue was not installed"
-        ),
-        default=u"http://localhost:8080/senaite",
-        constraint=valid_url_constraint,
-        required=False,
-    )
-
-    consumer = schema.TextLine(
-        title=_(u"Queue consumer"),
-        description=_(
-            "URL of the zeo client that will act as a queue consumer. This "
-            "zeo client will keep asking the queue server for tasks and "
-            "sequentially process them thereafter. An empty value does not "
-            "disable the queuing, but tasks won't be processed."
-        ),
-        default=u"http://localhost:8080/senaite",
-        constraint=valid_url_constraint,
-        required=False,
-    )
-
     auth_key = schema.TextLine(
         title=_(u"Auth secret key"),
         description=_(
             "This secret key is used by senaite.queue to generate an encrypted "
-            "token for the authentication of requests sent by queue clients "
-            "and workers to the Queue's server API. Must be 32 url-safe "
-            "base64-encoded bytes"
+            "token (symmetric encryption) for the authentication of requests "
+            "sent by queue clients and workers to the Queue's server API. "
+            "Must be 32 url-safe base64-encoded bytes"
         ),
         default=safe_unicode(base64.urlsafe_b64encode(os.urandom(32))),
         constraint=auth_key_constraint,

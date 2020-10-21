@@ -85,7 +85,7 @@ def consume_task():
         "task_uid": task.task_uid,
         "userid": _api.get_current_user().id,
         "task_userid": task.username,
-        "timeout": task.get("max_seconds", api.get_max_seconds_task()),
+        "timeout": task.get("max_seconds", api.get_max_seconds()),
     }
     new_consumer(**kwargs)
     #t = threading.Thread(name=consumer_id, target=new_consumer, kwargs=kwargs)

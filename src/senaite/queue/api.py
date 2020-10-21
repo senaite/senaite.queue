@@ -432,17 +432,6 @@ def get_queue_image_url(name):
     return "{}/++resource++senaite.queue.static/{}".format(portal_url, name)
 
 
-def get_max_seconds_task(default=120):
-    """Returns the max number of seconds to wait for a task to finish
-    """
-    registry_id = "senaite.queue.max_seconds_unlock"
-    max_seconds = _api.get_registry_record(registry_id)
-    max_seconds = _api.to_int(max_seconds, default)
-    if max_seconds < 30:
-        max_seconds = 30
-    return max_seconds
-
-
 def queue_reindex_object_security(obj):
     """Queues a task for the recursive object security reindexing
     """
