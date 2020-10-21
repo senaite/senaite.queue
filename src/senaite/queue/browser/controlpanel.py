@@ -21,7 +21,6 @@
 import base64
 import os
 
-from bika.lims import api
 from plone.app.registry.browser.controlpanel import ControlPanelFormWrapper
 from plone.app.registry.browser.controlpanel import RegistryEditForm
 from plone.z3cform import layout
