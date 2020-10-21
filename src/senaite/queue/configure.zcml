@@ -30,12 +30,6 @@
   <include package=".upgrade"/>
   <include package=".server"/>
 
-  <!-- Static resource directory -->
-  <browser:resourceDirectory
-    name="senaite.queue.static"
-    directory="static"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer"/>
-
   <!-- Default profile -->
   <genericsetup:registerProfile
       name="default"
