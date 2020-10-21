@@ -20,8 +20,6 @@
 
 from Acquisition import aq_base
 
-from bika.lims import api as _api
-
 from senaite.queue import api
 
 
