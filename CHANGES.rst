@@ -4,8 +4,11 @@ Changelog
 1.0.2 (unreleased)
 ------------------
 
+- Added JSON API endpoints for both queue server and clients
+- Queue server-client implementation, without the need of annotations
+- Added PAS plugin for authentication, with symmetric encryption
 - Delegate the reindex object security to queue when linking contacts to users
-- #7 Allow to queue generic worflow actions without an specific adapter
+- #7 Allow to queue generic worflow actions without specific adapter
 - #7 Redux and better performance
 - #6 Allow the prioritization of tasks
 - #5 No actions can be done to worksheets with queued jobs

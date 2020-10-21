@@ -32,6 +32,8 @@ from bika.lims import api
 
 
 class QueueAuthPlugin(BasePlugin):
+    """PAS Authentication Plugin for senaite.queue
+    """
 
     # Meta type name of the Plugin used when registering the plugin in PAS
     meta_type = 'SENAITE Queue Auth Plugin'
@@ -95,11 +97,11 @@ class QueueAuthPlugin(BasePlugin):
         pas = self._getPAS()
         info = pas._verifyUser(pas.plugins, user_id=credentials['login'])
 
-        if info is None:
+        if not info:
             return None
 
         # User can authenticate
-        return info['id'], info['login']
+        return info["id"], info["login"]
 
 
 classImplements(QueueAuthPlugin, IExtractionPlugin, IAuthenticationPlugin)

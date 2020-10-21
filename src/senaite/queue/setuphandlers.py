@@ -18,7 +18,6 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-from bika.lims.utils import to_unicode
 from cryptography.fernet import Fernet
 from plone import api as ploneapi
 from Products.PlonePAS.setuphandlers import activatePluginInterfaces
@@ -30,6 +29,7 @@ from senaite.queue import UNINSTALL_PROFILE_ID
 from senaite.queue.pasplugin import QueueAuthPlugin
 
 from bika.lims import api
+from bika.lims.utils import to_unicode
 
 
 def setup_handler(context):

@@ -49,6 +49,7 @@ class QueueTask(dict):
         })
 
     def _get_request_data(self, request):
+        # TODO All this is no longer required!
         data = {
             "__ac": request.get("__ac") or "",
             "_orig_env": self._get_orig_env(request),
@@ -177,4 +178,6 @@ def to_task(task_dict):
 
 
 def is_task(task):
+    """Returns whether the value passed in is a task
+    """
     return isinstance(task, QueueTask)
