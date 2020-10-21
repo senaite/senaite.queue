@@ -50,6 +50,7 @@ setup(
     install_requires=[
         "cryptography",
         "setuptools",
+        "senaite.jsonapi",
         "senaite.lims>=1.3.4",
         "requests",
     ],
