@@ -140,8 +140,6 @@ def handle_server_notification(req_data, action):
     func = utility.getattr(action)
     func(task_uid)
 
-    utility.delete(task_uid)
-
     # Add our friends, we might need them if server is stopped or idle
     utility.add_senders(senders)
 
