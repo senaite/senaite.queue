@@ -22,10 +22,14 @@ import requests
 import time
 from cryptography.fernet import Fernet
 from requests.auth import AuthBase
+from senaite.jsonapi.exceptions import APIError
 from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.interfaces import IClientQueueUtility
+from senaite.queue.interfaces import IOfflineClientQueueUtility
 from senaite.queue.queue import to_task
+from senaite.queue.server.utility import QueueUtility
+from zope.component import getUtility
 from zope.interface import implements
 
 from bika.lims import api as capi
@@ -34,11 +38,15 @@ from bika.lims import api as capi
 class ClientQueueUtility(object):
     implements(IClientQueueUtility)
 
-    def add(self, tasks):
+    def add(self, task):
         """Adds a task to the queue
         :param task: the QueueTask to add
         """
-        self._post("add", payload=tasks)
+        self._post("add", payload=task)
+
+        # Add the task to the utility for operating offline
+        utility = getUtility(IOfflineClientQueueUtility)
+        return utility.add(task)
 
     def pop(self, consumer_id):
         """Returns the next task to process, if any
@@ -68,18 +76,33 @@ class ClientQueueUtility(object):
         }
         self._post("fail", payload=payload)
 
+    def delete(self, task):
+        """Removes a task from the queue
+        :param task: task's unique id (task_uid) or QueueTask object
+        """
+        payload = {"taskuid": api.get_task_uid(task)}
+        self._post("delete", payload=payload)
+
     def get_task(self, task_uid):
         """Returns the task with the given tuid
         :param task_uid: task's unique id
         :return: the task from the queue
         :rtype: queue.QueueTask
         """
-        task_uid = api.get_task_uid(task_uid)
-        # Note the endpoint here is the task uid
-        task = self._post(task_uid)
-        if not task:
-            return None
-        return to_task(task)
+        try:
+            task_uid = api.get_task_uid(task_uid)
+            # Note the endpoint here is the task uid
+            task = self._post(task_uid)
+            if not task:
+                return None
+            return to_task(task)
+        except APIError as e:
+            if 500 <= e.status < 600:
+                # Fallback to off-line mode
+                logger.warn("[{}]. Fallback to off-line mode".format(e.status))
+                utility = getUtility(IOfflineClientQueueUtility)
+                return utility.get_task(task_uid)
+            raise e
 
     def get_tasks(self, status=None):
         """Returns an iterable with the tasks from the queue
@@ -92,10 +115,19 @@ class ClientQueueUtility(object):
             "status": status or "",
             "complete": True,
         }
-        tasks = self._post("tasks", payload=query)
-        tasks = tasks.get("items", [])
-        for task in tasks:
-            yield to_task(task)
+        try:
+            tasks = self._post("tasks", payload=query)
+            tasks = tasks.get("items", [])
+            for task in tasks:
+                yield to_task(task)
+        except APIError as e:
+            if 500 <= e.status < 600:
+                # Fallback to off-line mode
+                logger.warn("[{}]. Fallback to off-line mode".format(e.status))
+                utility = getUtility(IOfflineClientQueueUtility)
+                for task in utility.get_tasks(status=status):
+                    yield task
+            raise e
 
     def get_uids(self, status=None):
         """Returns a list with the uids from the queue
@@ -105,8 +137,16 @@ class ClientQueueUtility(object):
         :rtype: list
         """
         query = {"status": status or ""}
-        uids = self._post("uids", payload=query)
-        return uids.get("items", [])
+        try:
+            uids = self._post("uids", payload=query)
+            return uids.get("items", [])
+        except APIError as e:
+            if 500 <= e.status < 600:
+                # Fallback to off-line mode
+                logger.warn("[{}]. Fallback to off-line mode".format(e.status))
+                utility = getUtility(IOfflineClientQueueUtility)
+                return utility.get_uids(status=status)
+            raise e
 
     def get_tasks_for(self, context_or_uid, name=None):
         """Returns an iterable with the queued or running tasks the queue
@@ -122,10 +162,19 @@ class ClientQueueUtility(object):
             "name": name or "",
             "complete": True,
         }
-        tasks = self._post("search", payload=query)
-        tasks = tasks.get("items", [])
-        for task in tasks:
-            yield to_task(task)
+        try:
+            tasks = self._post("search", payload=query)
+            tasks = tasks.get("items", [])
+            for task in tasks:
+                yield to_task(task)
+        except APIError as e:
+            if 500 <= e.status < 600:
+                # Fallback to off-line mode
+                logger.warn("[{}]. Fallback to off-line mode".format(e.status))
+                utility = getUtility(IOfflineClientQueueUtility)
+                for task in utility.get_tasks(context_or_uid, name=name):
+                    yield task
+            raise e
 
     def has_task(self, task):
         """Returns whether the queue contains a task for the given tuid
@@ -146,7 +195,7 @@ class ClientQueueUtility(object):
         tasks = self.get_tasks_for(context_or_uid, name=name)
         return any(tasks)
 
-    def _post(self, endpoint, resource=None, payload=None):
+    def _post(self, endpoint, resource=None, payload=None, timeout=10):
         """Sends a POST request to SENAITE's Queue Server
         Raises an exception if the response status is not HTTP 2xx or timeout
         :param endpoint: the endpoint to POST against
@@ -162,13 +211,43 @@ class ClientQueueUtility(object):
         auth = QueueAuth(capi.get_current_user().id)
 
         # This might rise exceptions (e.g. TimeoutException)
-        response = requests.post(url, json=payload, auth=auth)
+        response = requests.post(url, json=payload, auth=auth, timeout=timeout)
 
         # Check the request is successful. Raise exception otherwise
         response.raise_for_status()
 
         # Return the result
         return response.json()
+
+
+class OfflineClientQueueUtility(QueueUtility):
+    """Client queue utility for when the queue server is not reachable.
+    It mimics the same behavior as the server's queue utility, except that pop
+    is not allowed and fail always discard the task.
+
+    This utility is feeded with new tasks each time the Client Queue utility
+    sends a new task to the Queue server. Queue server sends notifications to
+    the client who originally added the task, so they are tunneled into this
+    utility to keep it up-to-date.
+
+    The assumption is that a non-reachable queue server is a temporary
+    situation. There is always the chance the connectivity with the server is
+    lost anytime, but we need to ensure as much as possible the consistency of
+    queued objects. For instance, we do want the system to think a given
+    worksheet does not have analyses awaiting for assignment because we've
+    temporarily lost the connectivity with the queue server
+    """
+    implements(IOfflineClientQueueUtility)
+
+    def pop(self, consumerid):
+        # Always return None. Pop is not supported
+        return None
+
+    def fail(self, task, error_message=None):
+        self.delete(task.task_uid)
+
+    def add_senders(self, senders):
+        self._senders.update(senders)
 
 
 class QueueAuth(AuthBase):

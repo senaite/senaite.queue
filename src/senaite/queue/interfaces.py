@@ -84,6 +84,11 @@ class IBaseQueueUtility(Interface):
         :param error_message: (Optional) the error/traceback
         """
 
+    def delete(self, task):
+        """Removes a task from the queue
+        :param task: task's unique id (task_uid) or QueueTask object
+        """
+
     def get_task(self, task_uid):
         """Returns the task with the given tuid
         :param task_uid: task's unique id
@@ -157,3 +162,8 @@ class IClientQueueUtility(IBaseQueueUtility):
     zeo clients that act as queue clients
     """
 
+
+class IOfflineClientQueueUtility(IBaseQueueUtility):
+    """Marker interface for the Queue global utility (singleton) used by the
+    zeo clients when the Queue server is not reachable
+    """

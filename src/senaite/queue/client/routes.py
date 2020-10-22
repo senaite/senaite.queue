@@ -19,12 +19,12 @@
 # Some rights reserved, see README and LICENSE.
 
 import time
-
 from senaite.jsonapi import request as req
 from senaite.jsonapi.v1 import add_route
 from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.client import consumer
+from senaite.queue.interfaces import IOfflineClientQueueUtility
 from senaite.queue.interfaces import IQueuedTaskAdapter
 from senaite.queue.request import fail
 from senaite.queue.request import get_summary
@@ -33,6 +33,7 @@ from zope.component import queryAdapter
 
 from bika.lims import api as capi
 from bika.lims.interfaces import IWorksheet
+from zope.component import getUtility
 
 
 @add_route("/queue_consumer/consume",
@@ -100,6 +101,51 @@ def process(context, request, taskuid=None):
         time.sleep(0.5)
 
     return get_summary("Processed: {}".format(task.task_short_uid), "process")
+
+
+@add_route("/queue_client/done", "senaite.queue.client.done", methods=["POST"])
+@handle_queue_errors
+def done(context, request):
+    """Endpoint to notify that a task has been processed
+    """
+    return handle_server_notification(req.get_json(), "done")
+
+
+@add_route("/queue_client/fail", "senaite.queue.client.fail", methods=["POST"])
+@handle_queue_errors
+def fail(context, request):
+    """Endpoint to notify that a task has been discarded
+    """
+    return handle_server_notification(req.get_json(), "fail")
+
+
+@add_route("/queue_client/delete", "senaite.queue.client.delete", methods=["POST"])
+@handle_queue_errors
+def delete(context, request):
+    """Endpoint to notify that a task has been deleted
+    """
+    return handle_server_notification(req.get_json(), "delete")
+
+
+def handle_server_notification(req_data, action):
+    """Handles notifications received about tasks and queue status
+    """
+    task_uid = req_data.get("taskuid")
+    senders = req_data.get("senders")
+
+    # Get our cache pool utility
+    utility = getUtility(IOfflineClientQueueUtility)
+
+    # Remove the task
+    func = utility.getattr(action)
+    func(task_uid)
+
+    utility.delete(task_uid)
+
+    # Add our friends, we might need them if server is stopped or idle
+    utility.add_senders(senders)
+
+    return get_summary("notified", action)
 
 
 def get_task(task_uid):

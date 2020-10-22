@@ -34,7 +34,7 @@ class SampleGuardAdapter(IsQueuedMixin):
         """Returns False if the sample is queued or contains queued analyses
         """
         # Don't do anything if senaite.queue is not enabled
-        if not self.is_queue_active():
+        if not self.is_queue_readable():
             return True
 
         # Check if the sample is queued
@@ -59,7 +59,7 @@ class WorksheetGuardAdapter(IsQueuedMixin):
         """Returns False if the worksheet has queued jobs
         """
         # Don't do anything if senaite.queue is not enabled
-        if not self.is_queue_active():
+        if not self.is_queue_readable():
             return True
 
         # Check if the worksheet is queued

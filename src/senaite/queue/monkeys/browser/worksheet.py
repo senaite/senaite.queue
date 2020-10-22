@@ -18,8 +18,6 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-from senaite.queue.api import is_queue_active
-
 from bika.lims import api as capi
 from senaite.queue import api
 
@@ -43,7 +41,7 @@ def handle_submit(self):
     worksheet.applyWorksheetTemplate(wst)
 
     # Are there tasks queued for this Worksheet?
-    if is_queue_active():
+    if api.is_queue_readable():
         queue = api.get_queue()
         tasks = queue.get_tasks_for(worksheet)
         if tasks:

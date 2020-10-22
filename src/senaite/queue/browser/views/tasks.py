@@ -93,13 +93,13 @@ class TasksView(BrowserView):
 
 
     def remove_task(self, tuid):
-        self.queue_tool.remove(tuid)
+        self.queue_tool.delete(tuid)
 
     def requeue_task(self, tuid):
         qtool = self.queue_tool
         task = qtool.get_task(tuid)
         if task:
-            qtool.remove(tuid)
+            qtool.delete(tuid)
             task.retries = api.get_max_retries()
             qtool.add(task)
 

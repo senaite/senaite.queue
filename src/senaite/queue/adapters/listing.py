@@ -45,7 +45,7 @@ class QueuedWorksheetsViewAdapter(IsQueuedMixin):
 
     def folder_item(self, obj, item, index):
         # Don't do anything if senaite.queue is not enabled
-        if not self.is_queue_active():
+        if not self.is_queue_readable():
             return
 
         if self.is_queued(obj):
@@ -75,7 +75,7 @@ class QueuedWorksheetAnalysesViewAdapter(IsQueuedMixin):
 
     def folder_item(self, obj, item, index):
         # Don't do anything if senaite.queue is not enabled
-        if not self.is_queue_active():
+        if not self.is_queue_readable():
             return
 
         if self.is_queued(self.context):
@@ -101,7 +101,7 @@ class QueuedAddAnalysesViewAdapter(IsQueuedMixin):
 
     def folder_item(self, obj, item, index):
         # Don't do anything if senaite.queue is not enabled
-        if not self.is_queue_active():
+        if not self.is_queue_readable():
             return
 
         if self.is_queued(self.context):
@@ -135,7 +135,7 @@ class QueuedAnalysesViewAdapter(IsQueuedMixin):
 
     def folder_item(self, obj, item, index):
         # Don't do anything if senaite.queue is not enabled
-        if not self.is_queue_active():
+        if not self.is_queue_readable():
             return
 
         if self.is_queued(obj):
@@ -165,7 +165,7 @@ class QueuedSampleAnalysisServicesViewAdapter(IsQueuedMixin):
 
     def folder_item(self, obj, item, index):
         # Don't do anything if senaite.queue is not enabled
-        if not self.is_queue_active():
+        if not self.is_queue_readable():
             return
 
         if self.is_queued(obj):
@@ -192,7 +192,7 @@ class QueuedSamplesViewAdapter(IsQueuedMixin):
 
     def folder_item(self, obj, item, index):
         # Don't do anything if senaite.queue is not enabled
-        if not self.is_queue_active():
+        if not self.is_queue_readable():
             return
 
         if self.is_queued(obj):

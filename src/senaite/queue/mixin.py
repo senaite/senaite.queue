@@ -61,15 +61,8 @@ class IsQueuedMixin(object):
     chance of transaction commit conflicts
     """
 
-    def is_queue_active(self, name_or_action=None):
-        """Returns whether the queue is installed, well-configured and enabled
-        Delegates to api.is_queue_active, without caching
-        :param name_or_action: (optional) if set, returns if the queue is enabled
-                for tasks with the name or action passed in
-        :returns: True or False
-        :rtype: bool
-        """
-        return api.is_queue_active(name_or_action)
+    def is_queue_readable(self, name_or_action=None):
+        return api.is_queue_readable(name_or_action=name_or_action)
 
     def is_queued(self, brain_object_uid, status=None):
         """Returns whether the object passed-in is queued

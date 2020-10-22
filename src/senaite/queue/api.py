@@ -25,7 +25,9 @@ from collections import OrderedDict
 from plone.memoize import ram
 from senaite.queue import IQueueUtility
 from senaite.queue import is_installed
+from senaite.queue import logger
 from senaite.queue.interfaces import IClientQueueUtility
+from senaite.queue.interfaces import IOfflineClientQueueUtility
 from senaite.queue.interfaces import IQueuedTaskAdapter
 from senaite.queue.queue import QueueTask
 from six.moves.urllib import parse
@@ -67,12 +69,11 @@ def is_queue_server():
     as the queue server. Decorator ensures that the function is only called the
     first time and when the server url setting from control panel changes
     """
-    print("CACHE ******************  is queue server ****************")
     server_url = get_server_url()
     if not server_url:
         return False
     current_url = _api.get_url(_api.get_portal())
-    return current_url.startswith(server_url)
+    return current_url.lower().startswith(server_url.lower())
 
 
 @ram.cache(lambda *args: time.time() // 10)
@@ -92,7 +93,6 @@ def is_queue_reachable():
     url = "{}/@@API/senaite/v1/version".format(server_url)
     try:
         # Check the request was successful. Raise exception otherwise
-        print("CACHE ******************  is queue reachable ****************")
         r = requests.get(url, timeout=1)
         r.raise_for_status()
         return True
@@ -100,29 +100,81 @@ def is_queue_reachable():
         return False
 
 
-def is_queue_active(name_or_action=None):
-    """Returns whether the queue is installed, properly configured and enabled
-    :param name_or_action: (optional) if set, returns if the queue is enabled
-            for tasks with the name or action passed in
-    :returns: True or False
-    :rtype: bool
+def is_queue_readable(name_or_action=None):
+    """Returns whether the queue is in a suitable status for reads
     """
+    readable = ["ready", "resuming", "offline"]
+    return get_queue_status(name_or_action) in readable
+
+
+def is_queue_writable(name_or_action=None):
+    """Returns whether the queue is in a suitable status for both read and
+    write (task addition) actions
+    """
+    writable = ["ready"]
+    return get_queue_status(name_or_action) in writable
+
+
+def is_queue_readonly(name_or_action=None):
+    """Returns whether the queue is in read-only mode (no new tasks allowed)
+    """
+    readonly = ["resuming", "offline"]
+    return get_queue_status(name_or_action) in readonly
+
+
+def get_queue_status(name_or_action=None):
+    """Returns the current status of the queue:
+
+    * `ready`: queue server is enabled and healthy
+
+    * `resuming`: queue server is preparing for a `disabled` status. Queue
+            server does not accept `add` requests. In this status, clients
+            should be communicating with the queue to get updates about the
+            status of remaining tasks and objects.
+
+    * `disabled`: queue server does not accept requests at all, either because
+            has been disabled or because senaite.queue is not installed
+
+    * `offline`: queue server is not reachable or is unable to answer requests
+    """
+    # Is senaite queue not installed?
     if not is_installed():
-        # senaite.queue add-on is not installed
-        return False
+        return "disabled"
 
-    server_url = get_server_url()
-    if not server_url:
-        # Queue's server URL is not valid
-        return False
+    # Is the server url not valid?
+    if not get_server_url():
+        return "offline"
 
-    # Assume the queue is enabled for this name/action if chunk size > 0
-    chunk_size = get_chunk_size(name_or_action)
-    if chunk_size < 0:
-        return False
+    # Is general queue enabled?
+    if get_chunk_size() > 0:
+        # Is the queue not responding?
+        if not is_queue_reachable():
+            # We cannot be sure about the "real" status of the server, so
+            # better say the server's status is offline (read-only mode)
+            return "offline"
 
-    # Ping if reachable
-    return is_queue_reachable()
+        # Is queue disabled for this specific task name?
+        if name_or_action and get_chunk_size(name_or_action) <= 0:
+            return "disabled"
+
+        return "ready"
+
+    # General queue is disabled
+    if not is_queue_reachable():
+        # We cannot be sure about the "real" status of the server, so better
+        # say the server's status is offline (read-only mode)
+        return "offline"
+
+    # Are tasks awaiting?
+    try:
+        # TODO better to ask is_empty()
+        if len(get_queue().get_uids()) > 0:
+            return "resuming"
+    except:
+        pass
+
+    # Queue disabled and w/o remaining tasks
+    return "disabled"
 
 
 def get_chunk_size(name_or_action=None):
@@ -134,22 +186,17 @@ def get_chunk_size(name_or_action=None):
     chunk_size = _api.get_registry_record("senaite.queue.default")
     chunk_size = _api.to_int(chunk_size, 0)
     if chunk_size <= 0:
-        # All queue disabled
+        # Queue disabled
         return 0
 
     if name_or_action:
-        # Get the registry id for this name/action
-        token = name_or_action.split("senaite.queue.")[-1]
-        if token.startswith("task_"):
-            reg_id = "senaite.queue.{}".format(name_or_action)
-        else:
-            reg_id = "senaite.queue.{}{}".format(_action_prefix, token)
+        # TODO Retrieve task-specific chunk-sizes via adapters
+        pass
 
-        # Get the registry value
-        reg_value = _api.get_registry_record(reg_id)
-        chunk_size = _api.to_int(reg_value, default=chunk_size)
+    if chunk_size < 0:
+        return 0
 
-    return chunk_size > 0 and chunk_size or 0
+    return chunk_size
 
 
 def get_min_seconds(default=3):
@@ -217,9 +264,9 @@ def add_task(name, context, **kwargs):
     :rtype: senaite.queue.queue.QueueTask
     """
     # Is senaite.queue enabled/installed for this type of task?
-    if not is_queue_active(name):
+    if not is_queue_writable(name):
         raise ValueError(
-            "senaite.queue is not installed/enabled for {}".format(name)
+            "Queue is not enabled for {}".format(name)
         )
 
     # Check if there is a registered adapter able to handle this task
@@ -367,8 +414,11 @@ def get_queue():
     """
     if is_queue_server():
         return getUtility(IQueueUtility)
-    else:
+    elif is_queue_reachable():
         return getUtility(IClientQueueUtility)
+
+    logger.warn("Running in off-line mode")
+    return getUtility(IOfflineClientQueueUtility)
 
 
 def is_queued(brain_object_uid, task_name=None, include_running=True):
@@ -378,7 +428,7 @@ def is_queued(brain_object_uid, task_name=None, include_running=True):
     :param include_running: whether to look for in running tasks or not
     :return: True if the object is in the queue
     """
-    if not is_queue_active():
+    if not is_queue_readable():
         return False
 
     queued = False

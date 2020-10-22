@@ -43,9 +43,10 @@ def consume_task():
         logger.warn(msg)
         return msg
 
-    if not api.is_queue_active():
+    status = api.get_queue_status()
+    if status not in ["resuming", "ready"]:
         server = api.get_server_url()
-        msg = "Queue is not active. Check '{}' is running [SKIP]".format(server)
+        msg = "Server is {} ({}) [SKIP]".format(status, server)
         logger.warn(msg)
         return msg
 

@@ -83,16 +83,20 @@ class QueueUtility(object):
     implements(IQueueUtility)
 
     _storage = None
+    _senders = set()
 
     def __init__(self):
         self.__lock = threading.Lock()
         self._storage = QueueStorage()
 
+    # TODO unique param not declared in the interface
     def add(self, task, unique=False):
         """Adds a task to the queue
         :param task: the QueueTask to add
         """
         with self.__lock:
+            # Add the sender to the _senders pool
+            self._senders.add(task.sender)
             return self._add(task, unique=unique)
 
     def pop(self, consumer_id):
@@ -138,8 +142,7 @@ class QueueUtility(object):
         """Notifies the queue that the task has been processed successfully
         :param task: task's unique id (task_uid) or QueueTask object
         """
-        with self.__lock:
-            self._remove(task.task_uid)
+        self.delete(task)
 
     def success(self, task):
         """Removes the task from the queue
@@ -156,7 +159,16 @@ class QueueUtility(object):
         :param error_message: (Optional) the error/traceback
         """
         with self.__lock:
-            self._fail(task, error_message=error_message)
+            task_uid = api.get_task_uid(task)
+            self._fail(task_uid, error_message=error_message)
+
+    def delete(self, task):
+        """Removes a task from the queue
+        :param task: task's unique id (task_uid) or QueueTask object
+        """
+        with self.__lock:
+            task_uid = api.get_task_uid(task)
+            self._delete(task_uid)
 
     def get_task(self, task_uid):
         """Returns the task with the given tuid
@@ -244,6 +256,21 @@ class QueueUtility(object):
         tasks = self.get_tasks_for(context_or_uid, name=name)
         return any(tasks)
 
+    def get_senders(self):
+        """Returns the urls of the clients that have sent at least one task to
+        the queue server, except ourselves
+        """
+        current_url = capi.get_url(capi.get_portal()).lower()
+
+        def is_colleague(host):
+            if not host:
+                return False
+            if current_url.lower().startswith(host.lower()):
+                return False
+            return True
+
+        return filter(is_colleague, list(self._senders))
+
     def __len__(self):
         with self.__lock:
             return len(self._storage.tasks)
@@ -282,7 +309,11 @@ class QueueUtility(object):
         # Re-queue or add to pool of failed
         map(lambda t: self._fail(t, "Timeout"), stuck)
 
-    def _fail(self, task, error_message=None):
+    def _fail(self, task_uid, error_message=None):
+        task = self.get_task(task_uid)
+        if not task:
+            return
+
         # Get the running tasks, but the current one
         tasks = self._storage.running_tasks
         other_tasks = filter(lambda t: t.task_uid != task.task_uid, tasks)
@@ -321,13 +352,7 @@ class QueueUtility(object):
                             .format(task.name, task.task_short_uid,
                                     task.context_path))
 
-    def remove(self, task_uid):
-        """Removes a task from the queue
-        """
-        with self.__lock:
-            self._remove(task_uid)
-
-    def _remove(self, task_uid):
+    def _delete(self, task_uid):
         task = self.get_task(task_uid)
         if not task:
             return

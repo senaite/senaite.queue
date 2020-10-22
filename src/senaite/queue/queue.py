@@ -23,6 +23,7 @@ import time
 
 from bika.lims import api
 from bika.lims.utils import tmpID
+from six.moves.urllib import parse
 
 
 class QueueTask(dict):
@@ -35,7 +36,7 @@ class QueueTask(dict):
             raise TypeError("No valid context object")
         kw = kw or {}
         self.update({
-            "task_uid": tmpID(),
+            "task_uid": kw.get("task_uid") or tmpID(),
             "name": name,
             "context_uid": api.get_uid(context),
             "context_path": api.get_path(context),
@@ -46,7 +47,33 @@ class QueueTask(dict):
             "created": time.time(),
             "status": None,
             "error_message": None,
+            "sender": kw.get("sender") or self._sender_url(request, context)
         })
+
+    def _sender_url(self, request, context):
+        """Returns the internal url of the current instance
+        """
+        orig = self._get_orig_env(request)
+        host = orig.get("SERVER_NAME", "")
+        if not host:
+            return ""
+
+        port = orig.get("SERVER_PORT", "")
+        if port:
+            host = "{}:{}".format(host, port)
+
+        path = api.get_path(context)
+        path = path.strip("/").split("/")[0]
+        parts = filter(None, ["http:/", host, path])
+        try:
+            result = parse.urlparse("/".join(parts))
+            if all([result.scheme, result.netloc, result.path]):
+                url = "{}://{}{}".format(result.scheme, result.netloc,
+                                         result.path)
+                # Remove trailing '/'
+                return url.strip("/")
+        except Exception:
+            return ""
 
     def _get_request_data(self, request):
         # TODO All this is no longer required!
@@ -128,6 +155,14 @@ class QueueTask(dict):
         self["retries"] = value
 
     @property
+    def sender(self):
+        return self["sender"]
+
+    @property
+    def uids(self):
+        return self["uids"]
+
+    @property
     def username(self):
         return self.request["AUTHENTICATED_USER"]
 
@@ -163,17 +198,16 @@ def to_task(task_dict):
     if not context:
         return None
 
-    # Skip some attributes they are assigned when the QueueTask is instantiated
-    exclude = ["task_uid", "name", "request", "context_uid", "context_path"]
+    # Skip attrs that are assigned when the QueueTask is instantiated
+    exclude = ["name", "request", "context_uid", "context_path"]
     out_keys = filter(lambda k: k not in exclude, task_dict.keys())
     kwargs = dict(map(lambda k: (k, task_dict[k]), out_keys))
 
     # Create the Queue Task
     task = QueueTask(name, api.get_request(), context, **kwargs)
-    task.update({
-        "task_uid": task_dict.get("task_uid") or task.task_uid,
-        "request": request,
-    })
+
+    # Update with the original request
+    task.update({"request": request})
     return task
 
 
