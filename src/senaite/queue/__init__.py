@@ -20,7 +20,7 @@
 
 import logging
 
-from AccessControl.Permissions import manage_users as ManageUsers
+from AccessControl.Permissions import manage_users
 from Products.Archetypes.atapi import listTypes
 from Products.Archetypes.atapi import process_types
 from Products.CMFCore.permissions import AddPortalContent
@@ -29,7 +29,7 @@ from Products.PluggableAuthService import PluggableAuthService
 from senaite.queue.interfaces import IQueueUtility
 from senaite.queue.interfaces import ISenaiteQueueLayer
 from senaite.queue.pasplugin import add_queue_auth_plugin
-from zope.i18nmessageid import MessageFactory
+from zope.i18nmessageid import MessageFactory  # noqa
 
 PRODUCT_NAME = "senaite.queue"
 PROFILE_ID = "profile-{}:default".format(PRODUCT_NAME)
@@ -51,11 +51,11 @@ def initialize(context):
 
     # Register each type with it's own Add permission
     # use ADD_CONTENT_PERMISSION as default
-    allTypes = zip(content_types, constructors)
-    for atype, constructor in allTypes:
-        kind = "%s: Add %s" % (PRODUCT_NAME, atype.portal_type)
+    all_types = zip(content_types, constructors)
+    for a_type, constructor in all_types:
+        kind = "%s: Add %s" % (PRODUCT_NAME, a_type.portal_type)
         ContentInit(kind,
-                    content_types=(atype,),
+                    content_types=(a_type,),
                     permission=AddPortalContent,
                     extra_constructors=(constructor, ),
                     fti=ftis,
@@ -66,7 +66,7 @@ def initialize(context):
     PluggableAuthService.registerMultiPlugin(QueueAuthPlugin.meta_type)
     context.registerClass(
         QueueAuthPlugin,
-        permission=ManageUsers,
+        permission=manage_users,
         constructors=(add_queue_auth_plugin,),
     )
 

@@ -18,9 +18,13 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
+import base64
+import os
+
 import time
 from AccessControl.class_init import InitializeClass
 from cryptography.fernet import Fernet
+from plone import api as ploneapi
 from Products.PluggableAuthService.interfaces.plugins import \
     IAuthenticationPlugin
 from Products.PluggableAuthService.interfaces.plugins import IExtractionPlugin
@@ -29,6 +33,7 @@ from Products.PluggableAuthService.utils import classImplements
 from senaite.queue.interfaces import ISenaiteQueueLayer
 
 from bika.lims import api
+from bika.lims.utils import to_unicode
 
 
 class QueueAuthPlugin(BasePlugin):
@@ -38,7 +43,7 @@ class QueueAuthPlugin(BasePlugin):
     # Meta type name of the Plugin used when registering the plugin in PAS
     meta_type = 'SENAITE Queue Auth Plugin'
 
-    def extractCredentials(self, request):
+    def extractCredentials(self, request):  # noqa camelCase
         """IExtractionPlugin implementation. Extracts login name from the
         request's "X-Queue-Auth-Token" header. This header contains an
         encrypted token with it's expiration date, together with the user name.
@@ -79,7 +84,7 @@ class QueueAuthPlugin(BasePlugin):
         user_id = "".join(tokens[1:])
         return {"login": user_id}
 
-    def authenticateCredentials(self, credentials):
+    def authenticateCredentials(self, credentials):  # noqa camelCase
         """IAuthenticationPlugin implementation, maps credentials to a User ID.
         If credentials cannot be authenticated, return None
         :param credentials: dict with {"login": <user_id>}
@@ -95,7 +100,7 @@ class QueueAuthPlugin(BasePlugin):
 
         # Verify user
         pas = self._getPAS()
-        info = pas._verifyUser(pas.plugins, user_id=credentials['login'])
+        info = pas._verifyUser(pas.plugins, user_id=credentials['login'])  # noqa
 
         if not info:
             return None
@@ -109,6 +114,18 @@ InitializeClass(QueueAuthPlugin)
 
 
 def add_queue_auth_plugin():
-    # Form for manually adding the plugin, but we do this in
-    # setuphandlers.py always.
+    # Form for manually adding the plugin, but we always do in setup handler
     pass
+
+
+def reset_auth_key(portal):
+    """Resets a new key for the encryption on user auto-authentication
+
+    This key is used to generate an encrypted token (symmetric encryption) for
+    the authentication of requests sent by queue clients and workers to the
+    Queue's server API. Must be 32 url-safe base64-encoded bytes
+    """
+    # Create and store the key
+    registry_id = "senaite.queue.auth_key"
+    key = base64.urlsafe_b64encode(os.urandom(32))
+    ploneapi.portal.set_registry_record(registry_id, to_unicode(key))

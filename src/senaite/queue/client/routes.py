@@ -39,7 +39,7 @@ from bika.lims.interfaces import IWorksheet
 @add_route("/queue_consumer/consume",
            "senaite.queue.consumer.consume", methods=["GET", "POST"])
 @handle_queue_errors
-def consume(context, request):
+def consume(context, request):  # noqa
     """Endpoint to handle the consumption of a queued task, if any
     """
     # disable CSRF
@@ -55,7 +55,7 @@ def consume(context, request):
 @add_route("/queue_consumer/process/<string:task_uid>",
            "senaite.queue.consumer.process", methods=["GET", "POST"])
 @handle_queue_errors
-def process(context, request, task_uid=None):
+def process(context, request, task_uid=None):  # noqa
     """Processes the task passed-in
     """
     # disable CSRF
@@ -86,7 +86,7 @@ def process(context, request, task_uid=None):
         task.context_uid))
 
     # If the task refers to a worksheet, inject (ws_id) in params to make
-    # sure guards (assign, unassign) return True
+    # sure guards (assign, un-assign) return True
     if IWorksheet.providedBy(task_context):
         request = capi.get_request()
         request.set("ws_uid", capi.get_uid(task_context))
@@ -106,7 +106,7 @@ def process(context, request, task_uid=None):
 
 @add_route("/queue_client/done", "senaite.queue.client.done", methods=["POST"])
 @handle_queue_errors
-def done(context, request):
+def done(context, request):  # noqa
     """Endpoint to notify that a task has been processed
     """
     return handle_server_notification(req.get_json(), "done")
@@ -114,7 +114,7 @@ def done(context, request):
 
 @add_route("/queue_client/fail", "senaite.queue.client.fail", methods=["POST"])
 @handle_queue_errors
-def fail(context, request):
+def fail(context, request):  # noqa
     """Endpoint to notify that a task has been discarded
     """
     return handle_server_notification(req.get_json(), "fail")
@@ -123,7 +123,7 @@ def fail(context, request):
 @add_route("/queue_client/delete", "senaite.queue.client.delete",
            methods=["POST"])
 @handle_queue_errors
-def delete(context, request):
+def delete(context, request):  # noqa
     """Endpoint to notify that a task has been deleted
     """
     return handle_server_notification(req.get_json(), "delete")

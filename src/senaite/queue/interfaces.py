@@ -20,7 +20,7 @@
 
 from bika.lims.interfaces import IBikaLIMS
 from senaite.lims.interfaces import ISenaiteLIMS
-from zope.interface import Interface
+from zope.interface import Interface  # noqa
 
 
 class ISenaiteQueueLayer(IBikaLIMS, ISenaiteLIMS):
@@ -48,7 +48,7 @@ class IQueuedTaskAdapter(Interface):
     """Marker interface for adapters in charge of processing queued tasks
     """
 
-    def __init__(self, context):
+    def __init__(self, context):  # noqa
         """Initializes the adapter with the context adapted
         """
 
@@ -90,7 +90,7 @@ class IBaseQueueUtility(Interface):
         """
 
     def get_task(self, task_uid):
-        """Returns the task with the given tuid
+        """Returns the task with the given task uid
         :param task_uid: task's unique id
         :return: the task from the queue
         :rtype: queue.QueueTask
@@ -101,7 +101,7 @@ class IBaseQueueUtility(Interface):
         :param status: (Optional) a string or list with status. If None, only
             "running" and "queued" are considered
         :return iterable of QueueTask objects
-        :rtype: listiterator
+        :rtype: iterator
         """
 
     def get_uids(self, status=None):
@@ -119,11 +119,11 @@ class IBaseQueueUtility(Interface):
         :param context_or_uid: object/brain/uid to look for in the queue
         :param name: (Optional) name of the type of the task to look for
         :return: iterable of QueueTask objects
-        :rtype: listiterator
+        :rtype: iterator
         """
 
     def has_task(self, task):
-        """Returns whether the queue contains a task for the given tuid
+        """Returns whether the queue contains a given task
         :param task: task's unique id (task_uid) or QueueTask object
         :return: True if the queue contains the task
         :rtype: bool

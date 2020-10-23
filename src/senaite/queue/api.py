@@ -20,7 +20,7 @@
 
 import requests
 import time
-from Acquisition import aq_base
+from Acquisition import aq_base  # noqa
 from collections import OrderedDict
 from plone.memoize import ram
 from senaite.queue import IQueueUtility
@@ -46,7 +46,7 @@ def get_server_url():
     url = _api.get_registry_record("senaite.queue.server")
     try:
         result = parse.urlparse(url)
-    except:
+    except:  # noqa a convenient way to check if the url is valid
         return None
 
     # Validate the url is ok
@@ -91,7 +91,7 @@ def is_queue_reachable():
         r = requests.get(url, timeout=1)
         r.raise_for_status()
         return True
-    except:
+    except:  # noqa don't care about the response, want a ping only
         return False
 
 
@@ -157,7 +157,7 @@ def get_queue_status(name_or_action=None):
             if not queue.is_empty():
                 # Queue is disabled but there are remaining tasks
                 return "resuming"
-        except:
+        except:  # noqa if server raises an error, assume is not healthy
             # Client queue has problems to communicate with server, so we
             # cannot be sure about the "real" status of the server
             return "offline"
@@ -293,14 +293,14 @@ def add_reindex_obj_security_task(brain_object_uid, **kwargs):
     :return: the task added to the queue
     :rtype: senaite.queue.queue.QueueTask
     """
-    def get_children_uids(obj):
+    def get_children_uids(base_obj):
         """Returns the uids from the obj hierarchy
         """
-        if not hasattr(aq_base(obj), "objectValues"):
+        if not hasattr(aq_base(base_obj), "objectValues"):
             return []
 
         all_children = []
-        for child_obj in obj.objectValues():
+        for child_obj in base_obj.objectValues():
             all_children.extend(get_children_uids(child_obj))
             all_children.append(_api.get_uid(child_obj))
 
@@ -333,7 +333,7 @@ def get_queue():
 
     elif is_queue_reachable():
         # This is a client and queue server is reachable, return the client
-        # queue utility that communicats with queue server through JSON API
+        # queue utility that communicates with queue server through JSON API
         return getUtility(IClientQueueUtility)
 
     # Queue server not reachable, return the queue utility for off-line mode

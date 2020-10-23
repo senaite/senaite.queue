@@ -23,8 +23,6 @@ import time
 
 from bika.lims import api
 from bika.lims.utils import tmpID
-from six.moves.urllib import parse
-
 
 _marker = object()
 

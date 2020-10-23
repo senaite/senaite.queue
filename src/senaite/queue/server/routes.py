@@ -55,7 +55,7 @@ def check_server(func):
            "senaite.queue.server.tasks", methods=["GET", "POST"])
 @check_server
 @handle_queue_errors
-def tasks(context, request, status=None):
+def tasks(context, request, status=None):  # noqa
     """Returns a JSON representation of the tasks from the queue
     """
     # Maybe the status has been sent via POST
@@ -76,14 +76,14 @@ def tasks(context, request, status=None):
            "senaite.queue.server.uids", methods=["GET", "POST"])
 @check_server
 @handle_queue_errors
-def uids(context, request, status=None):
+def uids(context, request, status=None):  # noqa
     """Returns a JSON representation of the uids from queued objects
     """
     # Maybe the status has been sent via POST
     request_data = req.get_json()
     status = status or request_data.get("status")
 
-    # Get the uids from queued obejcts
+    # Get the uids from queued objects
     items = qapi.get_queue().get_uids(status)
 
     # Convert to the dict representation
@@ -94,7 +94,7 @@ def uids(context, request, status=None):
            "senaite.queue.server.search", methods=["GET", "POST"])
 @check_server
 @handle_queue_errors
-def search(context, request):
+def search(context, request):  # noqa
     """Performs a search
     """
     # Get the search criteria
@@ -109,15 +109,15 @@ def search(context, request):
     complete = query.get("complete", False)
 
     # Get the tasks from the utility
-    tasks = qapi.get_queue().get_tasks_for(uid, name=name)
-    return get_tasks_summary(list(tasks), "server.search", complete=complete)
+    items = qapi.get_queue().get_tasks_for(uid, name=name)
+    return get_tasks_summary(list(items), "server.search", complete=complete)
 
 
 @add_route("/queue_server/<string(length=32):task_uid>",
            "senaite.queue.server.get", methods=["GET", "POST"])
 @check_server
 @handle_queue_errors
-def get(context, request, task_uid):
+def get(context, request, task_uid):  # noqa
     """Returns a JSON representation of the task with the specified task uid
     """
     # Get the task
@@ -132,7 +132,7 @@ def get(context, request, task_uid):
 @add_route("/queue_server/add", "senaite.queue.server.add", methods=["POST"])
 @check_server
 @handle_queue_errors
-def add(context, request):
+def add(context, request):  # noqa
     """Adds a new task to the queue server
     """
     # Extract the task(s) from the request
@@ -154,7 +154,7 @@ def add(context, request):
 @add_route("/queue_server/pop", "senaite.queue.server.pop", methods=["POST"])
 @check_server
 @handle_queue_errors
-def pop(context, request):
+def pop(context, request):  # noqa
     """Pops the next task from the queue, if any. Popped task is no longer
     available in the queued tasks pool, but added in the running tasks pool
     """
@@ -175,7 +175,7 @@ def pop(context, request):
 @add_route("/queue_server/done", "senaite.queue.server.done", methods=["POST"])
 @check_server
 @handle_queue_errors
-def done(context, request):
+def done(context, request):  # noqa
     """Acknowledge the task has been successfully processed. Task is removed
     from the running tasks pool and returned
     """
@@ -202,9 +202,9 @@ def done(context, request):
 @add_route("/queue_server/fail", "senaite.queue.server.fail", methods=["POST"])
 @check_server
 @handle_queue_errors
-def fail(context, request):
+def fail(context, request):  # noqa
     """Acknowledge the task has NOT been successfully processed. Task is
-    moved from running tasks to failed or requeued and returned
+    moved from running tasks to failed or re-queued and returned
     """
     # Get the task uid
     request_data = req.get_json()
@@ -235,7 +235,7 @@ def fail(context, request):
            "senaite.queue.server.requeue", methods=["GET", "POST"])
 @check_server
 @handle_queue_errors
-def requeue(context, request, task_uid=None):
+def requeue(context, request, task_uid=None):  # noqa
     """Requeue the task. Task is moved from either failed or running pool to
     the queued tasks pool and returned
     """
@@ -257,10 +257,11 @@ def requeue(context, request, task_uid=None):
     return get_message_summary(msg, "server.requeue", **task_info)
 
 
-@add_route("/queue_server/delete", "senaite.queue.server.delete", methods=["POST"])
+@add_route("/queue_server/delete", "senaite.queue.server.delete",
+           methods=["POST"])
 @check_server
 @handle_queue_errors
-def delete(context, request):
+def delete(context, request):  # noqa
     """Removes the task from the queue
     """
     # Get the task uid
@@ -336,6 +337,6 @@ def notify_sender(task, action):
     try:
         auth = QueueAuth(api.get_current_user().id)
         requests.post("/".join(parts), json=payload, auth=auth, timeout=1)
-    except:
+    except:  # noqa
         # Delivery is not granted
         pass

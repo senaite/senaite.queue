@@ -20,4 +20,4 @@
 
 
 # This import is required for registering the routes
-from senaite.queue.server import routes  # noqa
+from senaite.queue.server import routes

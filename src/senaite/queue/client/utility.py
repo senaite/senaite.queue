@@ -85,7 +85,7 @@ class ClientQueueUtility(object):
         self._post("delete", payload=payload)
 
     def get_task(self, task_uid):
-        """Returns the task with the given tuid
+        """Returns the task with the given task uid
         :param task_uid: task's unique id
         :return: the task from the queue
         :rtype: queue.QueueTask
@@ -110,7 +110,7 @@ class ClientQueueUtility(object):
         :param status: (Optional) a string or list with status. If None, only
             "running" and "queued" are considered
         :return iterable of QueueTask objects
-        :rtype: listiterator
+        :rtype: iterator
         """
         query = {
             "status": status or "",
@@ -156,7 +156,7 @@ class ClientQueueUtility(object):
         :param context_or_uid: object/brain/uid to look for in the queue
         :param name: name of the type of the task to look for
         :return: iterable of QueueTask objects
-        :rtype: listiterator
+        :rtype: iterator
         """
         query = {
             "uid": capi.get_uid(context_or_uid),
@@ -178,7 +178,7 @@ class ClientQueueUtility(object):
             raise e
 
     def has_task(self, task):
-        """Returns whether the queue contains a task for the given tuid
+        """Returns whether the queue contains a given task
         :param task: task's unique id (task_uid) or QueueTask object
         :return: True if the queue contains the task
         :rtype: bool
@@ -242,7 +242,7 @@ class OfflineClientQueueUtility(QueueUtility):
     It mimics the same behavior as the server's queue utility, except that
     is not allowed and fail always discard the task.
 
-    This utility is feeded with new tasks each time the Client Queue utility
+    This utility is feed with new tasks each time the Client Queue utility
     sends a new task to the Queue server. Queue server sends notifications to
     the client who originally added the task, so they are tunneled into this
     utility to keep it up-to-date.
@@ -274,7 +274,7 @@ class QueueAuth(AuthBase):
         secs = time.time() + 10
         token = "{}:{}".format(secs, self.username)
 
-        # Encrypt the token using our Fernet key
+        # Encrypt the token using our symmetric auth key
         key = capi.get_registry_record("senaite.queue.auth_key")
         auth_token = Fernet(str(key)).encrypt(token)
 

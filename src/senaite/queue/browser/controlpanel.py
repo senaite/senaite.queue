@@ -37,7 +37,7 @@ def auth_key_constraint(value):
     try:
         key = base64.urlsafe_b64decode(str(value))
         return len(key) == 32
-    except:
+    except:  # noqa a convenient way to check if the key is ok
         return False
 
 
@@ -47,7 +47,7 @@ def valid_url_constraint(value):
     try:
         result = parse.urlparse(value)
         return all([result.scheme, result.netloc, result.path])
-    except:
+    except:  # noqa a convenient way to check if the url is ok
         return False
 
 

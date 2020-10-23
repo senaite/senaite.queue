@@ -43,10 +43,10 @@ def handle_queue_errors(func):
                 # 401 Unauthorized, user needs to authenticate
                 fail(401, "Unauthorized")
             return func(*args, **kwargs)
-        except ConnectionError as e:
+        except ConnectionError:
             # Queue server refused the connection (probably stopped)
             fail(504, "Queue Server Timeout. Refused connection")
-        except Timeout as e:
+        except Timeout:
             # Queue server timeout
             fail(504, "Queue Server Timeout. Busy")
         except TooManyRedirects:
@@ -98,7 +98,7 @@ def get_tasks_summary(tasks, endpoint, complete=False, **kwargs):
     :param endpoint: endpoint from the request
     :param complete: whether to include the full representation of the tasks
     :param kwargs: additional (hashable) params to be included in the message
-    :return: dict with the summary and the list of task represenations
+    :return: dict with the summary and the list of task representations
     """
     tasks = tasks or []
     if not isinstance(tasks, (list, tuple)):

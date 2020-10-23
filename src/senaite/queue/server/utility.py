@@ -24,7 +24,7 @@ from senaite.queue import logger
 from senaite.queue.interfaces import IQueueUtility
 from senaite.queue.queue import get_task_uid
 from senaite.queue.queue import QueueTask
-from zope.interface import implements
+from zope.interface import implements  # noqa
 
 from bika.lims import api as capi
 
@@ -165,7 +165,7 @@ class QueueUtility(object):
             self._delete(task_uid)
 
     def get_task(self, task_uid):
-        """Returns the task with the given tuid
+        """Returns the task with the given task uid
         :param task_uid: task's unique id
         :return: the task from the queue
         :rtype: queue.QueueTask
@@ -182,7 +182,7 @@ class QueueUtility(object):
         :param status: (Optional) a string or list with status. If None, only
             "running" and "queued" are considered
         :return iterable of QueueTask objects
-        :rtype: listiterator
+        :rtype: iterator
         """
         if not isinstance(status, (list, tuple)):
             status = [status]
@@ -216,7 +216,7 @@ class QueueUtility(object):
         :param context_or_uid: object/brain/uid to look for in the queue
         :param name: name of the type of the task to look for
         :return: iterable of QueueTask objects
-        :rtype: listiterator
+        :rtype: iterator
         """
         uid = capi.get_uid(context_or_uid)
 
@@ -232,7 +232,7 @@ class QueueUtility(object):
                 yield task
 
     def has_task(self, task):
-        """Returns whether the queue contains a task for the given tuid
+        """Returns whether the queue contains a given task
         :param task: task's unique id (task_uid) or QueueTask object
         :return: True if the queue contains the task
         :rtype: bool
@@ -319,11 +319,11 @@ class QueueUtility(object):
                 task["retries"] -= 1
                 # Increase the max number of seconds to wait before this task
                 # is being considered stuck. Might happen the task is considered
-                # failed because there was no enought time for the task to
+                # failed because there was no enough time for the task to
                 # complete
                 max_sec = task.get("max_seconds", 60)
 
-                # Update the create timemillis to make room for other tasks,
+                # Update the create time millis to make room for other tasks,
                 # even if it keeps failing again and again (create is used to
                 # sort tasks, together with priority)
                 created = time.time()
@@ -401,4 +401,3 @@ class QueueUtility(object):
         logger.info("Added task {} ({}): {}"
                     .format(task.name, task.task_short_uid, task.context_path))
         return task
-

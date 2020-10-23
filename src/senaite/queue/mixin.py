@@ -28,8 +28,8 @@ from bika.lims import api as _api
 def _generic_5s_key(func, *args, **kwargs):
     """Returns an string made of the args and kwargs. Used in cache decorators
     :param func: the decorated function
-    :param \*args: the named arguments of the decorated function
-    :param \*\*kwargs: additional arguments of the decorated function
+    :param *args: the named arguments of the decorated function
+    :param **kwargs: additional arguments of the decorated function
     :return tuple (string_key, multiple_of_5_seconds), where the string_key is
         made of the concatenation of the func name and the arguments
     :rtype: tuple
@@ -53,7 +53,7 @@ def _get_uids(status=None):
 
 class IsQueuedMixin(object):
     """Mixin object providing most used functions for views, viewlets and
-    adapters. Functions might rely on memmoize decorators, so the values they
+    adapters. Functions might rely on memoize decorators, so the values they
     return cached for some seconds. In a single request, same function is
     called many times, that is a waste of resources and cause a lot of requests
     to the Queue server. We do not use here memoize's instance mode because we

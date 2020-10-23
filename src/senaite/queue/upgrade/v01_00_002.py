@@ -24,7 +24,7 @@ from senaite.queue import logger
 from senaite.queue import PRODUCT_NAME
 from senaite.queue import PROFILE_ID
 from senaite.queue.interfaces import IQueued
-from senaite.queue.setuphandlers import setup_auth_key
+from senaite.queue.pasplugin import reset_auth_key
 from senaite.queue.setuphandlers import setup_pas_plugin
 from zope.annotation.interfaces import IAnnotations
 from zope.interface import noLongerProvides
@@ -64,7 +64,7 @@ def upgrade(tool):
     setup_pas_plugin(portal)
 
     # Create and store the key to use for auth
-    setup_auth_key(portal, override=False)
+    reset_auth_key(portal)
 
     logger.info("{0} upgraded to version {1}".format(PRODUCT_NAME, version))
     return True
