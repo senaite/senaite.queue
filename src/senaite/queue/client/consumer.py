@@ -25,6 +25,7 @@ from senaite.queue import api
 from senaite.queue import is_installed
 from senaite.queue import logger
 from senaite.queue.client.utility import QueueAuth
+from senaite.queue.request import get_zeo_url
 
 from bika.lims import api as _api
 from bika.lims.decorators import synchronized
@@ -65,8 +66,7 @@ def consume_task():
         logger.warn("\n".join(msg))
 
     # Pop next task to process
-    consumer_id = "{}{}".format(CONSUMER_THREAD_PREFIX, int(time.time()))
-    logger.info(consumer_id)
+    consumer_id = _api.get_request().get("SERVER_URL")
     try:
         task = api.get_queue().pop(consumer_id)
     except Exception as e:
@@ -117,7 +117,7 @@ def new_consumer(site_url, server_url, task_uid, userid, task_userid, timeout):
 
     request = _api.get_request()
     payload = {
-        "taskuid": task_uid,
+        "task_uid": task_uid,
         "__zeo": request.get("SERVER_URL")
     }
     try:

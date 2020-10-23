@@ -113,15 +113,15 @@ def search(context, request):
     return get_tasks_summary(list(tasks), "server.search", complete=complete)
 
 
-@add_route("/queue_server/<string(length=32):taskuid>",
+@add_route("/queue_server/<string(length=32):task_uid>",
            "senaite.queue.server.get", methods=["GET", "POST"])
 @check_server
 @handle_queue_errors
-def get(context, request, taskuid):
+def get(context, request, task_uid):
     """Returns a JSON representation of the task with the specified task uid
     """
     # Get the task
-    task = get_task(taskuid)
+    task = get_task(task_uid)
 
     # Digest the task and return
     task_uid = get_task_uid(task, default="none")
@@ -159,7 +159,7 @@ def pop(context, request):
     available in the queued tasks pool, but added in the running tasks pool
     """
     # Get the consumer ID
-    consumer_id = req.get_json().get("__zeo")
+    consumer_id = req.get_json().get("consumer_id")
     if not is_consumer_id(consumer_id):
         _fail(400, "Bad Request. No valid consumer id")
 
@@ -180,7 +180,7 @@ def done(context, request):
     from the running tasks pool and returned
     """
     # Get the task uid
-    task_uid = req.get_json().get("taskuid")
+    task_uid = req.get_json().get("task_uid")
 
     # Get the task
     task = get_task(task_uid)
@@ -208,7 +208,7 @@ def fail(context, request):
     """
     # Get the task uid
     request_data = req.get_json()
-    task_uid = request_data.get("taskuid")
+    task_uid = request_data.get("task_uid")
     error_message = request_data.get("error_message")
 
     # Get the task
@@ -231,28 +231,28 @@ def fail(context, request):
 
 @add_route("/queue_server/requeue",
            "senaite.queue.server.requeue", methods=["POST"])
-@add_route("/queue_server/requeue/<string(length=32):taskuid>",
+@add_route("/queue_server/requeue/<string(length=32):task_uid>",
            "senaite.queue.server.requeue", methods=["GET", "POST"])
 @check_server
 @handle_queue_errors
-def requeue(context, request, taskuid=None):
+def requeue(context, request, task_uid=None):
     """Requeue the task. Task is moved from either failed or running pool to
     the queued tasks pool and returned
     """
     # Maybe the task uid has been sent via POST
-    taskuid = taskuid or req.get_json().get("taskuid")
+    task_uid = task_uid or req.get_json().get("task_uid")
 
     # Get the task
-    task = get_task(taskuid)
+    task = get_task(task_uid)
 
     # Remove, restore max number of retries and re-add the task
     task.retries = get_max_retries()
     queue = qapi.get_queue()
-    queue.delete(taskuid)
+    queue.delete(task_uid)
     queue.add(task)
 
     # Return the process summary
-    msg = "Task re-queued: {}".format(taskuid)
+    msg = "Task re-queued: {}".format(task_uid)
     task_info = {"task": get_task_info(task)}
     return get_message_summary(msg, "server.requeue", **task_info)
 
@@ -264,7 +264,7 @@ def delete(context, request):
     """Removes the task from the queue
     """
     # Get the task uid
-    task_uid = req.get_json().get("taskuid")
+    task_uid = req.get_json().get("task_uid")
 
     # Get the task
     task = get_task(task_uid)
@@ -329,7 +329,7 @@ def notify_sender(task, action):
     senders = qapi.get_queue().get_senders()
     senders = filter(lambda f: f != host, senders)
     payload = {
-        "taskuid": task.task_uid,
+        "task_uid": task.task_uid,
         "senders": senders,
         "__zeo": api.get_request().get("SERVER_URL"),
     }

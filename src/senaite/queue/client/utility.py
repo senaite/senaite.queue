@@ -31,7 +31,7 @@ from senaite.queue.queue import get_task_uid
 from senaite.queue.queue import to_task
 from senaite.queue.server.utility import QueueUtility
 from zope.component import getUtility
-from zope.interface import implements
+from zope.interface import implements  # noqa
 
 from bika.lims import api as capi
 
@@ -55,7 +55,7 @@ class ClientQueueUtility(object):
         :return: the task to be processed or None
         :rtype: queue.QueueTask
         """
-        payload = {"consumerid": consumer_id}
+        payload = {"consumer_id": consumer_id}
         task = self._post("pop", payload=payload)
         return to_task(task)
 
@@ -63,7 +63,7 @@ class ClientQueueUtility(object):
         """Notifies the queue that the task has been processed successfully
         :param task: task's unique id (task_uid) or QueueTask object
         """
-        payload = {"taskuid": get_task_uid(task)}
+        payload = {"task_uid": get_task_uid(task)}
         self._post("done", payload=payload)
 
     def fail(self, task, error_message=None):
@@ -72,7 +72,7 @@ class ClientQueueUtility(object):
         :param error_message: (Optional) the error/traceback
         """
         payload = {
-            "taskuid": get_task_uid(task),
+            "task_uid": get_task_uid(task),
             "error_message": error_message or ""
         }
         self._post("fail", payload=payload)
@@ -81,7 +81,7 @@ class ClientQueueUtility(object):
         """Removes a task from the queue
         :param task: task's unique id (task_uid) or QueueTask object
         """
-        payload = {"taskuid": get_task_uid(task)}
+        payload = {"task_uid": get_task_uid(task)}
         self._post("delete", payload=payload)
 
     def get_task(self, task_uid):

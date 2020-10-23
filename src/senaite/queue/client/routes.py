@@ -52,20 +52,20 @@ def consume(context, request):
 
 @add_route("/queue_consumer/process",
            "senaite.queue.consumer.process", methods=["GET", "POST"])
-@add_route("/queue_consumer/process/<string:taskuid>",
+@add_route("/queue_consumer/process/<string:task_uid>",
            "senaite.queue.consumer.process", methods=["GET", "POST"])
 @handle_queue_errors
-def process(context, request, taskuid=None):
+def process(context, request, task_uid=None):
     """Processes the task passed-in
     """
     # disable CSRF
     req.disable_csrf_protection()
 
     # Maybe the task uid has been sent via POST
-    taskuid = taskuid or req.get_json().get("taskuid")
+    task_uid = task_uid or req.get_json().get("task_uid")
 
     # Get the task
-    task = get_task(taskuid)
+    task = get_task(task_uid)
     if task.username != capi.get_current_user().id:
         # 403 Authenticated, but user does not have access to the resource
         _fail(403, "Forbidden")
@@ -132,7 +132,7 @@ def delete(context, request):
 def handle_server_notification(req_data, action):
     """Handles notifications received about tasks and queue status
     """
-    task_uid = req_data.get("taskuid")
+    task_uid = req_data.get("task_uid")
     senders = req_data.get("senders")
 
     if not capi.is_uid(task_uid) or task_uid == "0":
