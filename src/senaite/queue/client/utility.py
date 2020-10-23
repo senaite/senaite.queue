@@ -27,6 +27,7 @@ from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.interfaces import IClientQueueUtility
 from senaite.queue.interfaces import IOfflineClientQueueUtility
+from senaite.queue.queue import get_task_uid
 from senaite.queue.queue import to_task
 from senaite.queue.server.utility import QueueUtility
 from zope.component import getUtility
@@ -62,7 +63,7 @@ class ClientQueueUtility(object):
         """Notifies the queue that the task has been processed successfully
         :param task: task's unique id (task_uid) or QueueTask object
         """
-        payload = {"taskuid": api.get_task_uid(task)}
+        payload = {"taskuid": get_task_uid(task)}
         self._post("done", payload=payload)
 
     def fail(self, task, error_message=None):
@@ -71,7 +72,7 @@ class ClientQueueUtility(object):
         :param error_message: (Optional) the error/traceback
         """
         payload = {
-            "taskuid": api.get_task_uid(task),
+            "taskuid": get_task_uid(task),
             "error_message": error_message or ""
         }
         self._post("fail", payload=payload)
@@ -80,7 +81,7 @@ class ClientQueueUtility(object):
         """Removes a task from the queue
         :param task: task's unique id (task_uid) or QueueTask object
         """
-        payload = {"taskuid": api.get_task_uid(task)}
+        payload = {"taskuid": get_task_uid(task)}
         self._post("delete", payload=payload)
 
     def get_task(self, task_uid):
@@ -90,7 +91,7 @@ class ClientQueueUtility(object):
         :rtype: queue.QueueTask
         """
         try:
-            task_uid = api.get_task_uid(task_uid)
+            task_uid = get_task_uid(task_uid)
             # Note the endpoint here is the task uid
             task = self._post(task_uid)
             if not task:
@@ -182,7 +183,7 @@ class ClientQueueUtility(object):
         :return: True if the queue contains the task
         :rtype: bool
         """
-        task_uid = api.get_task_uid(task)
+        task_uid = get_task_uid(task)
         out_task = self.get_task(task_uid)
         if out_task:
             return True
@@ -194,6 +195,16 @@ class ClientQueueUtility(object):
         """
         tasks = self.get_tasks_for(context_or_uid, name=name)
         return any(tasks)
+
+    def is_empty(self):
+        """Returns whether the queue is empty. Failed tasks are not considered
+        :return: True if the queue does not have running nor queued tasks
+        :rtype: bool
+        """
+        # TODO better to do a specific POST for is_empty
+        response = self._post("uids")
+        uids = response.get("items", [])
+        return len(uids) == 0
 
     def _post(self, endpoint, resource=None, payload=None, timeout=10):
         """Sends a POST request to SENAITE's Queue Server
@@ -210,6 +221,12 @@ class ClientQueueUtility(object):
         # HTTP Queue Authentication to be added in the request
         auth = QueueAuth(capi.get_current_user().id)
 
+        # Additional information to the payload
+        request = capi.get_request()
+        if payload is None:
+            payload = {}
+        payload.update({"__zeo": request.get("SERVER_URL")})
+
         # This might rise exceptions (e.g. TimeoutException)
         response = requests.post(url, json=payload, auth=auth, timeout=timeout)
 
@@ -222,7 +239,7 @@ class ClientQueueUtility(object):
 
 class OfflineClientQueueUtility(QueueUtility):
     """Client queue utility for when the queue server is not reachable.
-    It mimics the same behavior as the server's queue utility, except that pop
+    It mimics the same behavior as the server's queue utility, except that
     is not allowed and fail always discard the task.
 
     This utility is feeded with new tasks each time the Client Queue utility
@@ -238,10 +255,6 @@ class OfflineClientQueueUtility(QueueUtility):
     temporarily lost the connectivity with the queue server
     """
     implements(IOfflineClientQueueUtility)
-
-    def pop(self, consumerid):
-        # Always return None. Pop is not supported
-        return None
 
     def fail(self, task, error_message=None):
         self.delete(task.task_uid)

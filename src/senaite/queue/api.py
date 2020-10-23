@@ -29,7 +29,8 @@ from senaite.queue import logger
 from senaite.queue.interfaces import IClientQueueUtility
 from senaite.queue.interfaces import IOfflineClientQueueUtility
 from senaite.queue.interfaces import IQueuedTaskAdapter
-from senaite.queue.queue import QueueTask
+from senaite.queue.queue import get_chunk_size
+from senaite.queue.queue import new_task
 from six.moves.urllib import parse
 from zope.component import getUtility
 from zope.component import queryAdapter
@@ -38,29 +39,22 @@ from bika.lims import api as _api
 from bika.lims.interfaces import IWorksheet
 from bika.lims.utils import render_html_attributes
 
-_action_prefix = "task_action_"
-_marker = object()
-
 
 def get_server_url():
-    """Returns the url of the queue server, if valid. Decorator ensures that the
-    function is only called the first time or when the server url setting from
-    control panel changes
+    """Returns the url of the queue server if valid. None otherwise.
     """
     url = _api.get_registry_record("senaite.queue.server")
-    if not url:
-        return None
-
     try:
         result = parse.urlparse(url)
-        if all([result.scheme, result.netloc, result.path]):
-            url = "{}://{}{}".format(result.scheme, result.netloc, result.path)
-            # Remove trailing '/'
-            url = url.strip("/")
-            return url
     except:
-        pass
-    return None
+        return None
+
+    # Validate the url is ok
+    if not all([result.scheme, result.netloc, result.path]):
+        return None
+
+    url = "{}://{}{}".format(result.scheme, result.netloc, result.path)
+    return url.strip("/")
 
 
 @ram.cache(lambda *args: get_server_url())
@@ -72,6 +66,7 @@ def is_queue_server():
     server_url = get_server_url()
     if not server_url:
         return False
+    # TODO FIx this!
     current_url = _api.get_url(_api.get_portal())
     return current_url.lower().startswith(server_url.lower())
 
@@ -135,7 +130,7 @@ def get_queue_status(name_or_action=None):
     * `disabled`: queue server does not accept requests at all, either because
             has been disabled or because senaite.queue is not installed
 
-    * `offline`: queue server is not reachable or is unable to answer requests
+    * `offline`: queue server is not reachable or is unable to answer requests.
     """
     # Is senaite queue not installed?
     if not is_installed():
@@ -145,89 +140,39 @@ def get_queue_status(name_or_action=None):
     if not get_server_url():
         return "offline"
 
-    # Is general queue enabled?
-    if get_chunk_size() > 0:
-        # Is the queue not responding?
-        if not is_queue_reachable():
-            # We cannot be sure about the "real" status of the server, so
-            # better say the server's status is offline (read-only mode)
-            return "offline"
+    # Is queue enabled?
+    queue = get_queue()
+    enabled = get_chunk_size(name_or_action=name_or_action) > 0
 
-        # Is queue disabled for this specific task name?
-        if name_or_action and get_chunk_size(name_or_action) <= 0:
-            return "disabled"
-
-        return "ready"
-
-    # General queue is disabled
-    if not is_queue_reachable():
-        # We cannot be sure about the "real" status of the server, so better
-        # say the server's status is offline (read-only mode)
+    if IOfflineClientQueueUtility.providedBy(queue):
+        # This is the utility to operate offline
         return "offline"
 
-    # Are tasks awaiting?
-    try:
-        # TODO better to ask is_empty()
-        if len(get_queue().get_uids()) > 0:
-            return "resuming"
-    except:
-        pass
+    if IQueueUtility.providedBy(queue):
+        # This is the Queue server
+        return enabled and "ready" or "disabled"
 
-    # Queue disabled and w/o remaining tasks
-    return "disabled"
+    if not enabled:
+        try:
+            if not queue.is_empty():
+                # Queue is disabled but there are remaining tasks
+                return "resuming"
+        except:
+            # Client queue has problems to communicate with server, so we
+            # cannot be sure about the "real" status of the server
+            return "offline"
 
-
-def get_chunk_size(name_or_action=None):
-    """Returns the number of items to process at once for the given task name
-    :param name_or_action: task name or workflow action id
-    :returns: the number of items from the task to process async at once
-    :rtype: int
-    """
-    chunk_size = _api.get_registry_record("senaite.queue.default")
-    chunk_size = _api.to_int(chunk_size, 0)
-    if chunk_size <= 0:
-        # Queue disabled
-        return 0
-
-    if name_or_action:
-        # TODO Retrieve task-specific chunk-sizes via adapters
-        pass
-
-    if chunk_size < 0:
-        return 0
-
-    return chunk_size
+    return enabled and "ready" or "disabled"
 
 
-def get_min_seconds(default=3):
-    """Returns the minimum number of seconds to book per task
-    """
-    registry_id = "senaite.queue.min_seconds_task"
-    min_seconds = _api.get_registry_record(registry_id)
-    min_seconds = _api.to_int(min_seconds, default=default)
-    return min_seconds >= 1 and min_seconds or default
+def add_task(name, context, **kwargs):
+    """Adds a task to the queue for async processing
 
+    Delivery is not granted. The recommended usage is::
 
-def get_max_seconds(default=120):
-    """Returns the max number of seconds to wait for a task to finish
-    """
-    registry_id = "senaite.queue.max_seconds_unlock"
-    max_seconds = _api.get_registry_record(registry_id)
-    max_seconds = _api.to_int(max_seconds, default=default)
-    return max_seconds >= 30 and max_seconds or default
+        >>> if not add_task(name, context):
+        >>>     # Do the process sync
 
-
-def get_max_retries(default=3):
-    """Returns the number of retries before considering a task as failed
-    """
-    registry_id = "senaite.queue.max_retries"
-    max_retries = _api.get_registry_record(registry_id)
-    max_retries = _api.to_int(max_retries, default=default)
-    return max_retries >= 1 and max_retries or default
-
-
-def new_task(name, context, **kw):
-    """Creates a QueueTask
     :param name: the name of the task
     :param context: the context the task is bound or relates to
     :param min_seconds: (optional) int, minimum seconds to book for the task
@@ -239,44 +184,18 @@ def new_task(name, context, **kw):
             there is no other task with same name and for same context
     :param chunk_size: (optional) the number of items to process asynchronously
             at once from this task (if it contains multiple elements)
-    :return: :class:`QueueTask <QueueTask>`
+    :return: the QueueTask object added to the queue, if any
     :rtype: senaite.queue.queue.QueueTask
     """
-    task = QueueTask(name, _api.get_request(), context, **kw)
-    task.username = kw.get("username", task.username)
-    task.update({
-        "min_seconds": kw.get("min_seconds", get_min_seconds()),
-        "max_seconds": kw.get("max_seconds", get_max_seconds()),
-        "retries": kw.get("retries", get_max_retries()),
-        "priority": kw.get("priority", 10),
-        "unique": kw.get("unique", False),
-        "chunk_size": kw.get("chunk_size", get_chunk_size(name))
-    })
-    return task
-
-
-def add_task(name, context, **kwargs):
-    """Adds a task to the queue for async processing
-    :param name: the name of the task
-    :param context: the context the task is bound or relates to
-    :param \*\*kwargs: optional arguments that ``new_task`` takes.
-    :return: :class:`QueueTask <QueueTask>` object
-    :rtype: senaite.queue.queue.QueueTask
-    """
-    # Is senaite.queue enabled/installed for this type of task?
-    if not is_queue_writable(name):
-        raise ValueError(
-            "Queue is not enabled for {}".format(name)
-        )
-
     # Check if there is a registered adapter able to handle this task
     adapter = queryAdapter(context, IQueuedTaskAdapter, name=name)
     if not adapter:
         # If this is an action, try to fallback to default action adapter
-        if name.startswith(_action_prefix):
+        action_prefix = "task_action_"
+        if name.startswith(action_prefix):
             kwargs.update({
                 "name": "task_generic_action",
-                "action": name[len(_action_prefix):],
+                "action": name[len(action_prefix):],
                 "uids": kwargs.get("uids", [_api.get_uid(context)])
             })
             return add_task(name, context, **kwargs)
@@ -287,29 +206,32 @@ def add_task(name, context, **kwargs):
             )
         )
 
+    # Don't add the task unless the queue is writable
+    if not is_queue_writable(name):
+        return None
+
     # Create the task
     task = new_task(name, context, **kwargs)
 
-    if is_queue_server():
-        # This thread belongs to the zeo client configured as server.
-        # Directly add the task to the Queue Utility
-        queue = getUtility(IQueueUtility)
-    else:
-        # This thread does not belong to the zeo client configured as server.
-        # Initiate a session with the server to queue the task
-        queue = getUtility(IClientQueueUtility)
-
-    # Add the task
-    queue.add(task)
-    return task
+    # Add the task to the queue and return
+    try:
+        return get_queue().add(task)
+    except:  # noqa Delivery is not granted
+        return None
 
 
 def add_action_task(brain_object_uid, action, context=None, **kwargs):
-    """Adds an action-type task to the queue for async processing
+    """Adds an action-type task to the queue for async processing.
+
+    Delivery is not granted. The recommended usage is::
+
+        >>> if not add_action_task(brain_object_uid, action):
+        >>>     # Do the process sync
+
     :param brain_object_uid: object(s) to perform the action against
     :param action: action to be performed
     :param context: context where the action takes place
-    :param \*\*kwargs: optional arguments that ``new_task`` takes.
+    :param kwargs: optional arguments that ``add_task`` takes.
     :return: the task added to the queue
     :rtype: senaite.queue.queue.QueueTask
     """
@@ -320,7 +242,7 @@ def add_action_task(brain_object_uid, action, context=None, **kwargs):
     uids = filter(None, map(_api.get_uid, brain_object_uid))
     uids = list(OrderedDict.fromkeys(uids))
     if not uids:
-        return False
+        return None
 
     context = context or _api.get_portal()
 
@@ -328,7 +250,7 @@ def add_action_task(brain_object_uid, action, context=None, **kwargs):
     if action == "assign" and IWorksheet.providedBy(context):
         return add_assign_task(context, analyses=uids)
 
-    name = "{}{}".format(_action_prefix, action)
+    name = "task_action_{}".format(action)
     kwargs.update({
         "action": action,
         "uids": uids,
@@ -338,10 +260,16 @@ def add_action_task(brain_object_uid, action, context=None, **kwargs):
 
 def add_assign_task(worksheet, analyses, slots=None, **kwargs):
     """Adds an action-type task to the queue for async processing
+
+    Delivery is not granted. The recommended usage is::
+
+        >>> if not add_action_task(worksheet, analyses):
+        >>>     # Do the process sync
+
     :param worksheet: the worksheet object the analyses will be assigned to
     :param analyses: list of analyses objects, brains or uids
     :param slots: list of slots each analysis has to be assigned to
-    :param \*\*kwargs: optional arguments that ``new_task`` takes.
+    :param kwargs: optional arguments that ``add_task`` takes.
     :return: the task added to the queue
     :rtype: senaite.queue.queue.QueueTask
     """
@@ -352,10 +280,16 @@ def add_assign_task(worksheet, analyses, slots=None, **kwargs):
     return add_task("task_assign_analyses", worksheet, **kwargs)
 
 
-def add_reindex_obj_security_task(obj, **kwargs):
+def add_reindex_obj_security_task(brain_object_uid, **kwargs):
     """Adds a task for recursive object security reindexing to the queue
-    :param obj: the object the recursive security reindexing has to apply to
-    :param \*\*kwargs: optional arguments that ``new_task`` takes.
+
+    Delivery is not granted. The recommended usage is::
+
+        >>> if not add_reindex_obj_security_task(obj):
+        >>>     # Do the process sync
+
+    :param brain_object_uid: uid/brain/object
+    :param kwargs: optional arguments that ``add_task`` takes.
     :return: the task added to the queue
     :rtype: senaite.queue.queue.QueueTask
     """
@@ -372,6 +306,9 @@ def add_reindex_obj_security_task(obj, **kwargs):
 
         return all_children
 
+    # Get the object
+    obj = _api.get_object(brain_object_uid)
+
     # Get all children reversed, and append current one
     uids = get_children_uids(obj)
     uids.append(_api.get_uid(obj))
@@ -387,38 +324,24 @@ def add_reindex_obj_security_task(obj, **kwargs):
     return add_task(task_name, obj, **kwargs)
 
 
-def get_task_uid(task_or_uid, default=_marker):
-    """Returns the task unique identifier
-    :param task_or_uid: QueueTask/task uid/dict
-    :param default: (Optional) fallback value
-    :return: the task's unique identifier
-    """
-    if _api.is_uid(task_or_uid) and task_or_uid != "0":
-        return task_or_uid
-    if isinstance(task_or_uid, QueueTask):
-        return get_task_uid(task_or_uid.task_uid, default=default)
-    if isinstance(task_or_uid, dict):
-        task_uid = task_or_uid.get("task_uid", None)
-        return get_task_uid(task_uid, default=default)
-    if default is _marker:
-        raise ValueError("Not supported type: {}".format(task_or_uid))
-    return default
-
-
-
-# TODO REVIEW
-
-
 def get_queue():
     """Returns the queue utility
     """
     if is_queue_server():
+        # This is the server, return the base queue utility
         return getUtility(IQueueUtility)
+
     elif is_queue_reachable():
+        # This is a client and queue server is reachable, return the client
+        # queue utility that communicats with queue server through JSON API
         return getUtility(IClientQueueUtility)
 
+    # Queue server not reachable, return the queue utility for off-line mode
     logger.warn("Running in off-line mode")
     return getUtility(IOfflineClientQueueUtility)
+
+
+# TODO REVIEW
 
 
 def is_queued(brain_object_uid, task_name=None, include_running=True):
@@ -480,31 +403,3 @@ def get_queue_image_url(name):
     """
     portal_url = _api.get_url(_api.get_portal())
     return "{}/++resource++senaite.queue.static/{}".format(portal_url, name)
-
-
-def queue_reindex_object_security(obj):
-    """Queues a task for the recursive object security reindexing
-    """
-    def get_children_uids(obj):
-        """Returns the uids from the obj hierarchy
-        """
-        if not hasattr(aq_base(obj), "objectValues"):
-            return []
-
-        all_children = []
-        for child_obj in obj.objectValues():
-            all_children.extend(get_children_uids(child_obj))
-            all_children.append(_api.get_uid(child_obj))
-
-        return all_children
-
-    # Get all children reversed, and append current one
-    uids = get_children_uids(obj)
-    uids.append(_api.get_uid(obj))
-
-    # Get all reversed, so recent objects are processed first
-    uids = uids[::-1]
-
-    task_name = "task_reindex_object_security"
-    kwargs = {"uids": uids, "priority": 20}
-    return add_task(task_name, obj, **kwargs)

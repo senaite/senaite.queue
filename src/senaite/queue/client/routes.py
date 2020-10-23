@@ -26,14 +26,14 @@ from senaite.queue import logger
 from senaite.queue.client import consumer
 from senaite.queue.interfaces import IOfflineClientQueueUtility
 from senaite.queue.interfaces import IQueuedTaskAdapter
-from senaite.queue.request import fail
-from senaite.queue.request import get_summary
+from senaite.queue.request import fail as _fail
+from senaite.queue.request import get_message_summary
 from senaite.queue.request import handle_queue_errors
+from zope.component import getUtility
 from zope.component import queryAdapter
 
 from bika.lims import api as capi
 from bika.lims.interfaces import IWorksheet
-from zope.component import getUtility
 
 
 @add_route("/queue_consumer/consume",
@@ -47,7 +47,7 @@ def consume(context, request):
 
     # start the consumer
     msg = consumer.consume_task()
-    return get_summary(msg, "consume")
+    return get_message_summary(msg, "consumer.consume")
 
 
 @add_route("/queue_consumer/process",
@@ -68,18 +68,18 @@ def process(context, request, taskuid=None):
     task = get_task(taskuid)
     if task.username != capi.get_current_user().id:
         # 403 Authenticated, but user does not have access to the resource
-        fail(403, "Forbidden")
+        _fail(403, "Forbidden")
 
     # Process
     t0 = time.time()
     task_context = task.get_context()
     if not task_context:
-        fail(500, "Internal Server Error. Task's context not available")
+        _fail(500, "Internal Server Error. Task's context not available")
 
     # Get the adapter able to process this specific type of task
     adapter = queryAdapter(task_context, IQueuedTaskAdapter, name=task.name)
     if not adapter:
-        fail(501, "Not implemented. No adapter for {}".format(task.name))
+        _fail(501, "Not implemented. No adapter for {}".format(task.name))
 
     logger.info("Processing task {}: '{}' for '{}' ({}) ...".format(
         task.task_short_uid, task.name, capi.get_id(task_context),
@@ -100,7 +100,8 @@ def process(context, request, taskuid=None):
     while time.time() - t0 < min_seconds:
         time.sleep(0.5)
 
-    return get_summary("Processed: {}".format(task.task_short_uid), "process")
+    msg = "Processed: {}".format(task.task_short_uid)
+    return get_message_summary(msg, "consumer.process")
 
 
 @add_route("/queue_client/done", "senaite.queue.client.done", methods=["POST"])
@@ -119,7 +120,8 @@ def fail(context, request):
     return handle_server_notification(req.get_json(), "fail")
 
 
-@add_route("/queue_client/delete", "senaite.queue.client.delete", methods=["POST"])
+@add_route("/queue_client/delete", "senaite.queue.client.delete",
+           methods=["POST"])
 @handle_queue_errors
 def delete(context, request):
     """Endpoint to notify that a task has been deleted
@@ -133,17 +135,21 @@ def handle_server_notification(req_data, action):
     task_uid = req_data.get("taskuid")
     senders = req_data.get("senders")
 
+    if not capi.is_uid(task_uid) or task_uid == "0":
+        # 400 Bad Request, wrong task uid
+        _fail(400, "Bad Request. Task uid empty or no valid format")
+
     # Get our cache pool utility
     utility = getUtility(IOfflineClientQueueUtility)
 
-    # Remove the task
-    func = utility.getattr(action)
+    # Do the action
+    func = getattr(utility, action)
     func(task_uid)
 
     # Add our friends, we might need them if server is stopped or idle
     utility.add_senders(senders)
 
-    return get_summary("notified", action)
+    return get_message_summary("notified", "client.{}".format(action))
 
 
 def get_task(task_uid):
@@ -151,13 +157,13 @@ def get_task(task_uid):
     """
     if not capi.is_uid(task_uid) and task_uid != "0":
         # 400 Bad Request, wrong task uid
-        fail(400, "Bad Request. Task uid empty or no valid format")
+        _fail(400, "Bad Request. Task uid empty or no valid format")
 
     task = api.get_queue().get_task(task_uid)
     if not task:
-        fail(404, "Task not found: {}".format(task_uid))
+        _fail(404, "Task not found: {}".format(task_uid))
 
     if not capi.is_uid(task.context_uid):
-        fail(500, "Internal Server Error. Task's context uid is not valid")
+        _fail(500, "Internal Server Error. Task's context uid is not valid")
 
     return task

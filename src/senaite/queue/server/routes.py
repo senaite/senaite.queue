@@ -20,67 +20,33 @@
 
 import requests
 
-from senaite.jsonapi import api as japi
 from senaite.jsonapi import request as req
 from senaite.jsonapi.v1 import add_route
 from senaite.queue import api as qapi
+from senaite.queue import logger
 from senaite.queue.client.utility import QueueAuth
+from senaite.queue.queue import get_max_retries
+from senaite.queue.queue import get_task_uid
 from senaite.queue.queue import is_task
 from senaite.queue.queue import to_task
 from senaite.queue.request import fail as _fail
+from senaite.queue.request import get_list_summary
+from senaite.queue.request import get_message_summary
+from senaite.queue.request import get_task_info
+from senaite.queue.request import get_tasks_summary
 from senaite.queue.request import handle_queue_errors
 
 from bika.lims import api
-from senaite.queue import logger
-
-
-_marker = object()
 
 
 def check_server(func):
     """Decorator that checks the current client is configured to act as server
     """
     def wrapper(*args, **kwargs):
-        logger.info(">>>>> {}".format(api.get_request().URL))
         if not qapi.is_queue_server():
             _fail(400, "Bad Request. Not a Queue Server")
         return func(*args, **kwargs)
     return wrapper
-
-
-def notify(host, endpoint, task_uid):
-    """Sends a notification to the client's queue endpoint for the task uid if
-    the host is not the same as us. It also includes status information about
-    the Server Queue in the payload, such as the list of queue clients that at
-    least have sent one task to the server queue.
-    Delivery is not granted
-    """
-    current_url = api.get_url(api.get_portal())
-    if current_url.lower().startswith(host.lower()):
-        # No need to notify myself
-        return
-
-    client_part = "@@API/senaite/v1/queue_client"
-    parts = [host, client_part, endpoint]
-    if not all(parts):
-        return
-
-    # Include the zeo client friends that are also adding tasks
-    # This is used by clients to keep them in sync for the hypothetical case the
-    # queue server is stopped or enters into in idle/offline status. Clients
-    # will then be able to operate coordinated in read-only mode
-    senders = qapi.get_queue().get_senders()
-    senders = filter(lambda f: f != host, senders)
-    payload = {
-        "taskuid": task_uid,
-        "senders": senders
-    }
-    try:
-        auth = QueueAuth(api.get_current_user().id)
-        requests.post("/".join(parts), json=payload, auth=auth, timeout=1)
-    except:
-        # Delivery is not granted
-        pass
 
 
 @add_route("/queue_server/tasks",
@@ -97,11 +63,11 @@ def tasks(context, request, status=None):
     status = status or request_data.get("status")
 
     # Get the tasks
-    tasks = qapi.get_queue().get_tasks(status)
+    items = qapi.get_queue().get_tasks(status)
 
     # Convert to the dict representation
     complete = request_data.get("complete") or False
-    return get_summary(list(tasks), "tasks", complete=complete)
+    return get_tasks_summary(list(items), "server.tasks", complete=complete)
 
 
 @add_route("/queue_server/uids",
@@ -118,10 +84,10 @@ def uids(context, request, status=None):
     status = status or request_data.get("status")
 
     # Get the uids from queued obejcts
-    uids = qapi.get_queue().get_uids(status)
+    items = qapi.get_queue().get_uids(status)
 
     # Convert to the dict representation
-    return get_summary(uids, "uids", converter=None)
+    return get_list_summary(items, "server.uids")
 
 
 @add_route("/queue_server/search",
@@ -144,7 +110,7 @@ def search(context, request):
 
     # Get the tasks from the utility
     tasks = qapi.get_queue().get_tasks_for(uid, name=name)
-    return get_summary(list(tasks), "search", complete=complete)
+    return get_tasks_summary(list(tasks), "server.search", complete=complete)
 
 
 @add_route("/queue_server/<string(length=32):taskuid>",
@@ -158,7 +124,9 @@ def get(context, request, taskuid):
     task = get_task(taskuid)
 
     # Digest the task and return
-    return get_info(task)
+    task_uid = get_task_uid(task, default="none")
+    logger.info("::server.get: {}".format(task_uid))
+    return get_task_info(task, complete=True)
 
 
 @add_route("/queue_server/add", "senaite.queue.server.add", methods=["POST"])
@@ -171,16 +139,16 @@ def add(context, request):
     raw_tasks = req.get_request_data()
 
     # Convert raw task(s) to QueueTask object(s)
-    tasks = map(to_task, raw_tasks)
-    valid = map(is_task, tasks)
+    items = map(to_task, raw_tasks)
+    valid = map(is_task, items)
     if not all(valid):
         _fail(400, "Bad Request. No valid task(s)")
 
     # Add the task(s) to the queue
-    map(qapi.get_queue().add, tasks)
+    map(qapi.get_queue().add, items)
 
     # Return the process summary
-    return get_summary(tasks, "add")
+    return get_tasks_summary(items, "server.add", complete=False)
 
 
 @add_route("/queue_server/pop", "senaite.queue.server.pop", methods=["POST"])
@@ -191,7 +159,7 @@ def pop(context, request):
     available in the queued tasks pool, but added in the running tasks pool
     """
     # Get the consumer ID
-    consumer_id = req.get_json().get("consumerid")
+    consumer_id = req.get_json().get("__zeo")
     if not is_consumer_id(consumer_id):
         _fail(400, "Bad Request. No valid consumer id")
 
@@ -199,7 +167,9 @@ def pop(context, request):
     task = qapi.get_queue().pop(consumer_id)
 
     # Return the task info
-    return get_info(task)
+    task_uid = get_task_uid(task, default="<empty>")
+    logger.info("::server.pop: {} [{}]".format(task_uid, consumer_id))
+    return get_task_info(task, complete=True)
 
 
 @add_route("/queue_server/done", "senaite.queue.server.done", methods=["POST"])
@@ -221,10 +191,12 @@ def done(context, request):
     qapi.get_queue().done(task)
 
     # Notify the original sender
-    notify(task.sender, "done", task.task_uid)
+    notify_sender(task, "done")
 
     # Return the process summary
-    return get_summary(task, "done")
+    msg = "Task done: {}".format(task_uid)
+    task_info = {"task": get_task_info(task)}
+    return get_message_summary(msg, "server.done", **task_info)
 
 
 @add_route("/queue_server/fail", "senaite.queue.server.fail", methods=["POST"])
@@ -249,10 +221,12 @@ def fail(context, request):
 
     # Notify the original sender if the task has been discarded
     if task.status in ["failed"]:
-        notify(task.sender, "fail", task.task_uid)
+        notify_sender(task, "fail")
 
     # Return the process summary
-    return get_summary(task, "fail")
+    msg = "Task failed: {}".format(task_uid)
+    task_info = {"task": get_task_info(task)}
+    return get_message_summary(msg, "server.fail", **task_info)
 
 
 @add_route("/queue_server/requeue",
@@ -272,13 +246,15 @@ def requeue(context, request, taskuid=None):
     task = get_task(taskuid)
 
     # Remove, restore max number of retries and re-add the task
-    task.retries = qapi.get_max_retries()
+    task.retries = get_max_retries()
     queue = qapi.get_queue()
     queue.delete(taskuid)
     queue.add(task)
 
     # Return the process summary
-    return get_summary(task, "requeue")
+    msg = "Task re-queued: {}".format(taskuid)
+    task_info = {"task": get_task_info(task)}
+    return get_message_summary(msg, "server.requeue", **task_info)
 
 
 @add_route("/queue_server/delete", "senaite.queue.server.delete", methods=["POST"])
@@ -295,32 +271,18 @@ def delete(context, request):
     qapi.get_queue().delete(task.task_uid)
 
     # Notify the original sender
-    notify(task.sender, "delete", task_uid)
+    notify_sender(task, "delete")
 
     # Return the process summary
-    return get_summary(task, "delete")
-
-
-def get_summary(items, endpoint, complete=True, converter=_marker):
-    items = items or []
-    if not isinstance(items, (list, tuple)):
-        items = [items]
-    if converter is _marker:
-        items = map(lambda t: get_info(t, complete=complete), items)
-    elif converter and callable(converter):
-        items = map(converter, items)
-
-    return {
-        "count": len(items),
-        "items": items,
-        "url": japi.url_for("senaite.queue.server.{}".format(endpoint))
-    }
+    msg = "Task deleted: {}".format(task_uid)
+    task_info = {"task": get_task_info(task)}
+    return get_message_summary(msg, "server.delete", **task_info)
 
 
 def get_task(task_uid):
     """Resolves the task for the given task uid
     """
-    if not api.is_uid(task_uid) and task_uid != "0":
+    if not api.is_uid(task_uid) or task_uid == "0":
         # 400 Bad Request, wrong task uid
         _fail(400, "Bad Request. Task uid empty or no valid format")
 
@@ -331,35 +293,49 @@ def get_task(task_uid):
     return task
 
 
-def get_info(task, complete=True):
-    if not task:
-        return {}
-
-    if complete:
-        out_task = dict(task)
-    else:
-        out_task = {
-            "task_uid": task.task_uid,
-            "name": task.name,
-            "context_uid": task.context_uid,
-            "priority": task.priority,
-            "status": task.status,
-            "created": task.created,
-            "retries": task.retries,
-            "username": task.username,
-        }
-
-    base_url = api.get_url(api.get_portal())
-    task_uid = task.get("task_uid")
-    url = "{}/@@API/senaite/v1/queue_server/{}".format(base_url, task_uid)
-    out_task.update({
-        "task_url": url
-    })
-    return out_task
-
-
 def is_consumer_id(consumer_id):
     if not consumer_id:
         return False
     # TODO Implement
     return len(consumer_id) >= 4
+
+
+def notify_sender(task, action):
+    """Sends a notification to the client's queue endpoint for the task uid if
+    the host is not the same as us. It also includes status information about
+    the Server Queue in the payload, such as the list of queue clients that at
+    least have sent one task to the server queue.
+    Delivery is not granted
+    :param task: task to notify the sender about
+    :param action: action to be notified to the sender
+    """
+    host = task.sender
+    # TODO Revisit this
+    current_url = api.get_url(api.get_portal())
+    if current_url.lower().startswith(host.lower()):
+        # No need to notify myself
+        return
+
+    site_id = api.get_id(api.get_portal())
+    client_part = "@@API/senaite/v1/queue_client"
+    parts = [host, site_id, client_part, action]
+    if not all(parts):
+        return
+
+    # Include the zeo client friends that are also adding tasks
+    # This is used by clients to keep them in sync for the hypothetical case the
+    # queue server is stopped or enters into in idle/offline status. Clients
+    # will then be able to operate coordinated in read-only mode
+    senders = qapi.get_queue().get_senders()
+    senders = filter(lambda f: f != host, senders)
+    payload = {
+        "taskuid": task.task_uid,
+        "senders": senders,
+        "__zeo": api.get_request().get("SERVER_URL"),
+    }
+    try:
+        auth = QueueAuth(api.get_current_user().id)
+        requests.post("/".join(parts), json=payload, auth=auth, timeout=1)
+    except:
+        # Delivery is not granted
+        pass

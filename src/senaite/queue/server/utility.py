@@ -20,10 +20,9 @@
 
 import threading
 import time
-
-from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.interfaces import IQueueUtility
+from senaite.queue.queue import get_task_uid
 from senaite.queue.queue import QueueTask
 from zope.interface import implements
 
@@ -89,14 +88,14 @@ class QueueUtility(object):
         self.__lock = threading.Lock()
         self._storage = QueueStorage()
 
-    # TODO unique param not declared in the interface
-    def add(self, task, unique=False):
+    def add(self, task):
         """Adds a task to the queue
         :param task: the QueueTask to add
         """
         with self.__lock:
             # Add the sender to the _senders pool
             self._senders.add(task.sender)
+            unique = task.get("unique", False)
             return self._add(task, unique=unique)
 
     def pop(self, consumer_id):
@@ -108,6 +107,7 @@ class QueueUtility(object):
         with self.__lock:
             tasks = self._storage.tasks
             if len(tasks) <= 0:
+                self._purge()
                 return None
 
             # Maybe this consumer is processing a task already?
@@ -144,13 +144,6 @@ class QueueUtility(object):
         """
         self.delete(task)
 
-    def success(self, task):
-        """Removes the task from the queue
-        """
-        # TODO REMOVE this function
-        logger.warn("Use 'done' instead!")
-        self.done(task)
-
     def fail(self, task, error_message=None):
         """Notifies the queue that the processing of the task failed. Removes
         the task from the running tasks. Is re-queued if there are remaining
@@ -159,15 +152,16 @@ class QueueUtility(object):
         :param error_message: (Optional) the error/traceback
         """
         with self.__lock:
-            task_uid = api.get_task_uid(task)
-            self._fail(task_uid, error_message=error_message)
+            if capi.is_uid(task):
+                task = self.get_task(task)
+            self._fail(task, error_message=error_message)
 
     def delete(self, task):
         """Removes a task from the queue
         :param task: task's unique id (task_uid) or QueueTask object
         """
         with self.__lock:
-            task_uid = api.get_task_uid(task)
+            task_uid = get_task_uid(task)
             self._delete(task_uid)
 
     def get_task(self, task_uid):
@@ -243,7 +237,7 @@ class QueueUtility(object):
         :return: True if the queue contains the task
         :rtype: bool
         """
-        task_uid = api.get_task_uid(task)
+        task_uid = get_task_uid(task)
         out_task = self.get_task(task_uid)
         if out_task:
             return True
@@ -273,7 +267,7 @@ class QueueUtility(object):
 
     def __len__(self):
         with self.__lock:
-            return len(self._storage.tasks)
+            return len(self._storage.tasks + self._storage.running_tasks)
 
     def is_empty(self):
         """Returns whether there are no remaining tasks in the queue
@@ -309,11 +303,7 @@ class QueueUtility(object):
         # Re-queue or add to pool of failed
         map(lambda t: self._fail(t, "Timeout"), stuck)
 
-    def _fail(self, task_uid, error_message=None):
-        task = self.get_task(task_uid)
-        if not task:
-            return
-
+    def _fail(self, task, error_message=None):
         # Get the running tasks, but the current one
         tasks = self._storage.running_tasks
         other_tasks = filter(lambda t: t.task_uid != task.task_uid, tasks)

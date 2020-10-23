@@ -26,6 +26,9 @@ from bika.lims.utils import tmpID
 from six.moves.urllib import parse
 
 
+_marker = object()
+
+
 class QueueTask(dict):
     """A task for queueing
     """
@@ -35,45 +38,25 @@ class QueueTask(dict):
         if not api.is_object(context):
             raise TypeError("No valid context object")
         kw = kw or {}
+        # Set defaults
         self.update({
             "task_uid": kw.get("task_uid") or tmpID(),
             "name": name,
+            "request": self._get_request_data(request),
             "context_uid": api.get_uid(context),
             "context_path": api.get_path(context),
-            "request": self._get_request_data(request),
-            "retries": kw.get("retries", 3),
-            "priority": api.to_int(kw.get("priority"), default=10),
             "uids": kw.get("uids", []),
             "created": time.time(),
             "status": None,
             "error_message": None,
-            "sender": kw.get("sender") or self._sender_url(request, context)
+            "sender": kw.get("sender") or request.get("SERVER_URL"),
+            "min_seconds": kw.get("min_seconds", get_min_seconds()),
+            "max_seconds": kw.get("max_seconds", get_max_seconds()),
+            "priority": api.to_int(kw.get("priority"), default=10),
+            "retries": kw.get("retries", get_max_retries()),
+            "unique": kw.get("unique", False),
+            "chunk_size": kw.get("chunk_size", get_chunk_size(name))
         })
-
-    def _sender_url(self, request, context):
-        """Returns the internal url of the current instance
-        """
-        orig = self._get_orig_env(request)
-        host = orig.get("SERVER_NAME", "")
-        if not host:
-            return ""
-
-        port = orig.get("SERVER_PORT", "")
-        if port:
-            host = "{}:{}".format(host, port)
-
-        path = api.get_path(context)
-        path = path.strip("/").split("/")[0]
-        parts = filter(None, ["http:/", host, path])
-        try:
-            result = parse.urlparse("/".join(parts))
-            if all([result.scheme, result.netloc, result.path]):
-                url = "{}://{}{}".format(result.scheme, result.netloc,
-                                         result.path)
-                # Remove trailing '/'
-                return url.strip("/")
-        except Exception:
-            return ""
 
     def _get_request_data(self, request):
         # TODO All this is no longer required!
@@ -181,6 +164,35 @@ class QueueTask(dict):
         return other and self.task_uid == other.task_uid
 
 
+def new_task(name, context, **kw):
+    """Creates a QueueTask
+    :param name: the name of the task
+    :param context: the context the task is bound or relates to
+    :param min_seconds: (optional) int, minimum seconds to book for the task
+    :param max_seconds: (optional) int, maximum seconds to wait for the task
+    :param retries: (optional) int, maximum number of retries on failure
+    :param username: (optional) str, the name of the user assigned to the task
+    :param priority: (optional) int, the priority value for this task
+    :param unique: (optional) bool, if True, the task will only be added if
+            there is no other task with same name and for same context
+    :param chunk_size: (optional) the number of items to process asynchronously
+            at once from this task (if it contains multiple elements)
+    :return: :class:`QueueTask <QueueTask>`
+    :rtype: senaite.queue.queue.QueueTask
+    """
+    # Skip attrs that are assigned when the QueueTask is instantiated
+    exclude = ["task_uid", "name", "request", "context_uid", "context_path"]
+    out_keys = filter(lambda k: k not in exclude, kw.keys())
+    kwargs = dict(map(lambda k: (k, kw[k]), out_keys))
+
+    # Create the Queue Task
+    task = QueueTask(name, api.get_request(), context, **kwargs)
+
+    # Set the username (if provided in kw)
+    task.username = kw.get("username", task.username)
+    return task
+
+
 def to_task(task_dict):
     """Converts a dict representation of a task to a QueueTask object
     :param task_dict: dict that represents a task
@@ -215,3 +227,70 @@ def is_task(task):
     """Returns whether the value passed in is a task
     """
     return isinstance(task, QueueTask)
+
+
+def get_min_seconds(default=3):
+    """Returns the minimum number of seconds to book per task
+    """
+    registry_id = "senaite.queue.min_seconds_task"
+    min_seconds = api.get_registry_record(registry_id)
+    min_seconds = api.to_int(min_seconds, default=default)
+    return min_seconds >= 1 and min_seconds or default
+
+
+def get_max_seconds(default=120):
+    """Returns the max number of seconds to wait for a task to finish
+    """
+    registry_id = "senaite.queue.max_seconds_unlock"
+    max_seconds = api.get_registry_record(registry_id)
+    max_seconds = api.to_int(max_seconds, default=default)
+    return max_seconds >= 30 and max_seconds or default
+
+
+def get_max_retries(default=3):
+    """Returns the number of retries before considering a task as failed
+    """
+    registry_id = "senaite.queue.max_retries"
+    max_retries = api.get_registry_record(registry_id)
+    max_retries = api.to_int(max_retries, default=default)
+    return max_retries >= 1 and max_retries or default
+
+
+def get_chunk_size(name_or_action=None):
+    """Returns the number of items to process at once for the given task name
+    :param name_or_action: task name or workflow action id
+    :returns: the number of items from the task to process async at once
+    :rtype: int
+    """
+    chunk_size = api.get_registry_record("senaite.queue.default")
+    chunk_size = api.to_int(chunk_size, 0)
+    if chunk_size <= 0:
+        # Queue disabled
+        return 0
+
+    if name_or_action:
+        # TODO Retrieve task-specific chunk-sizes via adapters
+        pass
+
+    if chunk_size < 0:
+        chunk_size = 0
+
+    return chunk_size
+
+
+def get_task_uid(task_or_uid, default=_marker):
+    """Returns the task unique identifier
+    :param task_or_uid: QueueTask/task uid/dict
+    :param default: (Optional) fallback value
+    :return: the task's unique identifier
+    """
+    if api.is_uid(task_or_uid) and task_or_uid != "0":
+        return task_or_uid
+    if isinstance(task_or_uid, QueueTask):
+        return get_task_uid(task_or_uid.task_uid, default=default)
+    if isinstance(task_or_uid, dict):
+        task_uid = task_or_uid.get("task_uid", None)
+        return get_task_uid(task_uid, default=default)
+    if default is _marker:
+        raise ValueError("Not supported type: {}".format(task_or_uid))
+    return default

@@ -138,15 +138,17 @@ class IBaseQueueUtility(Interface):
         :rtype: bool
         """
 
+    def is_empty(self):
+        """Returns whether the queue is empty. Failed tasks are not considered
+        :return: True if the queue does not have running nor queued tasks
+        :rtype: bool
+        """
+
 
 class IQueueUtility(IBaseQueueUtility):
     """Marker interface for Queue global utility (singleton) used by the zeo
     client that acts as the server
     """
-
-    def is_empty(self):
-        """Returns whether the queue is empty
-        """
 
     def is_busy(self):
         """Returns whether the queue is busy

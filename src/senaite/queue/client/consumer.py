@@ -66,6 +66,7 @@ def consume_task():
 
     # Pop next task to process
     consumer_id = "{}{}".format(CONSUMER_THREAD_PREFIX, int(time.time()))
+    logger.info(consumer_id)
     try:
         task = api.get_queue().pop(consumer_id)
     except Exception as e:
@@ -86,7 +87,7 @@ def consume_task():
         "task_uid": task.task_uid,
         "userid": _api.get_current_user().id,
         "task_userid": task.username,
-        "timeout": task.get("max_seconds", api.get_max_seconds()),
+        "timeout": task.get("max_seconds"),
     }
     new_consumer(**kwargs)
     #t = threading.Thread(name=consumer_id, target=new_consumer, kwargs=kwargs)
@@ -114,7 +115,11 @@ def new_consumer(site_url, server_url, task_uid, userid, task_userid, timeout):
         # Check the request was successful. Raise exception otherwise
         response.raise_for_status()
 
-    payload = {"taskuid": task_uid}
+    request = _api.get_request()
+    payload = {
+        "taskuid": task_uid,
+        "__zeo": request.get("SERVER_URL")
+    }
     try:
         # POST to the 'process' endpoint from the Queue's consumer,
         # authenticated as the user who added the task
