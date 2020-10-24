@@ -4,6 +4,7 @@ Changelog
 1.0.2 (unreleased)
 ------------------
 
+- Support for multiple consumers (up to 4 concurrent processes)
 - Added JSON API endpoints for both queue server and clients
 - Queue server-client implementation, without the need of annotations
 - Added PAS plugin for authentication, with symmetric encryption

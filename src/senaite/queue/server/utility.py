@@ -18,61 +18,20 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
+import copy
+
 import threading
 import time
 from senaite.queue import logger
 from senaite.queue.interfaces import IQueueUtility
 from senaite.queue.queue import get_task_uid
-from senaite.queue.queue import QueueTask
+from senaite.queue.queue import is_task
 from zope.interface import implements  # noqa
 
 from bika.lims import api as capi
 
 # Maximum number of concurrent tasks to be processed at a time
-MAX_CONCURRENT_TASKS = 1
-
-
-class QueueStorage(object):
-    """Storage that provides access to the tasks from a queue
-    """
-
-    _tasks = {}
-
-    def get(self, key, default=None):
-        return self._tasks.get(key, default)
-
-    def set(self, key, value):
-        self._tasks[key] = value
-
-    @property
-    def tasks(self):
-        """The outstanding tasks from the queue
-        """
-        return self.get("tasks", default=[])[:]
-
-    @property
-    def running_tasks(self):
-        """The ongoing tasks
-        """
-        return self.get("running_tasks", default=[])[:]
-
-    @property
-    def failed_tasks(self):
-        """The ongoing tasks
-        """
-        return self.get("failed_tasks", default=[])[:]
-
-    @tasks.setter
-    def tasks(self, value):
-        self.set("tasks", value)
-
-    @running_tasks.setter
-    def running_tasks(self, value):
-        self.set("running_tasks", value)
-
-    @failed_tasks.setter
-    def failed_tasks(self, value):
-        self.set("failed_tasks", value)
+MAX_CONCURRENT_TASKS = 4
 
 
 class QueueUtility(object):
@@ -85,8 +44,8 @@ class QueueUtility(object):
     _senders = set()
 
     def __init__(self):
+        self.__tasks = []
         self.__lock = threading.Lock()
-        self._storage = QueueStorage()
 
     def add(self, task):
         """Adds a task to the queue
@@ -95,8 +54,7 @@ class QueueUtility(object):
         with self.__lock:
             # Add the sender to the _senders pool
             self._senders.add(task.sender)
-            unique = task.get("unique", False)
-            return self._add(task, unique=unique)
+            return self._add(task)
 
     def pop(self, consumer_id):
         """Returns the next task to process, if any
@@ -105,38 +63,39 @@ class QueueUtility(object):
         :rtype: queue.QueueTask
         """
         with self.__lock:
-            tasks = self._storage.tasks
-            if len(tasks) <= 0:
+            if self.is_busy():
+                # We've reached the max number of tasks to process at same time
+                return None
+
+            # Get the queued tasks
+            queued = filter(lambda t: t.status == "queued", self.__tasks)
+            if not queued or self.get_consumer_tasks(consumer_id):
+                # Queue does not have tasks available or consumer is already
+                # processing some. Maybe there are some that got stack though
                 self._purge()
                 return None
 
-            # Maybe this consumer is processing a task already?
-            running = filter(lambda t: t.get("consumer_id") == consumer_id,
-                             self._storage.running_tasks)
-            if running:
-                return None
+            # If other consumers are processing tasks, pick the one with
+            # more priority, but with different context_path and different name
+            # to prevent unnecessary conflicts on transaction.commit
+            task_names = self.get_running_task_names()
+            paths = self.get_running_context_paths()
 
-            # Pop the task with more priority
-            task = tasks.pop()
+            # Tasks are sorted from highest to lowest priority
+            for task in queued:
+                if task.name in task_names:
+                    continue
+                if self.strip_path(task.context_path) in paths:
+                    continue
 
-            # Assign the tasks to the queue
-            self._storage.tasks = tasks
-
-            # Add the task to the running tasks
-            task.update({
-                "started": time.time(),
-                "status": "running",
-                "consumer_id": consumer_id,
-            })
-            running = self._storage.running_tasks
-            running.append(task)
-            self._storage.running_tasks = running
-
-            # Return the task
-            logger.info("Pop task {} ({}): {}"
-                        .format(task.name, task.task_short_uid,
-                                task.context_path))
-            return task
+                # Update and return the task
+                task.update({
+                    "started": time.time(),
+                    "status": "running",
+                    "consumer_id": consumer_id,
+                })
+                return copy.deepcopy(task)
+            return None
 
     def done(self, task):
         """Notifies the queue that the task has been processed successfully
@@ -152,9 +111,21 @@ class QueueUtility(object):
         :param error_message: (Optional) the error/traceback
         """
         with self.__lock:
-            if capi.is_uid(task):
-                task = self.get_task(task)
-            self._fail(task, error_message=error_message)
+            if is_task(task):
+                task_uid = task.task_uid
+            elif capi.is_uid(task):
+                task_uid = task
+            else:
+                raise ValueError("Type not supported")
+
+            # We do this dance because the task passed in is probably a copy,
+            # but self._fail expects a reference to self.__tasks
+            task = filter(lambda t: t.task_uid == task_uid, self.__tasks)
+            if not task:
+                raise ValueError("Task is not in the queue")
+
+            # Label the task as failed
+            self._fail(task[0], error_message=error_message)
 
     def delete(self, task):
         """Removes a task from the queue
@@ -170,31 +141,25 @@ class QueueUtility(object):
         :return: the task from the queue
         :rtype: queue.QueueTask
         """
-        tasks = self._storage.tasks + self._storage.running_tasks + \
-                self._storage.failed_tasks
-        for task in tasks:
+        for task in self.__tasks:
             if task.task_uid == task_uid:
-                return task
+                return copy.deepcopy(task)
         return None
 
     def get_tasks(self, status=None):
-        """Returns an iterable with the tasks from the queue
+        """Returns a deep copy list with the tasks from the queue
         :param status: (Optional) a string or list with status. If None, only
             "running" and "queued" are considered
-        :return iterable of QueueTask objects
-        :rtype: iterator
+        :return list of QueueTask objects
+        :rtype: list
         """
         if not isinstance(status, (list, tuple)):
             status = [status]
         status = filter(None, status)
         status = status or ["running", "queued"]
-
-        # all tasks
-        tasks = self._storage.running_tasks + self._storage.tasks + \
-                self._storage.failed_tasks
-        for task in tasks:
-            if task.status in status:
-                yield task
+        tasks = filter(lambda t: t.status in status, self.__tasks)
+        # We don't want self.__tasks to be modified from outside!
+        return copy.deepcopy(tasks)
 
     def get_uids(self, status=None):
         """Returns a list with the uids from the queue
@@ -218,18 +183,13 @@ class QueueUtility(object):
         :return: iterable of QueueTask objects
         :rtype: iterator
         """
+        # TODO Make this to return a list instead of an iterable
         uid = capi.get_uid(context_or_uid)
-
-        # Look into both queued and running tasks
-        tasks = self._storage.tasks + self._storage.running_tasks
-        for task in tasks:
-            if name and name != task.name:
+        for task in self.__tasks:
+            if name and task.name != name:
                 continue
-
-            # Check whether the context passed-in matches with the task's
-            # context or with other objects involved in this task
-            if uid == task.context_uid or uid in task.get("uids", []):
-                yield task
+            if task.context_uid == uid or uid in task.uids:
+                yield copy.deepcopy(task)
 
     def has_task(self, task):
         """Returns whether the queue contains a given task
@@ -237,9 +197,7 @@ class QueueUtility(object):
         :return: True if the queue contains the task
         :rtype: bool
         """
-        task_uid = get_task_uid(task)
-        out_task = self.get_task(task_uid)
-        if out_task:
+        if self.get_task(get_task_uid(task)):
             return True
         return False
 
@@ -248,7 +206,7 @@ class QueueUtility(object):
         name if provided.
         """
         tasks = self.get_tasks_for(context_or_uid, name=name)
-        return any(tasks)
+        return any(list(tasks))
 
     def get_senders(self):
         """Returns the urls of the clients that have sent at least one task to
@@ -265,9 +223,40 @@ class QueueUtility(object):
 
         return filter(is_colleague, list(self._senders))
 
+    def get_consumer_tasks(self, consumer_id):
+        """Returns the tasks the consumer is currently processing
+        :param consumer_id: unique id of the consumer
+        """
+        tasks = self.get_tasks(status="running")
+        return filter(lambda t: t.get("consumer_id") == consumer_id, tasks)
+
+    def get_running_context_paths(self):
+        """Returns a list with the context paths of the tasks that are running.
+        Levels 0 and 1 (site path and paths immediately below) are excluded
+        """
+        tasks = filter(lambda t: t.status == "running", self.__tasks)
+        paths = map(lambda t: self.strip_path(t.context_path), tasks)
+        return filter(None, paths)
+
+    def strip_path(self, context_path):
+        """Strips levels 0 and 1 from the context path passed-in
+        """
+        parts = context_path.strip("/").split("/")
+        if len(parts) > 2:
+            return "/".join(parts[2:])
+        return ""
+
+    def get_running_task_names(self):
+        """Returns a list with the names of the tasks that are running
+        """
+        names = map(lambda t: t.name, self.get_tasks(status="running"))
+        return list(set(names))
+
     def __len__(self):
         with self.__lock:
-            return len(self._storage.tasks + self._storage.running_tasks)
+            # get_tasks returns a deepcopy. Is faster this way
+            status = ["queued", "running"]
+            return len(filter(lambda t: t.status in status, self.__tasks))
 
     def is_empty(self):
         """Returns whether there are no remaining tasks in the queue
@@ -277,9 +266,8 @@ class QueueUtility(object):
     def is_busy(self):
         """Returns whether a task is being processed
         """
-        with self.__lock:
-            # Check if the number of running tasks is above max
-            return len(self._storage.running_tasks) >= MAX_CONCURRENT_TASKS
+        running = filter(lambda t: t.status == "running", self.__tasks)
+        return len(running) >= MAX_CONCURRENT_TASKS
 
     def purge(self):
         """Purges running tasks that got stuck for too long
@@ -289,114 +277,80 @@ class QueueUtility(object):
 
     def _purge(self):
         def is_stuck(task):
+            if task.get("status") != "running":
+                return False
             max_sec = task.get("max_seconds", 60)
             started = task.get("started", time.time() - max_sec - 1)
             return started + max_sec < time.time()
 
-        # Get non-stuck tasks
-        tasks = self._storage.running_tasks
-        stuck = filter(is_stuck, tasks)
-        if not stuck:
-            # No running tasks got stuck
-            return
+        # Get tasks that got stuck
+        stuck = filter(is_stuck, self.__tasks)
 
         # Re-queue or add to pool of failed
         map(lambda t: self._fail(t, "Timeout"), stuck)
 
     def _fail(self, task, error_message=None):
-        # Get the running tasks, but the current one
-        tasks = self._storage.running_tasks
-        other_tasks = filter(lambda t: t.task_uid != task.task_uid, tasks)
-        if len(other_tasks) != len(tasks):
-            # Remove the task from the pool of running tasks
-            self._storage.running_tasks = other_tasks
+        if task.retries > 0:
+            # Increase the max number of seconds to wait before this task is
+            # being considered stuck. Might happen the task is considered
+            # failed because there was no enough time for the task to complete
+            max_seconds = task.get("max_seconds", 60) * 2
 
-            # Set the error message
-            task["error_message"] = error_message
+            # Update the create time millis to make room for other tasks, even
+            # if it keeps failing again and again (create is used to sort tasks,
+            # together with priority)
+            created = time.time()
 
-            # Check if we've reached the max number of remaining retries
-            if task.retries > 0:
-                task["retries"] -= 1
-                # Increase the max number of seconds to wait before this task
-                # is being considered stuck. Might happen the task is considered
-                # failed because there was no enough time for the task to
-                # complete
-                max_sec = task.get("max_seconds", 60)
-
-                # Update the create time millis to make room for other tasks,
-                # even if it keeps failing again and again (create is used to
-                # sort tasks, together with priority)
-                created = time.time()
-                task.update({
-                    "created": created,
-                    "max_seconds": max_sec * 2
-                })
-                self._add(task)
-            else:
-                # Add in failed tasks
-                failed_tasks = self._storage.failed_tasks
-                task.update({"status": "failed"})
-                failed_tasks.append(task)
-                self._storage.failed_tasks = failed_tasks
-                logger.warn("Failed task {} ({}): {}"
-                            .format(task.name, task.task_short_uid,
-                                    task.context_path))
+            # Update the status of the task. Note we directly update the task,
+            # cause is a reference to the object stored in self.__tasks
+            task.update({
+                "error_message": error_message,
+                "retries": task.retries - 1,
+                "max_seconds": max_seconds,
+                "created": created,
+            })
+        else:
+            # Consider the task as failed
+            task.update({
+                "status": "failed",
+                "error_message": error_message
+            })
 
     def _delete(self, task_uid):
         task = self.get_task(task_uid)
         if not task:
             return
+        idx = self.__tasks.index(task)
+        del(self.__tasks[idx])
 
-        if task.status == "queued":
-            self._storage.tasks = filter(
-                lambda t: t.task_uid != task_uid,
-                self._storage.tasks)
-
-        elif task.status == "failed":
-            self._storage.failed_tasks = filter(
-                lambda t: t.task_uid != task_uid,
-                self._storage.failed_tasks)
-
-        elif task.status == "running":
-            self._storage.running_tasks = filter(
-                lambda t: task_uid != task_uid,
-                self._storage.running_tasks)
-
-    def _add(self, task, unique=False):
+    def _add(self, task):
         # Only QueueTask type is supported
-        if not isinstance(task, QueueTask):
+        if not is_task(task):
             raise TypeError("Not supported: {}".format(repr(type(task))))
 
         # Don't add to the queue if the task is already in there
-        if self.has_task(task):
+        if task in self.__tasks:
             logger.warn("Task {} ({}) in the queue already"
                         .format(task.name, task.task_short_uid))
             return None
 
         # Do not add the task if unique and task for same context and name
+        unique = task.get("unique", False)
         if unique and self.has_tasks_for(task.context_uid, name=task.name):
             logger.debug("Task for {} and {} in the queue already".format(
                     task.name, task.context_path))
             return None
 
-        # Append to the list of tasks
-        tasks = self._storage.tasks
+        # Update task status and append to the list of tasks
         task.update({"status": "queued"})
-        tasks.append(task)
+        self.__tasks.append(task)
 
         # Sort by priority + created reverse
         # We multiply the priority for 300 sec. (5 minutes) and then we sum the
         # result to the time the task was created. This way, we ensure tasks
         # priority at the same time we guarantee older, with low priority
         # tasks don't fall into the cracks.
-        # We sort the list reversed because pop() always return the last item
-        # of the list and we are sorting by priority (lesser value, the better)
-        tasks = sorted(tasks, key=lambda t: (t.created + (300 * t.priority)),
-                       reverse=True)
-
-        # Assign the tasks to the queue
-        # Note _storage does a _p_changed already
-        self._storage.tasks = tasks
+        self.__tasks.sort(key=lambda t: (t.created + (300 * t.priority)))
 
         logger.info("Added task {} ({}): {}"
                     .format(task.name, task.task_short_uid, task.context_path))

@@ -34,6 +34,7 @@ from senaite.queue.request import get_list_summary
 from senaite.queue.request import get_message_summary
 from senaite.queue.request import get_task_info
 from senaite.queue.request import get_tasks_summary
+from senaite.queue.request import get_zeo_url
 from senaite.queue.request import handle_queue_errors
 
 from bika.lims import api
@@ -124,8 +125,9 @@ def get(context, request, task_uid):  # noqa
     task = get_task(task_uid)
 
     # Digest the task and return
+    zeo = get_zeo_url()
     task_uid = get_task_uid(task, default="none")
-    logger.info("::server.get: {}".format(task_uid))
+    logger.info("::server.get: {} [{}]".format(task_uid, zeo))
     return get_task_info(task, complete=True)
 
 
