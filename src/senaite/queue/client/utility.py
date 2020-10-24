@@ -256,11 +256,46 @@ class OfflineClientQueueUtility(QueueUtility):
     """
     implements(IOfflineClientQueueUtility)
 
+    # Synchronization lifetime in seconds. When the regular client queue is
+    # active, it will keep updated this server-less utility from time to time in
+    # order to ensure the consistency as much as possible for when the
+    # connectivity with the queue server is lost. This does not guarantee the
+    # instance will be fully-synced with the server, but is always better to
+    # have something than nothing
+    sync_lifetime = 30
+
+    # Last synchronization time millis
+    _last_sync = None
+
+    def pop(self, consumer_id=None):
+        raise NotImplementedError("pop is not supported")
+
     def fail(self, task, error_message=None):
         self.delete(task.task_uid)
 
+    # TODO this might no longer be necessary
     def add_senders(self, senders):
         self._senders.update(senders)
+
+    def is_out_of_sync(self):
+        """Returns whether is out-of-sync with the non-headless utility
+        """
+        if self._last_sync is None:
+            return True
+        return self._last_sync + self.sync_lifetime < time.time()
+
+    def sync(self, queue_utility):
+        """Synchronizes the list of local uids and tasks with those from the
+        queue utility passed-in. This is used to keep the Headless Utility
+        in-sync wherever possible
+        :param queue_utility: the IQueueUtility to synchronize from
+        """
+        try:
+            self._tasks = list(queue_utility.get_tasks())
+            self._last_sync = time.time()
+            logger.info("Headless in sync: {} tasks".format(len(self._tasks)))
+        except:  # noqa
+            pass
 
 
 class QueueAuth(AuthBase):

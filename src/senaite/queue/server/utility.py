@@ -45,7 +45,7 @@ class QueueUtility(object):
     _senders = set()
 
     def __init__(self):
-        self.__tasks = []
+        self._tasks = []
         self.__lock = threading.Lock()
 
     def add(self, task):
@@ -69,7 +69,7 @@ class QueueUtility(object):
                 return None
 
             # Get the queued tasks
-            queued = filter(lambda t: t.status == "queued", self.__tasks)
+            queued = filter(lambda t: t.status == "queued", self._tasks)
             if not queued or self.get_consumer_tasks(consumer_id):
                 # Queue does not have tasks available or consumer is already
                 # processing some. Maybe there are some that got stack though
@@ -120,8 +120,8 @@ class QueueUtility(object):
                 raise ValueError("Type not supported")
 
             # We do this dance because the task passed in is probably a copy,
-            # but self._fail expects a reference to self.__tasks
-            task = filter(lambda t: t.task_uid == task_uid, self.__tasks)
+            # but self._fail expects a reference to self._tasks
+            task = filter(lambda t: t.task_uid == task_uid, self._tasks)
             if not task:
                 raise ValueError("Task is not in the queue")
 
@@ -142,7 +142,7 @@ class QueueUtility(object):
         :return: the task from the queue
         :rtype: queue.QueueTask
         """
-        for task in self.__tasks:
+        for task in self._tasks:
             if task.task_uid == task_uid:
                 return copy.deepcopy(task)
         return None
@@ -158,8 +158,8 @@ class QueueUtility(object):
             status = [status]
         status = filter(None, status)
         status = status or ["running", "queued"]
-        tasks = filter(lambda t: t.status in status, self.__tasks)
-        # We don't want self.__tasks to be modified from outside!
+        tasks = filter(lambda t: t.status in status, self._tasks)
+        # We don't want self._tasks to be modified from outside!
         return copy.deepcopy(tasks)
 
     def get_uids(self, status=None):
@@ -186,7 +186,7 @@ class QueueUtility(object):
         """
         # TODO Make this to return a list instead of an iterable
         uid = capi.get_uid(context_or_uid)
-        for task in self.__tasks:
+        for task in self._tasks:
             if name and task.name != name:
                 continue
             if task.context_uid == uid or uid in task.uids:
@@ -235,7 +235,7 @@ class QueueUtility(object):
         """Returns a list with the context paths of the tasks that are running.
         Levels 0 and 1 (site path and paths immediately below) are excluded
         """
-        tasks = filter(lambda t: t.status == "running", self.__tasks)
+        tasks = filter(lambda t: t.status == "running", self._tasks)
         paths = map(lambda t: self.strip_path(t.context_path), tasks)
         return filter(None, paths)
 
@@ -257,7 +257,7 @@ class QueueUtility(object):
         with self.__lock:
             # get_tasks returns a deepcopy. Is faster this way
             status = ["queued", "running"]
-            return len(filter(lambda t: t.status in status, self.__tasks))
+            return len(filter(lambda t: t.status in status, self._tasks))
 
     def is_empty(self):
         """Returns whether there are no remaining tasks in the queue
@@ -267,7 +267,7 @@ class QueueUtility(object):
     def is_busy(self):
         """Returns whether a task is being processed
         """
-        running = filter(lambda t: t.status == "running", self.__tasks)
+        running = filter(lambda t: t.status == "running", self._tasks)
         return len(running) >= MAX_CONCURRENT_TASKS
 
     def purge(self):
@@ -285,7 +285,7 @@ class QueueUtility(object):
             return started + max_sec < time.time()
 
         # Get tasks that got stuck
-        stuck = filter(is_stuck, self.__tasks)
+        stuck = filter(is_stuck, self._tasks)
 
         # Re-queue or add to pool of failed
         map(lambda t: self._fail(t, "Timeout"), stuck)
@@ -304,7 +304,7 @@ class QueueUtility(object):
             created = time.time()
 
             # Update the status of the task. Note we directly update the task,
-            # cause is a reference to the object stored in self.__tasks
+            # cause is a reference to the object stored in self._tasks
             task.update({
                 "error_message": error_message,
                 "retries": task.retries - 1,
@@ -322,8 +322,8 @@ class QueueUtility(object):
         task = self.get_task(task_uid)
         if not task:
             return
-        idx = self.__tasks.index(task)
-        del(self.__tasks[idx])
+        idx = self._tasks.index(task)
+        del(self._tasks[idx])
 
     def _add(self, task):
         # Only QueueTask type is supported
@@ -331,7 +331,7 @@ class QueueUtility(object):
             raise TypeError("Not supported: {}".format(repr(type(task))))
 
         # Don't add to the queue if the task is already in there
-        if task in self.__tasks:
+        if task in self._tasks:
             logger.warn("Task {} ({}) in the queue already"
                         .format(task.name, task.task_short_uid))
             return None
@@ -345,14 +345,14 @@ class QueueUtility(object):
 
         # Update task status and append to the list of tasks
         task.update({"status": "queued"})
-        self.__tasks.append(task)
+        self._tasks.append(task)
 
         # Sort by priority + created reverse
         # We multiply the priority for 300 sec. (5 minutes) and then we sum the
         # result to the time the task was created. This way, we ensure tasks
         # priority at the same time we guarantee older, with low priority
         # tasks don't fall into the cracks.
-        self.__tasks.sort(key=lambda t: (t.created + (300 * t.priority)))
+        self._tasks.sort(key=lambda t: (t.created + (300 * t.priority)))
 
         logger.info("Added task {} ({}): {}"
                     .format(task.name, task.task_short_uid, task.context_path))

@@ -332,9 +332,15 @@ def get_queue():
         return getUtility(IQueueUtility)
 
     elif is_queue_reachable():
-        # This is a client and queue server is reachable, return the client
-        # queue utility that communicates with queue server through JSON API
-        return getUtility(IClientQueueUtility)
+        # Return the queue utility that communicates with server via JSON
+        utility = getUtility(IClientQueueUtility)
+
+        # Synchronize the serverless utility if necessary
+        headless = getUtility(IOfflineClientQueueUtility)
+        if headless.is_out_of_sync():
+            headless.sync(utility)
+
+        return utility
 
     # Queue server not reachable, return the queue utility for off-line mode
     logger.warn("Running in off-line mode")
@@ -354,18 +360,15 @@ def is_queued(brain_object_uid, task_name=None, include_running=True):
     if not is_queue_readable():
         return False
 
-    queued = False
     uid = _api.get_uid(brain_object_uid)
-    queue = get_queue()
-    for task in queue.get_tasks_for(uid):
+    for task in get_queue().get_tasks_for(uid):
         if not include_running and task.status == "running":
             continue
         elif task_name and task_name != task.name:
             continue
         else:
-            queued = True
-            break
-    return queued
+            return True
+    return False
 
 
 def get_chunks(task_name, items):
