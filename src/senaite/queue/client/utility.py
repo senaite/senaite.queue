@@ -99,11 +99,10 @@ class ClientQueueUtility(object):
             return to_task(task)
         except APIError as e:
             if 500 <= e.status < 600:
-                # Fallback to off-line mode
-                logger.warn("[{}]. Fallback to off-line mode".format(e.status))
-                utility = getUtility(IOfflineClientQueueUtility)
-                return utility.get_task(task_uid)
-            raise e
+                e.setStatus(200)
+                return self.headless_fallback("get_task", task_uid)
+            else:
+                raise e
 
     def get_tasks(self, status=None):
         """Returns an iterable with the tasks from the queue
@@ -123,12 +122,11 @@ class ClientQueueUtility(object):
                 yield to_task(task)
         except APIError as e:
             if 500 <= e.status < 600:
-                # Fallback to off-line mode
-                logger.warn("[{}]. Fallback to off-line mode".format(e.status))
-                utility = getUtility(IOfflineClientQueueUtility)
-                for task in utility.get_tasks(status=status):
+                e.setStatus(200)
+                for task in self.headless_fallback("get_tasks", status=status):
                     yield task
-            raise e
+            else:
+                raise e
 
     def get_uids(self, status=None):
         """Returns a list with the uids from the queue
@@ -143,11 +141,10 @@ class ClientQueueUtility(object):
             return uids.get("items", [])
         except APIError as e:
             if 500 <= e.status < 600:
-                # Fallback to off-line mode
-                logger.warn("[{}]. Fallback to off-line mode".format(e.status))
-                utility = getUtility(IOfflineClientQueueUtility)
-                return utility.get_uids(status=status)
-            raise e
+                e.setStatus(200)
+                return self.headless_fallback("get_uids", status=status)
+            else:
+                raise e
 
     def get_tasks_for(self, context_or_uid, name=None):
         """Returns an iterable with the queued or running tasks the queue
@@ -170,12 +167,13 @@ class ClientQueueUtility(object):
                 yield to_task(task)
         except APIError as e:
             if 500 <= e.status < 600:
-                # Fallback to off-line mode
-                logger.warn("[{}]. Fallback to off-line mode".format(e.status))
-                utility = getUtility(IOfflineClientQueueUtility)
-                for task in utility.get_tasks(context_or_uid, name=name):
+                e.setStatus(200)
+                iterable = self.headless_fallback("get_tasks_for",
+                                                  context_or_uid, name=name)
+                for task in iterable:
                     yield task
-            raise e
+            else:
+                raise e
 
     def has_task(self, task):
         """Returns whether the queue contains a given task
@@ -235,6 +233,14 @@ class ClientQueueUtility(object):
 
         # Return the result
         return response.json()
+
+    def headless_fallback(self, func_name, *args, **kwargs):
+        """Returns the call of the function from the headless utility
+        """
+        logger.warn("Fallback to headless mode: {}".format(func_name))
+        utility = getUtility(IOfflineClientQueueUtility)
+        func = getattr(utility, func_name)
+        return func(*args, **kwargs)
 
 
 class OfflineClientQueueUtility(QueueUtility):
