@@ -20,6 +20,7 @@
 
 import copy
 
+import math
 import threading
 import time
 from senaite.queue import logger
@@ -170,7 +171,7 @@ class QueueUtility(object):
         """
         out = set()
         for task in self.get_tasks(status=status):
-            uids = [task.context_uid] + filter(None, task.get("uids"))
+            uids = [task.context_uid] + filter(None, task.uids)
             out.update(uids)
         return list(out)
 
@@ -294,7 +295,8 @@ class QueueUtility(object):
             # Increase the max number of seconds to wait before this task is
             # being considered stuck. Might happen the task is considered
             # failed because there was no enough time for the task to complete
-            max_seconds = task.get("max_seconds", 60) * 2
+            max_seconds = task.get("max_seconds", 60)
+            max_seconds = int(math.ceil(max_seconds * 1.5))
 
             # Update the create time millis to make room for other tasks, even
             # if it keeps failing again and again (create is used to sort tasks,
