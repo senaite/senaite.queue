@@ -44,7 +44,7 @@ class QueuedWorksheetsViewAdapter(object):
 
     def folder_item(self, obj, item, index):
         # Don't do anything if senaite.queue is not enabled
-        if not api.is_queue_readable():
+        if not api.is_queue_enabled():
             return
 
         if api.is_queued(obj):
@@ -74,7 +74,7 @@ class QueuedWorksheetAnalysesViewAdapter(object):
 
     def folder_item(self, obj, item, index):
         # Don't do anything if senaite.queue is not enabled
-        if not api.is_queue_readable():
+        if not api.is_queue_enabled():
             return
 
         if api.is_queued(self.context):
@@ -100,7 +100,7 @@ class QueuedAddAnalysesViewAdapter(object):
 
     def folder_item(self, obj, item, index):
         # Don't do anything if senaite.queue is not enabled
-        if not api.is_queue_readable():
+        if not api.is_queue_enabled():
             return
 
         if api.is_queued(self.context):
@@ -134,7 +134,7 @@ class QueuedAnalysesViewAdapter(object):
 
     def folder_item(self, obj, item, index):
         # Don't do anything if senaite.queue is not enabled
-        if not api.is_queue_readable():
+        if not api.is_queue_enabled():
             return
 
         if api.is_queued(obj):
@@ -164,7 +164,7 @@ class QueuedSampleAnalysisServicesViewAdapter(object):
 
     def folder_item(self, obj, item, index):
         # Don't do anything if senaite.queue is not enabled
-        if not api.is_queue_readable():
+        if not api.is_queue_enabled():
             return
 
         if api.is_queued(obj):
@@ -191,7 +191,7 @@ class QueuedSamplesViewAdapter(object):
 
     def folder_item(self, obj, item, index):
         # Don't do anything if senaite.queue is not enabled
-        if not api.is_queue_readable():
+        if not api.is_queue_enabled():
             return
 
         if api.is_queued(obj):

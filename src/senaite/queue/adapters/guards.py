@@ -34,7 +34,7 @@ class SampleGuardAdapter(object):
         """Returns False if the sample is queued or contains queued analyses
         """
         # Don't do anything if senaite.queue is not enabled
-        if not api.is_queue_readable():
+        if not api.is_queue_enabled():
             return True
 
         # Check if the sample is queued
@@ -59,7 +59,7 @@ class WorksheetGuardAdapter(object):
         """Returns False if the worksheet has queued jobs
         """
         # Don't do anything if senaite.queue is not enabled
-        if not api.is_queue_readable():
+        if not api.is_queue_enabled():
             return True
 
         # Check if the worksheet is queued

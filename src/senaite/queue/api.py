@@ -18,8 +18,6 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-import requests
-import time
 from Acquisition import aq_base  # noqa
 from collections import OrderedDict
 from plone.memoize import ram
@@ -71,31 +69,7 @@ def is_queue_server():
     return zeo_url.lower() == server_url
 
 
-@ram.cache(lambda *args: time.time() // 10)
-def is_queue_reachable():
-    """Returns whether the queue server is reachable or not. Decorator ensures
-    that the function is only called once every 10 seconds
-    """
-    if is_queue_server():
-        # This current thread is the server
-        return True
-
-    server_url = get_server_url()
-    if not server_url:
-        return False
-
-    # Ping
-    url = "{}/@@API/senaite/v1/version".format(server_url)
-    try:
-        # Check the request was successful. Raise exception otherwise
-        r = requests.get(url, timeout=1)
-        r.raise_for_status()
-        return True
-    except:  # noqa don't care about the response, want a ping only
-        return False
-
-
-def is_queue_readable(name_or_action=None):
+def is_queue_enabled(name_or_action=None):
     """Returns whether the queue is in a suitable status for reads
     """
     readable = ["ready", "resuming"]
@@ -145,7 +119,7 @@ def is_queued(brain_object_uid, status=None):
     :param status: (Optional) if None, looks to tasks either queued or running
     :return: True if the object is in the queue
     """
-    if not is_queue_readable():
+    if not is_queue_enabled():
         return False
 
     uid = _api.get_uid(brain_object_uid)

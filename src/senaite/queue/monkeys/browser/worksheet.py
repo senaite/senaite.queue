@@ -41,7 +41,7 @@ def handle_submit(self):
     worksheet.applyWorksheetTemplate(wst)
 
     # Are there tasks queued for this Worksheet?
-    if api.is_queue_readable():
+    if api.is_queue_enabled():
         queue = api.get_queue()
         tasks = queue.get_tasks_for(worksheet)
         if tasks:

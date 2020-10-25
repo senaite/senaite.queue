@@ -39,7 +39,7 @@ class QueuedAnalysesViewlet(ViewletBase):
         self.view = view
 
     def get_num_pending(self):
-        if not api.is_queue_readable():
+        if not api.is_queue_enabled():
             return 0
 
         # We are only interested in tasks with uids
@@ -65,7 +65,7 @@ class QueuedAnalysesSampleViewlet(ViewletBase):
     def get_num_analyses_pending(self):
         """Returns the number of analyses pending
         """
-        if not api.is_queue_readable():
+        if not api.is_queue_enabled():
             return 0
 
         analyses = self.context.getAnalyses()
