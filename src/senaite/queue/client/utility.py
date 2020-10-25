@@ -64,12 +64,38 @@ class ClientQueueUtility(object):
     def sync(self):
         """Synchronizes the local pool of tasks with the server queue
 
-        The synchronization process asks the queue server for tasks that are
-        newer than the newest task we have in the pool (created timestamp).
-        The queue server returns the new tasks that have been added since then,
-        along with the timestamp of the oldest task it holds. Therefore, the
-        synchronization only implies the download of newest tasks only and is
-        able to drop those from the local store that no longer exist.
+        The synchronization comprehends two processes:
+
+        a) *pull*: downloads data from the queue server to keep the local pool
+            of tasks up-to-date. The system asks to queue server for tasks that
+            are newer than the newest task we have in the pool. The queue server
+            returns the new tasks that have been added since then, along with
+            the timestamp of the oldest task it holds. Therefore, the pull only
+            implies the download of newest tasks only and is able to drop those
+            from the local store that no longer exist.
+
+        b) *push*: uploads the tasks that have been added or labeled as done
+            locally while the connectivity with the queue server was lost.
+
+        In any of the two processes, exceptions related with connectivity and
+        bad response from the queue server are handled gracefully so tasks can
+        eventually be re-processed later, as soon as the connectivity with the
+        queue server is re-established.
+
+        However, the assumption is that loosing connectivity with the queue
+        server is not the norm, rather a temporary scenario that has to be
+        considered in order to not bother users unnecessarily. Each zeo client
+        has it's own local pool of tasks and this synchronization does not do
+        any kind of sync among them.
+        """
+        # Download new tasks from server
+        self._sync_pull()
+
+        # Push tasks that have been handled offline
+        self._sync_push()
+
+    def _sync_pull(self):
+        """Updates the local tasks with those from the queue server
         """
         # We are not interested on failed tasks
         created = map(lambda t: t.created, self._tasks)
@@ -79,61 +105,77 @@ class ClientQueueUtility(object):
             "since": since,
             "complete": True,
         }
+
+        err = None
+        data = None
         try:
-            response = self._post("tasks", payload=query)
+            data = self._post("tasks", payload=query)
         except (ConnectionError, Timeout, TooManyRedirects) as e:
-            msg = "{}: {}".format(type(e).__name__, str(e))
-            logger.warn("{} (Operating in headless mode)".format(msg))
-            request = capi.get_request()
-            request.response.setStatus(200)
-            self._sync_frequency = 5
-            self._last_sync = time.time()
-            return
+            err = "{}: {}".format(type(e).__name__, str(e))
+
         except HTTPError as e:
             status = e.response.status_code or 500
+            if status < 500 or status >= 600:
+                raise e
             message = e.response.json() or {}
-            msg = "{}: {}".format(status, message.get("message", str(e)))
-            if 500 <= status < 600:
-                logger.warn("{} (Operating in headless mode".format(msg))
-                request = capi.get_request()
-                request.response.setStatus(200)
-                # Increase sync frequency
-                self._sync_frequency = 5
-                self._last_sync = time.time()
-                return
-            raise e
+            err = "{}: {}".format(status, message.get("message", str(e)))
+
         except APIError as e:
-            if 500 <= e.status < 600:
-                # Server is not reachable, enter in headless mode
-                logger.warn("{}: {} (Operating in headless mode)".format(
-                    e.status, e.message
-                ))
-                # Increase sync frequency
-                self._sync_frequency = 5
-                self._last_sync = time.time()
-                e.setStatus(200)
-                return
-            raise e
+            if e.status < 500 or e.status >= 600:
+                raise e
+            err = "{}: {}".format(e.status, e.message)
+
+        # If handled error, increase the sync frequency, set the HTTP response
+        # status to 200 and do nothing else
+        if err:
+            logger.warn("{} (Operating in headless mode)".format(err))
+            self._sync_frequency = 5
+            self._last_sync = time.time()
+            capi.get_request().response.setStatus(200)
+            return False
 
         # Restore sync_frequency (just in case)
         self._sync_frequency = 2
 
         # Get the time of the oldest task the queue server contains and remove
         # our older tasks, so we only need the diff to be in-sync
-        oldest = response.get("since_time", 0)
+        oldest = data.get("since_time", 0)
+
+        # Keep the tasks that have been processed off-line
+        offline = copy.deepcopy(filter(lambda t: t.get("offline"), self._tasks))
+
         if oldest < 0:
             # Server Queue does not have tasks. Remove all
             self._tasks = []
         else:
             self._tasks = filter(lambda t: t.created >= oldest, self._tasks)
 
+        # Extend with the off-line tasks
+        self._tasks.extend(offline)
+
         # Add the new tasks
-        tasks = map(to_task, response.get("items", []))
+        tasks = map(to_task, data.get("items", []))
         tasks = filter(None, tasks)
         self._tasks.extend(tasks)
 
         # Update the last synchronization time
         self._last_sync = time.time()
+        return True
+
+    def _sync_push(self):
+        """Pushes the tasks modified locally to the queue server
+        """
+        for task in filter(lambda t: t.get("offline"), self._tasks):
+            action = task.get("offline")
+            action_func = getattr(self, action)
+            try:
+                action_func(task)
+                task.pop("offline")
+            except Exception as e:
+                # push is not critical to operate, dismiss
+                err = "{}: {}".format(type(e).__name__, str(e))
+                logger.error(err)
+                capi.get_request().response.setStatus(200)
 
     def add(self, task):
         """Adds a task to the queue. It pushes the task directly to the queue
@@ -143,10 +185,34 @@ class ClientQueueUtility(object):
         :rtype: queue.QueueTask
         """
         # Add the task to the queue server
-        self._post("add", payload=task)
+        err = None
+        try:
+            self._post("add", payload=task)
+        except (ConnectionError, Timeout, TooManyRedirects) as e:
+            err = "{}: {}".format(type(e).__name__, str(e))
+
+        except HTTPError as e:
+            status = e.response.status_code or 500
+            if status < 500 or status >= 600:
+                raise e
+            message = e.response.json() or {}
+            err = "{}: {}".format(status, message.get("message", str(e)))
+
+        except APIError as e:
+            if e.status < 500 or e.status >= 600:
+                raise e
+            err = "{}: {}".format(e.status, e.message)
+
+        if err:
+            # Not able to add the task to the server queue. Keep it locally
+            # so it can be synchronized as soon as we have connectivity again
+            logger.warn(err)
+            capi.get_request().response.setStatus(200)
+            task.update({"offline": "add"})
 
         # Add the task to our local pool
-        self._tasks.append(task)
+        if task not in self._tasks:
+            self._tasks.append(task)
         return task
 
     def pop(self, consumer_id):
@@ -181,7 +247,37 @@ class ClientQueueUtility(object):
         # Tell the queue server the task is done
         task_uid = get_task_uid(task)
         payload = {"task_uid": task_uid}
-        self._post("done", payload=payload)
+        err = None
+        try:
+            self._post("done", payload=payload)
+        except (ConnectionError, Timeout, TooManyRedirects) as e:
+            err = "{}: {}".format(type(e).__name__, str(e))
+
+        except HTTPError as e:
+            status = e.response.status_code or 500
+            if status < 500 or status >= 600:
+                raise e
+            message = e.response.json() or {}
+            err = "{}: {}".format(status, message.get("message", str(e)))
+
+        except APIError as e:
+            if e.status < 500 or e.status >= 600:
+                raise e
+            err = "{}: {}".format(e.status, e.message)
+
+        if err:
+            # Not able to tell the server queue. Keep it locally so it can be
+            # synchronized as soon as we have connectivity again
+            logger.warn(err)
+            capi.get_request().response.setStatus(200)
+            task_uid = get_task_uid(task_uid)
+            tasks = filter(lambda t: t.task_uid == task_uid, self._tasks)
+            if tasks:
+                task = tasks[0]
+            else:
+                self._tasks.append(task)
+            task.update({"offline": "done"})
+            return
 
         # Remove from local pool
         self._tasks = filter(lambda t: t.task_uid != task_uid, self._tasks)

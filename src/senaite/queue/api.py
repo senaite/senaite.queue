@@ -25,7 +25,6 @@ from collections import OrderedDict
 from plone.memoize import ram
 from senaite.queue import IQueueUtility
 from senaite.queue import is_installed
-from senaite.queue import logger
 from senaite.queue.interfaces import IClientQueueUtility
 from senaite.queue.interfaces import IQueuedTaskAdapter
 from senaite.queue.queue import get_chunk_size
