@@ -30,6 +30,7 @@ from Products.PluggableAuthService.interfaces.plugins import \
 from Products.PluggableAuthService.interfaces.plugins import IExtractionPlugin
 from Products.PluggableAuthService.plugins.BasePlugin import BasePlugin
 from Products.PluggableAuthService.utils import classImplements
+from requests.auth import AuthBase
 from senaite.queue.interfaces import ISenaiteQueueLayer
 
 from bika.lims import api
@@ -111,6 +112,26 @@ class QueueAuthPlugin(BasePlugin):
 
 classImplements(QueueAuthPlugin, IExtractionPlugin, IAuthenticationPlugin)
 InitializeClass(QueueAuthPlugin)
+
+
+class QueueAuth(AuthBase):
+    """Attaches HTTP Queue Authentication to the given Request object
+    """
+    def __init__(self, username):
+        self.username = username
+
+    def __call__(self, r):
+        # We want our key to be valid for 10 seconds only
+        secs = time.time() + 10
+        token = "{}:{}".format(secs, self.username)
+
+        # Encrypt the token using our symmetric auth key
+        key = api.get_registry_record("senaite.queue.auth_key")
+        auth_token = Fernet(str(key)).encrypt(token)
+
+        # Modify and return the request
+        r.headers["X-Queue-Auth-Token"] = auth_token
+        return r
 
 
 def add_queue_auth_plugin():

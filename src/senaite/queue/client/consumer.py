@@ -20,12 +20,10 @@
 
 import requests
 import threading
-import time
 from senaite.queue import api
 from senaite.queue import is_installed
 from senaite.queue import logger
-from senaite.queue.client.utility import QueueAuth
-from senaite.queue.request import get_zeo_url
+from senaite.queue.pasplugin import QueueAuth
 
 from bika.lims import api as _api
 from bika.lims.decorators import synchronized

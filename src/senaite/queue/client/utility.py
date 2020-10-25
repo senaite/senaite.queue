@@ -22,8 +22,6 @@ import copy
 
 import requests
 import time
-from cryptography.fernet import Fernet
-from requests.auth import AuthBase
 from requests.exceptions import ConnectionError
 from requests.exceptions import HTTPError
 from requests.exceptions import Timeout
@@ -32,6 +30,7 @@ from senaite.jsonapi.exceptions import APIError
 from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.interfaces import IClientQueueUtility
+from senaite.queue.pasplugin import QueueAuth
 from senaite.queue.queue import get_task_uid
 from senaite.queue.queue import to_task
 from zope.interface import implements  # noqa
@@ -436,23 +435,3 @@ class ClientQueueUtility(object):
 
         # Return the result
         return response.json()
-
-
-class QueueAuth(AuthBase):
-    """Attaches HTTP Queue Authentication to the given Request object
-    """
-    def __init__(self, username):
-        self.username = username
-
-    def __call__(self, r):
-        # We want our key to be valid for 10 seconds only
-        secs = time.time() + 10
-        token = "{}:{}".format(secs, self.username)
-
-        # Encrypt the token using our symmetric auth key
-        key = capi.get_registry_record("senaite.queue.auth_key")
-        auth_token = Fernet(str(key)).encrypt(token)
-
-        # Modify and return the request
-        r.headers["X-Queue-Auth-Token"] = auth_token
-        return r
