@@ -1,0 +1,32 @@
+<div tal:omit-tag=""
+     tal:define="status python:view.get_server_status()"
+     tal:condition="python:status != 'ok'"
+     i18n:domain="senaite.queue">
+
+  <div class="visualClear"></div>
+
+  <div id="portal-alert" tal:define="portal_url nocall:context/portal_url">
+    <div class="portlet-alert-item alert alert-warning alert-dismissible">
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+      <p class="title" tal:condition="python: status == 'invalid'">
+        <span i18n:translate="">
+          Queue Server is not configured properly. Please, check that the URL of
+          the zeo client to act as the server is configured properly:
+        </span>&nbsp;
+        <a tal:attributes="href string:$portal_url/@@queue-controlpanel">Queue settings</a>
+      </p>
+
+      <p class="title" tal:condition="python: status == 'timeout'">
+        <strong i18n:translate="">
+          Queue Server is not responding
+        </strong>,&nbsp;
+        <span i18n:translate="">
+          please verify is up and running
+        </span>
+      </p>
+
+    </div>
+  </div>
+</div>
