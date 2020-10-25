@@ -26,7 +26,7 @@ from senaite.queue import api
 def _recursive_reindex_object_security(self, obj):
     """Reindex object security recursively, but using the queue
     """
-    if api.is_queue_writable("task_reindex_object_security"):
+    if api.is_queue_ready("task_reindex_object_security"):
         api.add_reindex_obj_security_task(obj)
         return
 

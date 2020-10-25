@@ -30,7 +30,7 @@ class WorkflowActionGenericQueueAdapter(WorkflowActionGenericAdapter):
 
     def do_action(self, action, objects):
 
-        if api.is_queue_writable(action):
+        if api.is_queue_ready(action):
             # Add to the queue
             api.add_action_task(objects, action, self.context)
             return objects

@@ -102,19 +102,12 @@ def is_queue_readable(name_or_action=None):
     return get_queue_status(name_or_action) in readable
 
 
-def is_queue_writable(name_or_action=None):
+def is_queue_ready(name_or_action=None):
     """Returns whether the queue is in a suitable status for both read and
     write (task addition) actions
     """
     writable = ["ready"]
     return get_queue_status(name_or_action) in writable
-
-
-def is_queue_readonly(name_or_action=None):
-    """Returns whether the queue is in read-only mode (no new tasks allowed)
-    """
-    readonly = ["resuming", "offline"]
-    return get_queue_status(name_or_action) in readonly
 
 
 def get_queue_status(name_or_action=None):

@@ -119,7 +119,7 @@ def _apply_worksheet_template_routine_analyses(self, wst):
     # SENAITE.QUEUE-SPECIFIC
     task_name = "task_assign_analyses"
     new_analyses = map(lambda a: (a[0], samples_slots[a[1]]), new_analyses)
-    if api.is_queue_writable(task_name):
+    if api.is_queue_ready(task_name):
         # Queue the assignment of analyses
         analyses, slots = zip(*new_analyses)
         api.add_assign_task(self, analyses=analyses, slots=slots)
@@ -135,7 +135,7 @@ def addAnalyses(self, analyses):
     """Adds a collection of analyses to the Worksheet at once
     """
     to_queue = list()
-    queue_enabled = api.is_queue_writable("task_assign_analyses")
+    queue_enabled = api.is_queue_ready("task_assign_analyses")
     for num, analysis in enumerate(analyses):
         analysis = _api.get_object(analysis)
         if not queue_enabled:
