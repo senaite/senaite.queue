@@ -15,8 +15,8 @@
   <include package="bika.lims" file="permissions.zcml" />
 
   <!-- Queue's server utility -->
-  <utility provides=".interfaces.IQueueUtility"
-           factory=".server.utility.QueueUtility" />
+  <utility provides=".interfaces.IServerQueueUtility"
+           factory=".server.utility.ServerQueueUtility" />
 
   <!-- Queue's client utility -->
   <utility provides=".interfaces.IClientQueueUtility"

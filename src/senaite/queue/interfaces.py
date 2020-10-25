@@ -57,7 +57,7 @@ class IQueuedTaskAdapter(Interface):
         """
 
 
-class IBaseQueueUtility(Interface):
+class IQueueUtility(Interface):
     """Interface that provide basic signatures for Queue utilities
     """
 
@@ -145,7 +145,7 @@ class IBaseQueueUtility(Interface):
         """
 
 
-class IQueueUtility(IBaseQueueUtility):
+class IServerQueueUtility(IQueueUtility):
     """Marker interface for Queue global utility (singleton) used by the zeo
     client that acts as the server
     """
@@ -159,7 +159,7 @@ class IQueueUtility(IBaseQueueUtility):
         """
 
 
-class IClientQueueUtility(IBaseQueueUtility):
+class IClientQueueUtility(IQueueUtility):
     """Marker interface for the Queue global utility (singleton) used by the
     zeo clients that act as queue clients
     """

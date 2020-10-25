@@ -24,7 +24,7 @@ import math
 import threading
 import time
 from senaite.queue import logger
-from senaite.queue.interfaces import IQueueUtility
+from senaite.queue.interfaces import IServerQueueUtility
 from senaite.queue.queue import get_task_uid
 from senaite.queue.queue import is_task
 from zope.interface import implements  # noqa
@@ -35,11 +35,11 @@ from bika.lims import api as capi
 MAX_CONCURRENT_TASKS = 4
 
 
-class QueueUtility(object):
+class ServerQueueUtility(object):
     """General utility acting as a singleton that provides the basic actions to
     handle a queue of tasks
     """
-    implements(IQueueUtility)
+    implements(IServerQueueUtility)
 
     def __init__(self):
         self._tasks = []

@@ -21,6 +21,8 @@
 from Products.Archetypes.interfaces.base import IBaseObject
 from senaite.queue import api
 from senaite.queue.interfaces import IQueuedTaskAdapter
+from senaite.queue.queue import get_chunks
+from senaite.queue.queue import get_chunks_for
 from senaite.queue.queue import QueueTask
 from zope.component import adapts
 from zope.interface import implements
@@ -44,7 +46,7 @@ class QueuedActionTaskAdapter(object):
         """
         # If there are too many objects to process, split them in chunks to
         # prevent the task to take too much time to complete
-        chunks = api.get_chunks(task.name, task["uids"])
+        chunks = get_chunks_for(task.name, task["uids"])
 
         # Process the first chunk
         objects = map(_api.get_object_by_uid, chunks[0])
@@ -83,7 +85,7 @@ class QueuedAssignAnalysesTaskAdapter(object):
 
         # If there are too many objects to process, split them in chunks to
         # prevent the task to take too much time to complete
-        chunks = api.get_chunks(task.name, uids_slots)
+        chunks = get_chunks_for(task.name, uids_slots)
 
         # Process the first chunk
         for uid, slot in chunks[0]:
@@ -112,7 +114,7 @@ class QueueObjectSecurityAdapter(object):
         """
         # If there are too many objects to process, split them in chunks to
         # prevent the task to take too much time to complete
-        chunks = api.chunks(task["uids"], 50)
+        chunks = get_chunks(task["uids"], 50)
 
         # Process the first chunk
         map(self.reindex_security, chunks[0])

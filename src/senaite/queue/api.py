@@ -21,10 +21,10 @@
 from Acquisition import aq_base  # noqa
 from collections import OrderedDict
 from plone.memoize import ram
-from senaite.queue import IQueueUtility
 from senaite.queue import is_installed
 from senaite.queue.interfaces import IClientQueueUtility
 from senaite.queue.interfaces import IQueuedTaskAdapter
+from senaite.queue.interfaces import IServerQueueUtility
 from senaite.queue.queue import get_chunk_size
 from senaite.queue.queue import new_task
 from senaite.queue.request import get_zeo_site_url
@@ -34,7 +34,6 @@ from zope.component import queryAdapter
 
 from bika.lims import api as _api
 from bika.lims.interfaces import IWorksheet
-from bika.lims.utils import render_html_attributes
 
 
 def get_server_url():
@@ -259,7 +258,7 @@ def get_queue():
     """
     if is_queue_server():
         # Return the server's queue utility
-        utility = getUtility(IQueueUtility)
+        utility = getUtility(IServerQueueUtility)
     else:
         # Return the client's queue utility
         utility = getUtility(IClientQueueUtility)
@@ -268,45 +267,3 @@ def get_queue():
             utility.sync()
 
     return utility
-
-
-# TODO REVIEW
-
-
-
-
-def get_chunks(task_name, items):
-    """Returns the items splitted into a list. The first element contains the
-    first chunk and the second element contains the rest of the items
-    """
-    chunk_size = get_chunk_size(task_name)
-    return chunks(items, chunk_size)
-
-
-def chunks(items, chunk_size):
-    """Returns the items splitted into a list of two items. The first element
-    contains the first chunk and the second element contains the rest of the
-    items
-    """
-    if chunk_size <= 0 or chunk_size >= len(items):
-        return [items, []]
-    return [items[:chunk_size], items[chunk_size:]]
-
-
-def get_queue_image(name, **kwargs):
-    """Returns a well-formed image
-    :param name: file name of the image
-    :param kwargs: additional attributes and values
-    :return: a well-formed html img
-    """
-    if not name:
-        return ""
-    attr = render_html_attributes(**kwargs)
-    return '<img src="{}" {}/>'.format(get_queue_image_url(name), attr)
-
-
-def get_queue_image_url(name):
-    """Returns the url for the given image
-    """
-    portal_url = _api.get_url(_api.get_portal())
-    return "{}/++resource++senaite.queue.static/{}".format(portal_url, name)

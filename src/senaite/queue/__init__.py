@@ -26,7 +26,6 @@ from Products.Archetypes.atapi import process_types
 from Products.CMFCore.permissions import AddPortalContent
 from Products.CMFCore.utils import ContentInit
 from Products.PluggableAuthService import PluggableAuthService
-from senaite.queue.interfaces import IQueueUtility
 from senaite.queue.interfaces import ISenaiteQueueLayer
 from senaite.queue.pasplugin import add_queue_auth_plugin
 from zope.i18nmessageid import MessageFactory  # noqa

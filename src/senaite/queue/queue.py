@@ -271,6 +271,24 @@ def get_chunk_size(name_or_action=None):
     return chunk_size
 
 
+def get_chunks_for(task_name, items):
+    """Returns the items splitted into a list. The first element contains the
+    first chunk and the second element contains the rest of the items
+    """
+    chunk_size = get_chunk_size(task_name)
+    return get_chunks(items, chunk_size)
+
+
+def get_chunks(items, chunk_size):
+    """Returns the items splitted into a list of two items. The first element
+    contains the first chunk and the second element contains the rest of the
+    items
+    """
+    if chunk_size <= 0 or chunk_size >= len(items):
+        return [items, []]
+    return [items[:chunk_size], items[chunk_size:]]
+
+
 def get_task_uid(task_or_uid, default=_marker):
     """Returns the task unique identifier
     :param task_or_uid: QueueTask/task uid/dict
