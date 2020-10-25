@@ -23,7 +23,6 @@ import itertools
 from plone.app.layout.viewlets import ViewletBase
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile
 from senaite.queue import api
-from senaite.queue.mixin import IsQueuedMixin
 
 
 class QueuedAnalysesViewlet(ViewletBase):
@@ -50,7 +49,7 @@ class QueuedAnalysesViewlet(ViewletBase):
         return len(set(uids))
 
 
-class QueuedAnalysesSampleViewlet(ViewletBase, IsQueuedMixin):
+class QueuedAnalysesSampleViewlet(ViewletBase):
     """Prints a viewlet to display a message stating there are some analyses
     that are in queue to be assigned to a worksheet
     """
@@ -66,9 +65,9 @@ class QueuedAnalysesSampleViewlet(ViewletBase, IsQueuedMixin):
     def get_num_analyses_pending(self):
         """Returns the number of analyses pending
         """
-        if not self.is_queue_readable():
+        if not api.is_queue_readable():
             return 0
 
         analyses = self.context.getAnalyses()
-        queued = filter(self.is_queued, analyses)
+        queued = filter(api.is_queued, analyses)
         return len(queued)

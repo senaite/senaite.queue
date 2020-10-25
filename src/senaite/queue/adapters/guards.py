@@ -18,13 +18,13 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-from senaite.queue.mixin import IsQueuedMixin
 from zope.interface import implements
 
 from bika.lims.interfaces import IGuardAdapter
+from senaite.queue import api
 
 
-class SampleGuardAdapter(IsQueuedMixin):
+class SampleGuardAdapter(object):
     implements(IGuardAdapter)
 
     def __init__(self, context):
@@ -34,22 +34,22 @@ class SampleGuardAdapter(IsQueuedMixin):
         """Returns False if the sample is queued or contains queued analyses
         """
         # Don't do anything if senaite.queue is not enabled
-        if not self.is_queue_readable():
+        if not api.is_queue_readable():
             return True
 
         # Check if the sample is queued
-        if self.is_queued(self.context, status=["queued"]):
+        if api.is_queued(self.context, status=["queued"]):
             return False
 
         # Check whether the sample contains queued analyses
         for brain in self.context.getAnalyses():
-            if self.is_queued(brain, status=["queued"]):
+            if api.is_queued(brain, status=["queued"]):
                 return False
 
         return True
 
 
-class WorksheetGuardAdapter(IsQueuedMixin):
+class WorksheetGuardAdapter(object):
     implements(IGuardAdapter)
 
     def __init__(self, context):
@@ -59,16 +59,16 @@ class WorksheetGuardAdapter(IsQueuedMixin):
         """Returns False if the worksheet has queued jobs
         """
         # Don't do anything if senaite.queue is not enabled
-        if not self.is_queue_readable():
+        if not api.is_queue_readable():
             return True
 
         # Check if the worksheet is queued
-        if self.is_queued(self.context, status=["queued"]):
+        if api.is_queued(self.context, status=["queued"]):
             return False
 
         # Check whether this worksheet contains queued analyses
         for obj in self.context.getAnalyses():
-            if self.is_queued(obj, status=["queued"]):
+            if api.is_queued(obj, status=["queued"]):
                 return False
 
         return True

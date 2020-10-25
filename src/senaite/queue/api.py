@@ -98,7 +98,7 @@ def is_queue_reachable():
 def is_queue_readable(name_or_action=None):
     """Returns whether the queue is in a suitable status for reads
     """
-    readable = ["ready", "resuming", "offline"]
+    readable = ["ready", "resuming"]
     return get_queue_status(name_or_action) in readable
 
 
@@ -119,18 +119,12 @@ def is_queue_readonly(name_or_action=None):
 
 def get_queue_status(name_or_action=None):
     """Returns the current status of the queue:
-
-    * `ready`: queue server is enabled and healthy
-
-    * `resuming`: queue server is preparing for a `disabled` status. Queue
-            server does not accept `add` requests. In this status, clients
-            should be communicating with the queue to get updates about the
-            status of remaining tasks and objects.
-
-    * `disabled`: queue server does not accept requests at all, either because
-            has been disabled or because senaite.queue is not installed
-
-    * `headless`: queue server is not reachable or is unable to answer requests.
+    * `ready`: queue server is enabled and healthy, It is safe to add tasks
+    * `resuming`: queue server is preparing for a `disabled` status. Tasks
+        added in the queue while in this status will still be processed, but is
+        not recommended.
+    * `disabled`: queue has been disabled or is not installed. Tasks added to
+        the queue in this status won't be processed.
     """
     # Is senaite queue not installed?
     if not is_installed():
@@ -138,38 +132,35 @@ def get_queue_status(name_or_action=None):
 
     # Is the server url not valid?
     if not get_server_url():
-        return "offline"
+        return "disabled"
 
     # Is queue enabled?
-    queue = get_queue()
-    enabled = get_chunk_size(name_or_action=name_or_action) > 0
+    if get_chunk_size(name_or_action=name_or_action) > 0:
+        return "ready"
 
-    if IQueueUtility.providedBy(queue):
-        # This is the Queue server
-        return enabled and "ready" or "disabled"
+    # Queue not enabled, is empty?
+    if get_queue().is_empty():
+        return "disabled"
 
-    if not enabled:
-        # TODO Check all this
-        try:
-            if not queue.is_empty():
-                # Queue is disabled but there are remaining tasks
-                return "resuming"
-        except:  # noqa if server raises an error, assume is not healthy
-            # Client queue has problems to communicate with server, so we
-            # cannot be sure about the "real" status of the server
-            return "headless"
+    # Queue is not enabled, but not empty. We don't accept new tasks
+    return "resuming"
 
-    return enabled and "ready" or "disabled"
+
+def is_queued(brain_object_uid, status=None):
+    """Returns whether the object passed-in is queued
+    :param brain_object_uid: the object to check for
+    :param status: (Optional) if None, looks to tasks either queued or running
+    :return: True if the object is in the queue
+    """
+    if not is_queue_readable():
+        return False
+
+    uid = _api.get_uid(brain_object_uid)
+    return uid in get_queue().get_uids(status=status)
 
 
 def add_task(name, context, **kwargs):
     """Adds a task to the queue for async processing
-
-    Delivery is not granted. The recommended usage is::
-
-        >>> if not add_task(name, context):
-        >>>     # Do the process sync
-
     :param name: the name of the task
     :param context: the context the task is bound or relates to
     :param min_seconds: (optional) int, minimum seconds to book for the task
@@ -203,28 +194,15 @@ def add_task(name, context, **kwargs):
             )
         )
 
-    # Don't add the task unless the queue is writable
-    if not is_queue_writable(name):
-        return None
-
     # Create the task
     task = new_task(name, context, **kwargs)
 
     # Add the task to the queue and return
-    try:
-        return get_queue().add(task)
-    except:  # noqa Delivery is not granted
-        return None
+    return get_queue().add(task)
 
 
 def add_action_task(brain_object_uid, action, context=None, **kwargs):
     """Adds an action-type task to the queue for async processing.
-
-    Delivery is not granted. The recommended usage is::
-
-        >>> if not add_action_task(brain_object_uid, action):
-        >>>     # Do the process sync
-
     :param brain_object_uid: object(s) to perform the action against
     :param action: action to be performed
     :param context: context where the action takes place
@@ -257,12 +235,6 @@ def add_action_task(brain_object_uid, action, context=None, **kwargs):
 
 def add_assign_task(worksheet, analyses, slots=None, **kwargs):
     """Adds an action-type task to the queue for async processing
-
-    Delivery is not granted. The recommended usage is::
-
-        >>> if not add_action_task(worksheet, analyses):
-        >>>     # Do the process sync
-
     :param worksheet: the worksheet object the analyses will be assigned to
     :param analyses: list of analyses objects, brains or uids
     :param slots: list of slots each analysis has to be assigned to
@@ -279,12 +251,6 @@ def add_assign_task(worksheet, analyses, slots=None, **kwargs):
 
 def add_reindex_obj_security_task(brain_object_uid, **kwargs):
     """Adds a task for recursive object security reindexing to the queue
-
-    Delivery is not granted. The recommended usage is::
-
-        >>> if not add_reindex_obj_security_task(obj):
-        >>>     # Do the process sync
-
     :param brain_object_uid: uid/brain/object
     :param kwargs: optional arguments that ``add_task`` takes.
     :return: the task added to the queue
@@ -325,14 +291,14 @@ def get_queue():
     """Returns the queue utility
     """
     if is_queue_server():
-        # This is the server, return the base queue utility
-        return getUtility(IQueueUtility)
-
-    # Return the queue utility that communicates with server via JSON
-    utility = getUtility(IClientQueueUtility)
-    if utility.is_out_of_date():
-        # Sync the queue if needed
-        utility.sync()
+        # Return the server's queue utility
+        utility = getUtility(IQueueUtility)
+    else:
+        # Return the client's queue utility
+        utility = getUtility(IClientQueueUtility)
+        if utility.is_out_of_date():
+            # Sync the queue if needed
+            utility.sync()
 
     return utility
 
@@ -340,25 +306,6 @@ def get_queue():
 # TODO REVIEW
 
 
-def is_queued(brain_object_uid, task_name=None, include_running=True):
-    """Returns whether the object passed-in is queued
-    :param brain_object_uid: the object to check for
-    :param task_name: filter by task_name
-    :param include_running: whether to look for in running tasks or not
-    :return: True if the object is in the queue
-    """
-    if not is_queue_readable():
-        return False
-
-    uid = _api.get_uid(brain_object_uid)
-    for task in get_queue().get_tasks_for(uid):
-        if not include_running and task.status == "running":
-            continue
-        elif task_name and task_name != task.name:
-            continue
-        else:
-            return True
-    return False
 
 
 def get_chunks(task_name, items):
