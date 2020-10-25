@@ -29,6 +29,7 @@ from senaite.queue.interfaces import IClientQueueUtility
 from senaite.queue.interfaces import IQueuedTaskAdapter
 from senaite.queue.queue import get_chunk_size
 from senaite.queue.queue import new_task
+from senaite.queue.request import get_zeo_site_url
 from six.moves.urllib import parse
 from zope.component import getUtility
 from zope.component import queryAdapter
@@ -64,9 +65,10 @@ def is_queue_server():
     server_url = get_server_url()
     if not server_url:
         return False
-    # TODO FIx this!
-    current_url = _api.get_url(_api.get_portal())
-    return current_url.lower().startswith(server_url.lower())
+
+    # Compare with the base url of the current zeo client
+    zeo_url = get_zeo_site_url().lower()
+    return zeo_url.lower() == server_url
 
 
 @ram.cache(lambda *args: time.time() // 10)

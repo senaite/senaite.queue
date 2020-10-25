@@ -47,7 +47,6 @@ class QueueTask(dict):
             "created": kw.get("created", time.time()),
             "status": kw.get("status", None),
             "error_message": kw.get("error_message", None),
-            "sender": kw.get("sender") or request.get("SERVER_URL"),
             "min_seconds": kw.get("min_seconds", get_min_seconds()),
             "max_seconds": kw.get("max_seconds", get_max_seconds()),
             "priority": api.to_int(kw.get("priority"), default=10),
@@ -134,10 +133,6 @@ class QueueTask(dict):
     @retries.setter
     def retries(self, value):
         self["retries"] = value
-
-    @property
-    def sender(self):
-        return self["sender"]
 
     @property
     def uids(self):

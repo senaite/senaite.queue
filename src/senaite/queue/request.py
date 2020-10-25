@@ -81,7 +81,7 @@ def get_message_summary(message, endpoint, **kwargs):
     :param kwargs: additional (hashable) params to be included in the message
     :return: dict with the summary of the response
     """
-    zeo = get_zeo_url()
+    zeo = get_post_zeo()
     logger.info("::{}: {} [{}]".format(endpoint, message, zeo))
     info = kwargs or {}
     info.update({
@@ -108,7 +108,7 @@ def get_tasks_summary(tasks, endpoint, complete=False, **kwargs):
     tasks = filter(None, tasks)
     tasks = map(lambda t: get_task_info(t, complete=complete), tasks)
 
-    zeo = get_zeo_url()
+    zeo = get_post_zeo()
     complete_info = complete and " (complete)" or ""
     logger.info("::{}: {} tasks{} [{}]".format(endpoint, len(tasks),
                                                complete_info, zeo))
@@ -136,7 +136,7 @@ def get_list_summary(items, endpoint, **kwargs):
     # Remove empties
     items = filter(None, items)
 
-    zeo = get_zeo_url()
+    zeo = get_post_zeo()
     logger.info("::{}: {} items [{}]".format(endpoint, len(items), zeo))
     info = kwargs or {}
     info.update({
@@ -187,8 +187,9 @@ def get_task_url(task):
     ])
 
 
-def get_zeo_url():
-    """Returns the zeo base url from the current request
+def get_post_zeo():
+    """Returns the value of param "__zeo" from the request's POST. If not
+    present or url is not valid, returns empty str
     """
     try:
         req_data = req.get_json()
@@ -198,3 +199,11 @@ def get_zeo_url():
     except:  # noqa
         pass
     return ""
+
+
+def get_zeo_site_url():
+    """"Returns the base url form the current zeo client
+    """
+    site_id = capi.get_id(capi.get_portal()).strip("/")
+    current_url = capi.get_request().get("SERVER_URL").strip("/")
+    return "{}/{}".format(current_url, site_id)
