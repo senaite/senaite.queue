@@ -163,9 +163,3 @@ class IClientQueueUtility(IBaseQueueUtility):
     """Marker interface for the Queue global utility (singleton) used by the
     zeo clients that act as queue clients
     """
-
-
-class IOfflineClientQueueUtility(IBaseQueueUtility):
-    """Marker interface for the Queue global utility (singleton) used by the
-    zeo clients when the Queue server is not reachable
-    """

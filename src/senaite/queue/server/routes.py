@@ -18,13 +18,10 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-import requests
-
 from senaite.jsonapi import request as req
 from senaite.jsonapi.v1 import add_route
 from senaite.queue import api as qapi
 from senaite.queue import logger
-from senaite.queue.client.utility import QueueAuth
 from senaite.queue.queue import get_max_retries
 from senaite.queue.queue import get_task_uid
 from senaite.queue.queue import is_task
@@ -62,13 +59,23 @@ def tasks(context, request, status=None):  # noqa
     # Maybe the status has been sent via POST
     request_data = req.get_json()
     status = status or request_data.get("status")
+    since = request_data.get("since", 0)
 
     # Get the tasks
     items = qapi.get_queue().get_tasks(status)
 
+    # Skip older
+    items = filter(lambda t: t.created > since, items)
+
     # Convert to the dict representation
     complete = request_data.get("complete") or False
-    return get_tasks_summary(list(items), "server.tasks", complete=complete)
+    summary = get_tasks_summary(list(items), "server.tasks", complete=complete)
+
+    # Update the summary with the created time of oldest task
+    summary.update({
+        "since_time": qapi.get_queue().get_since_time()
+    })
+    return summary
 
 
 @add_route("/queue_server/uids",
@@ -192,9 +199,6 @@ def done(context, request):  # noqa
     # Notify the queue
     qapi.get_queue().done(task)
 
-    # Notify the original sender
-    notify_sender(task, "done")
-
     # Return the process summary
     msg = "Task done: {}".format(task_uid)
     task_info = {"task": get_task_info(task)}
@@ -220,10 +224,6 @@ def fail(context, request):  # noqa
 
     # Notify the queue
     qapi.get_queue().fail(task, error_message=error_message)
-
-    # Notify the original sender if the task has been discarded
-    if task.status in ["failed"]:
-        notify_sender(task, "fail")
 
     # Return the process summary
     msg = "Task failed: {}".format(task_uid)
@@ -273,9 +273,6 @@ def delete(context, request):  # noqa
     task = get_task(task_uid)
     qapi.get_queue().delete(task.task_uid)
 
-    # Notify the original sender
-    notify_sender(task, "delete")
-
     # Return the process summary
     msg = "Task deleted: {}".format(task_uid)
     task_info = {"task": get_task_info(task)}
@@ -301,44 +298,3 @@ def is_consumer_id(consumer_id):
         return False
     # TODO Implement
     return len(consumer_id) >= 4
-
-
-def notify_sender(task, action):
-    """Sends a notification to the client's queue endpoint for the task uid if
-    the host is not the same as us. It also includes status information about
-    the Server Queue in the payload, such as the list of queue clients that at
-    least have sent one task to the server queue.
-    Delivery is not granted
-    :param task: task to notify the sender about
-    :param action: action to be notified to the sender
-    """
-    host = task.sender
-    # TODO Revisit this
-    current_url = api.get_url(api.get_portal())
-    if current_url.lower().startswith(host.lower()):
-        # No need to notify myself
-        return
-
-    site_id = api.get_id(api.get_portal())
-    client_part = "@@API/senaite/v1/queue_client"
-    parts = [host, site_id, client_part, action]
-    if not all(parts):
-        return
-
-    # Include the zeo client friends that are also adding tasks
-    # This is used by clients to keep them in sync for the hypothetical case the
-    # queue server is stopped or enters into in idle/offline status. Clients
-    # will then be able to operate coordinated in read-only mode
-    senders = qapi.get_queue().get_senders()
-    senders = filter(lambda f: f != host, senders)
-    payload = {
-        "task_uid": task.task_uid,
-        "senders": senders,
-        "__zeo": api.get_request().get("SERVER_URL"),
-    }
-    try:
-        auth = QueueAuth(api.get_current_user().id)
-        requests.post("/".join(parts), json=payload, auth=auth, timeout=1)
-    except:  # noqa
-        # Delivery is not granted
-        pass

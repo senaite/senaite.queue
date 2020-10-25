@@ -18,19 +18,22 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
+import copy
+
 import requests
 import time
 from cryptography.fernet import Fernet
 from requests.auth import AuthBase
+from requests.exceptions import ConnectionError
+from requests.exceptions import HTTPError
+from requests.exceptions import Timeout
+from requests.exceptions import TooManyRedirects
 from senaite.jsonapi.exceptions import APIError
 from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.interfaces import IClientQueueUtility
-from senaite.queue.interfaces import IOfflineClientQueueUtility
 from senaite.queue.queue import get_task_uid
 from senaite.queue.queue import to_task
-from senaite.queue.server.utility import QueueUtility
-from zope.component import getUtility
 from zope.interface import implements  # noqa
 
 from bika.lims import api as capi
@@ -39,35 +42,153 @@ from bika.lims import api as capi
 class ClientQueueUtility(object):
     implements(IClientQueueUtility)
 
-    def add(self, task):
-        """Adds a task to the queue
-        :param task: the QueueTask to add
+    # Local store of tasks that is kept up-to-date with queue server
+    _tasks = []
+
+    # Synchronization frequency with the queue server in seconds
+    # This is used to keep the local store of tasks up-to-date
+    _sync_frequency = 2
+
+    # Last synchronization time millis
+    _last_sync = None
+
+    def is_out_of_date(self):
+        """Returns whether this client queue utility is out-of-date and requires
+        a synchronization of tasks with the queue server
+        :return: True if this utility is out-of-date
         """
+        if self._last_sync is None:
+            return True
+        return self._last_sync + self._sync_frequency < time.time()
+
+    def sync(self):
+        """Synchronizes the local pool of tasks with the server queue
+
+        The synchronization process asks the queue server for tasks that are
+        newer than the newest task we have in the pool (created timestamp).
+        The queue server returns the new tasks that have been added since then,
+        along with the timestamp of the oldest task it holds. Therefore, the
+        synchronization only implies the download of newest tasks only and is
+        able to drop those from the local store that no longer exist.
+        """
+        # We are not interested on failed tasks
+        created = map(lambda t: t.created, self._tasks)
+        since = created and max(created) or 0
+        query = {
+            "status": ["queued", "running"],
+            "since": since,
+            "complete": True,
+        }
+        try:
+            response = self._post("tasks", payload=query)
+        except (ConnectionError, Timeout, TooManyRedirects) as e:
+            msg = "{}: {}".format(type(e).__name__, str(e))
+            logger.warn("{} (Operating in headless mode)".format(msg))
+            request = capi.get_request()
+            request.response.setStatus(200)
+            self._sync_frequency = 5
+            self._last_sync = time.time()
+            return
+        except HTTPError as e:
+            status = e.response.status_code or 500
+            message = e.response.json() or {}
+            msg = "{}: {}".format(status, message.get("message", str(e)))
+            if 500 <= status < 600:
+                logger.warn("{} (Operating in headless mode".format(msg))
+                request = capi.get_request()
+                request.response.setStatus(200)
+                # Increase sync frequency
+                self._sync_frequency = 5
+                self._last_sync = time.time()
+                return
+            raise e
+        except APIError as e:
+            if 500 <= e.status < 600:
+                # Server is not reachable, enter in headless mode
+                logger.warn("{}: {} (Operating in headless mode)".format(
+                    e.status, e.message
+                ))
+                # Increase sync frequency
+                self._sync_frequency = 5
+                self._last_sync = time.time()
+                e.setStatus(200)
+                return
+            raise e
+
+        # Restore sync_frequency (just in case)
+        self._sync_frequency = 2
+
+        # Get the time of the oldest task the queue server contains and remove
+        # our older tasks, so we only need the diff to be in-sync
+        oldest = response.get("since_time", 0)
+        if oldest < 0:
+            # Server Queue does not have tasks. Remove all
+            self._tasks = []
+        else:
+            self._tasks = filter(lambda t: t.created >= oldest, self._tasks)
+
+        # Add the new tasks
+        tasks = map(to_task, response.get("items", []))
+        tasks = filter(None, tasks)
+        self._tasks.extend(tasks)
+
+        # Update the last synchronization time
+        self._last_sync = time.time()
+
+    def add(self, task):
+        """Adds a task to the queue. It pushes the task directly to the queue
+        server via POST and stores the task in the local pool as well
+        :param task: the QueueTask to add
+        :return: the added QueueTask object
+        :rtype: queue.QueueTask
+        """
+        # Add the task to the queue server
         self._post("add", payload=task)
 
-        # Add the task to the utility for operating offline
-        utility = getUtility(IOfflineClientQueueUtility)
-        return utility.add(task)
+        # Add the task to our local pool
+        self._tasks.append(task)
+        return task
 
     def pop(self, consumer_id):
-        """Returns the next task to process, if any
+        """Returns the next task to process, if any. Sends a POST to the queue
+        server and updates the task from the local pool as well
         :param consumer_id: id of the consumer thread that will process the task
         :return: the task to be processed or None
         :rtype: queue.QueueTask
         """
+        # Pop the task from the queue server
         payload = {"consumer_id": consumer_id}
         task = self._post("pop", payload=payload)
-        return to_task(task)
+        task = to_task(task)
+        if not task:
+            return None
+
+        # Update the task from our local pool or add
+        tasks = filter(lambda t: t == task, self._tasks)
+        if tasks:
+            tasks[0].update(task)
+        else:
+            self._tasks.append(task)
+
+        # Return the task
+        return copy.deepcopy(task)
 
     def done(self, task):
-        """Notifies the queue that the task has been processed successfully
+        """Notifies the queue that the task has been processed successfully.
+        Sends a POST to the queue server and removes the task from local pool
         :param task: task's unique id (task_uid) or QueueTask object
         """
-        payload = {"task_uid": get_task_uid(task)}
+        # Tell the queue server the task is done
+        task_uid = get_task_uid(task)
+        payload = {"task_uid": task_uid}
         self._post("done", payload=payload)
 
+        # Remove from local pool
+        self._tasks = filter(lambda t: t.task_uid != task_uid, self._tasks)
+
     def fail(self, task, error_message=None):
-        """Notifies the queue that the processing of the task failed
+        """Notifies the queue that the processing of the task failed. Sends a
+        POST to the queue server, but keeps the local pool untouched
         :param task: task's unique id (task_uid) or QueueTask object
         :param error_message: (Optional) the error/traceback
         """
@@ -78,55 +199,63 @@ class ClientQueueUtility(object):
         self._post("fail", payload=payload)
 
     def delete(self, task):
-        """Removes a task from the queue
+        """Removes a task from the queue. Sends a POST to the queue server and
+        removes the task from the local pool of tasks
         :param task: task's unique id (task_uid) or QueueTask object
         """
-        payload = {"task_uid": get_task_uid(task)}
+        task_uid = get_task_uid(task)
+        payload = {"task_uid": task_uid}
         self._post("delete", payload=payload)
 
+        # Remove from our pool
+        self._tasks = filter(lambda t: t.task_uid != task_uid, self._tasks)
+
     def get_task(self, task_uid):
-        """Returns the task with the given task uid
+        """Returns the task with the given task uid. Retrieves the task from
+        the local pool if exists. Otherwise, fetches the task from the Queue
+        server via POST and updates the local pool
         :param task_uid: task's unique id
         :return: the task from the queue
         :rtype: queue.QueueTask
         """
-        try:
-            task_uid = get_task_uid(task_uid)
-            # Note the endpoint here is the task uid
-            task = self._post(task_uid)
-            if not task:
-                return None
-            return to_task(task)
-        except APIError as e:
-            if 500 <= e.status < 600:
-                e.setStatus(200)
-                return self.headless_fallback("get_task", task_uid)
-            else:
-                raise e
+        # Search first in our local pool
+        task_uid = get_task_uid(task_uid)
+        task = filter(lambda t: t.task_uid == task_uid, self._tasks)
+        if task:
+            return copy.deepcopy(task[0])
+
+        # Ask the queue server (maybe we are searching for a failed)
+        task_uid = get_task_uid(task_uid)
+        task = self._post(task_uid)
+        if not task:
+            return None
+        return to_task(task)
 
     def get_tasks(self, status=None):
-        """Returns an iterable with the tasks from the queue
+        """Returns a deep copy list with the tasks from the queue
         :param status: (Optional) a string or list with status. If None, only
             "running" and "queued" are considered
-        :return iterable of QueueTask objects
-        :rtype: iterator
+        :return list of QueueTask objects
+        :rtype: list
         """
-        query = {
-            "status": status or "",
-            "complete": True,
-        }
-        try:
+        if not isinstance(status, (list, tuple)):
+            status = [status]
+        status = filter(None, status)
+        if not status:
+            return copy.deepcopy(self._tasks)
+
+        if "failed" in status:
+            # We only keep running and queued tasks in our local pool
+            query = {
+                "status": status or "",
+                "complete": True,
+            }
             tasks = self._post("tasks", payload=query)
-            tasks = tasks.get("items", [])
-            for task in tasks:
-                yield to_task(task)
-        except APIError as e:
-            if 500 <= e.status < 600:
-                e.setStatus(200)
-                for task in self.headless_fallback("get_tasks", status=status):
-                    yield task
-            else:
-                raise e
+            return map(to_task, tasks.get("items", []))
+
+        # Filter by status
+        tasks = filter(lambda t: t.status in status, self._tasks)
+        return copy.deepcopy(tasks)
 
     def get_uids(self, status=None):
         """Returns a list with the uids from the queue
@@ -135,16 +264,11 @@ class ClientQueueUtility(object):
         :return list of uids
         :rtype: list
         """
-        query = {"status": status or ""}
-        try:
-            uids = self._post("uids", payload=query)
-            return uids.get("items", [])
-        except APIError as e:
-            if 500 <= e.status < 600:
-                e.setStatus(200)
-                return self.headless_fallback("get_uids", status=status)
-            else:
-                raise e
+        out = set()
+        for task in self.get_tasks(status=status):
+            uids = [task.context_uid] + filter(None, task.uids)
+            out.update(uids)
+        return list(out)
 
     def get_tasks_for(self, context_or_uid, name=None):
         """Returns an iterable with the queued or running tasks the queue
@@ -155,25 +279,13 @@ class ClientQueueUtility(object):
         :return: iterable of QueueTask objects
         :rtype: iterator
         """
-        query = {
-            "uid": capi.get_uid(context_or_uid),
-            "name": name or "",
-            "complete": True,
-        }
-        try:
-            tasks = self._post("search", payload=query)
-            tasks = tasks.get("items", [])
-            for task in tasks:
-                yield to_task(task)
-        except APIError as e:
-            if 500 <= e.status < 600:
-                e.setStatus(200)
-                iterable = self.headless_fallback("get_tasks_for",
-                                                  context_or_uid, name=name)
-                for task in iterable:
-                    yield task
-            else:
-                raise e
+        # TODO Make this to return a list instead of an iterable
+        uid = capi.get_uid(context_or_uid)
+        for task in self._tasks:
+            if name and task.name != name:
+                continue
+            if task.context_uid == uid or uid in task.uids:
+                yield copy.deepcopy(task)
 
     def has_task(self, task):
         """Returns whether the queue contains a given task
@@ -181,9 +293,7 @@ class ClientQueueUtility(object):
         :return: True if the queue contains the task
         :rtype: bool
         """
-        task_uid = get_task_uid(task)
-        out_task = self.get_task(task_uid)
-        if out_task:
+        if self.get_task(get_task_uid(task)):
             return True
         return False
 
@@ -199,10 +309,7 @@ class ClientQueueUtility(object):
         :return: True if the queue does not have running nor queued tasks
         :rtype: bool
         """
-        # TODO better to do a specific POST for is_empty
-        response = self._post("uids")
-        uids = response.get("items", [])
-        return len(uids) == 0
+        return len(self._tasks) <= 0
 
     def _post(self, endpoint, resource=None, payload=None, timeout=10):
         """Sends a POST request to SENAITE's Queue Server
@@ -233,75 +340,6 @@ class ClientQueueUtility(object):
 
         # Return the result
         return response.json()
-
-    def headless_fallback(self, func_name, *args, **kwargs):
-        """Returns the call of the function from the headless utility
-        """
-        logger.warn("Fallback to headless mode: {}".format(func_name))
-        utility = getUtility(IOfflineClientQueueUtility)
-        func = getattr(utility, func_name)
-        return func(*args, **kwargs)
-
-
-class OfflineClientQueueUtility(QueueUtility):
-    """Client queue utility for when the queue server is not reachable.
-    It mimics the same behavior as the server's queue utility, except that
-    is not allowed and fail always discard the task.
-
-    This utility is feed with new tasks each time the Client Queue utility
-    sends a new task to the Queue server. Queue server sends notifications to
-    the client who originally added the task, so they are tunneled into this
-    utility to keep it up-to-date.
-
-    The assumption is that a non-reachable queue server is a temporary
-    situation. There is always the chance the connectivity with the server is
-    lost anytime, but we need to ensure as much as possible the consistency of
-    queued objects. For instance, we do want the system to think a given
-    worksheet does not have analyses awaiting for assignment because we've
-    temporarily lost the connectivity with the queue server
-    """
-    implements(IOfflineClientQueueUtility)
-
-    # Synchronization lifetime in seconds. When the regular client queue is
-    # active, it will keep updated this server-less utility from time to time in
-    # order to ensure the consistency as much as possible for when the
-    # connectivity with the queue server is lost. This does not guarantee the
-    # instance will be fully-synced with the server, but is always better to
-    # have something than nothing
-    sync_lifetime = 30
-
-    # Last synchronization time millis
-    _last_sync = None
-
-    def pop(self, consumer_id=None):
-        raise NotImplementedError("pop is not supported")
-
-    def fail(self, task, error_message=None):
-        self.delete(task.task_uid)
-
-    # TODO this might no longer be necessary
-    def add_senders(self, senders):
-        self._senders.update(senders)
-
-    def is_out_of_sync(self):
-        """Returns whether is out-of-sync with the non-headless utility
-        """
-        if self._last_sync is None:
-            return True
-        return self._last_sync + self.sync_lifetime < time.time()
-
-    def sync(self, queue_utility):
-        """Synchronizes the list of local uids and tasks with those from the
-        queue utility passed-in. This is used to keep the Headless Utility
-        in-sync wherever possible
-        :param queue_utility: the IQueueUtility to synchronize from
-        """
-        try:
-            self._tasks = list(queue_utility.get_tasks())
-            self._last_sync = time.time()
-            logger.info("Headless in sync: {} tasks".format(len(self._tasks)))
-        except:  # noqa
-            pass
 
 
 class QueueAuth(AuthBase):

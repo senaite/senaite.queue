@@ -24,12 +24,10 @@ from senaite.jsonapi.v1 import add_route
 from senaite.queue import api
 from senaite.queue import logger
 from senaite.queue.client import consumer
-from senaite.queue.interfaces import IOfflineClientQueueUtility
 from senaite.queue.interfaces import IQueuedTaskAdapter
 from senaite.queue.request import fail as _fail
 from senaite.queue.request import get_message_summary
 from senaite.queue.request import handle_queue_errors
-from zope.component import getUtility
 from zope.component import queryAdapter
 
 from bika.lims import api as capi
@@ -102,54 +100,6 @@ def process(context, request, task_uid=None):  # noqa
 
     msg = "Processed: {}".format(task.task_short_uid)
     return get_message_summary(msg, "consumer.process")
-
-
-@add_route("/queue_client/done", "senaite.queue.client.done", methods=["POST"])
-@handle_queue_errors
-def done(context, request):  # noqa
-    """Endpoint to notify that a task has been processed
-    """
-    return handle_server_notification(req.get_json(), "done")
-
-
-@add_route("/queue_client/fail", "senaite.queue.client.fail", methods=["POST"])
-@handle_queue_errors
-def fail(context, request):  # noqa
-    """Endpoint to notify that a task has been discarded
-    """
-    return handle_server_notification(req.get_json(), "fail")
-
-
-@add_route("/queue_client/delete", "senaite.queue.client.delete",
-           methods=["POST"])
-@handle_queue_errors
-def delete(context, request):  # noqa
-    """Endpoint to notify that a task has been deleted
-    """
-    return handle_server_notification(req.get_json(), "delete")
-
-
-def handle_server_notification(req_data, action):
-    """Handles notifications received about tasks and queue status
-    """
-    task_uid = req_data.get("task_uid")
-    senders = req_data.get("senders")
-
-    if not capi.is_uid(task_uid) or task_uid == "0":
-        # 400 Bad Request, wrong task uid
-        _fail(400, "Bad Request. Task uid empty or no valid format")
-
-    # Get our cache pool utility
-    utility = getUtility(IOfflineClientQueueUtility)
-
-    # Do the action
-    func = getattr(utility, action)
-    func(task_uid)
-
-    # Add our friends, we might need them if server is stopped or idle
-    utility.add_senders(senders)
-
-    return get_message_summary("notified", "client.{}".format(action))
 
 
 def get_task(task_uid):

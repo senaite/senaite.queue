@@ -22,10 +22,6 @@
   <utility provides=".interfaces.IClientQueueUtility"
            factory=".client.utility.ClientQueueUtility" />
 
-  <!-- Queue's offline client utility -->
-  <utility provides=".interfaces.IOfflineClientQueueUtility"
-           factory=".client.utility.OfflineClientQueueUtility" />
-
   <!-- Package includes -->
   <include package=".adapters"/>
   <include package=".browser"/>

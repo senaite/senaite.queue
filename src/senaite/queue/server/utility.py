@@ -41,20 +41,19 @@ class QueueUtility(object):
     """
     implements(IQueueUtility)
 
-    _storage = None
-    _senders = set()
-
     def __init__(self):
         self._tasks = []
+        self._since_time = -1
         self.__lock = threading.Lock()
+
+    def get_since_time(self):
+        return self._since_time
 
     def add(self, task):
         """Adds a task to the queue
         :param task: the QueueTask to add
         """
         with self.__lock:
-            # Add the sender to the _senders pool
-            self._senders.add(task.sender)
             return self._add(task)
 
     def pop(self, consumer_id):
@@ -209,21 +208,6 @@ class QueueUtility(object):
         tasks = self.get_tasks_for(context_or_uid, name=name)
         return any(list(tasks))
 
-    def get_senders(self):
-        """Returns the urls of the clients that have sent at least one task to
-        the queue server, except ourselves
-        """
-        current_url = capi.get_url(capi.get_portal()).lower()
-
-        def is_colleague(host):
-            if not host:
-                return False
-            if current_url.lower().startswith(host.lower()):
-                return False
-            return True
-
-        return filter(is_colleague, list(self._senders))
-
     def get_consumer_tasks(self, consumer_id):
         """Returns the tasks the consumer is currently processing
         :param consumer_id: unique id of the consumer
@@ -258,6 +242,12 @@ class QueueUtility(object):
             # get_tasks returns a deepcopy. Is faster this way
             status = ["queued", "running"]
             return len(filter(lambda t: t.status in status, self._tasks))
+
+    def update_since_time(self):
+        """Returns the created value from oldest task. If no tasks, returns -1
+        """
+        created = map(lambda t: t.created, self._tasks)
+        self._since_time = created and min(created) or -1
 
     def is_empty(self):
         """Returns whether there are no remaining tasks in the queue
@@ -318,12 +308,17 @@ class QueueUtility(object):
                 "error_message": error_message
             })
 
+        # Update the since time (failed tasks are stored for traceability,
+        # but they are excluded from everywhere unless explicitly requested
+        self.update_since_time()
+
     def _delete(self, task_uid):
         task = self.get_task(task_uid)
         if not task:
             return
         idx = self._tasks.index(task)
         del(self._tasks[idx])
+        self.update_since_time()
 
     def _add(self, task):
         # Only QueueTask type is supported
@@ -351,8 +346,13 @@ class QueueUtility(object):
         # We multiply the priority for 300 sec. (5 minutes) and then we sum the
         # result to the time the task was created. This way, we ensure tasks
         # priority at the same time we guarantee older, with low priority
-        # tasks don't fall into the cracks.
+        # tasks don't fall through the cracks.
+        # TODO: Make this 300 sec. configurable?
         self._tasks.sort(key=lambda t: (t.created + (300 * t.priority)))
+
+        # Update the since time
+        if self._since_time < 0 or self._since_time > task.created:
+            self._since_time = task.created
 
         logger.info("Added task {} ({}): {}"
                     .format(task.name, task.task_short_uid, task.context_path))

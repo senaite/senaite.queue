@@ -27,7 +27,6 @@ from senaite.queue import IQueueUtility
 from senaite.queue import is_installed
 from senaite.queue import logger
 from senaite.queue.interfaces import IClientQueueUtility
-from senaite.queue.interfaces import IOfflineClientQueueUtility
 from senaite.queue.interfaces import IQueuedTaskAdapter
 from senaite.queue.queue import get_chunk_size
 from senaite.queue.queue import new_task
@@ -130,7 +129,7 @@ def get_queue_status(name_or_action=None):
     * `disabled`: queue server does not accept requests at all, either because
             has been disabled or because senaite.queue is not installed
 
-    * `offline`: queue server is not reachable or is unable to answer requests.
+    * `headless`: queue server is not reachable or is unable to answer requests.
     """
     # Is senaite queue not installed?
     if not is_installed():
@@ -144,15 +143,12 @@ def get_queue_status(name_or_action=None):
     queue = get_queue()
     enabled = get_chunk_size(name_or_action=name_or_action) > 0
 
-    if IOfflineClientQueueUtility.providedBy(queue):
-        # This is the utility to operate offline
-        return "offline"
-
     if IQueueUtility.providedBy(queue):
         # This is the Queue server
         return enabled and "ready" or "disabled"
 
     if not enabled:
+        # TODO Check all this
         try:
             if not queue.is_empty():
                 # Queue is disabled but there are remaining tasks
@@ -160,7 +156,7 @@ def get_queue_status(name_or_action=None):
         except:  # noqa if server raises an error, assume is not healthy
             # Client queue has problems to communicate with server, so we
             # cannot be sure about the "real" status of the server
-            return "offline"
+            return "headless"
 
     return enabled and "ready" or "disabled"
 
@@ -331,20 +327,13 @@ def get_queue():
         # This is the server, return the base queue utility
         return getUtility(IQueueUtility)
 
-    elif is_queue_reachable():
-        # Return the queue utility that communicates with server via JSON
-        utility = getUtility(IClientQueueUtility)
+    # Return the queue utility that communicates with server via JSON
+    utility = getUtility(IClientQueueUtility)
+    if utility.is_out_of_date():
+        # Sync the queue if needed
+        utility.sync()
 
-        # Synchronize the serverless utility if necessary
-        headless = getUtility(IOfflineClientQueueUtility)
-        if headless.is_out_of_sync():
-            headless.sync(utility)
-
-        return utility
-
-    # Queue server not reachable, return the queue utility for off-line mode
-    logger.warn("Running in off-line mode")
-    return getUtility(IOfflineClientQueueUtility)
+    return utility
 
 
 # TODO REVIEW
