@@ -19,7 +19,6 @@
 # Some rights reserved, see README and LICENSE.
 
 import requests
-import threading
 from senaite.queue import api
 from senaite.queue import is_installed
 from senaite.queue import logger
@@ -28,135 +27,121 @@ from senaite.queue.pasplugin import QueueAuth
 from bika.lims import api as _api
 from bika.lims.decorators import synchronized
 
-# Prefix for the name of the thread in charge of notifying consumer
-CONSUMER_THREAD_PREFIX = "queue.consumer."
-
 
 @synchronized(max_connections=1)
 def consume_task():
     """Consumes a task from the queue, if any
     """
-    logger.info("Consuming task ...")
     if not is_installed():
-        msg = "Queue is not installed [SKIP]"
-        logger.warn(msg)
-        return msg
+        return info("Queue is not installed")
 
+    # Server's queue URL
+    server = api.get_server_url()
+
+    # Check the status of the queue
     status = api.get_queue_status()
     if status not in ["resuming", "ready"]:
-        server = api.get_server_url()
-        msg = "Server is {} ({}) [SKIP]".format(status, server)
-        logger.warn(msg)
-        return msg
+        return warn("Server is {} ({}) [SKIP]".format(status, server))
 
     if api.is_queue_server():
-        server_url = api.get_server_url()
-        msg = [
-            "Server = Consumer: {}".format(server_url),
+        message = [
+            "Server = Consumer: {}".format(server),
             "*******************************************************",
             "Client configured as both queue server and consumer.",
             "This is not suitable for productive environments!",
             "Change the Queue Server URL in SENAITE's control panel",
             "or setup another zeo client as queue consumer.",
-            "Current URL: {}".format(server_url),
+            "Current URL: {}".format(server),
             "*******************************************************"
         ]
-        logger.warn("\n".join(msg))
+        logger.warn("\n".join(message))
 
     # Pop next task to process
     consumer_id = _api.get_request().get("SERVER_URL")
     try:
         task = api.get_queue().pop(consumer_id)
+        if not task:
+            return info("Queue is empty or process undergoing [SKIP]")
     except Exception as e:
-        msg = "Cannot pop [SKIP]. {}: {}".format(type(e).__name__, str(e))
-        logger.error(msg)
-        return msg
+        return error("Cannot pop. {}: {}".format(type(e).__name__, str(e)))
 
-    if not task:
-        # No task to process
-        msg = "Queue is empty or process undergoing [SKIP]"
-        logger.info(msg)
-        return msg
-
-    # Start a new thread
-    kwargs = {
-        "site_url": _api.get_url(_api.get_portal()),
-        "server_url": api.get_server_url(),
-        "task_uid": task.task_uid,
-        "userid": _api.get_current_user().id,
-        "task_userid": task.username,
-        "timeout": task.get("max_seconds"),
-    }
-    new_consumer(**kwargs)
-    #t = threading.Thread(name=consumer_id, target=new_consumer, kwargs=kwargs)
-    #t.start()
-
-    msg = "Consumer started: {}".format(consumer_id)
-    logger.info(msg)
-    return msg
+    # Process the task
+    message = process_task(task, consumer_id)
+    return message
 
 
-def new_consumer(site_url, server_url, task_uid, userid, task_userid, timeout):
+def process_task(task, consumer_id):
+    """Processes the task passed in gracefully
+    """
+    logger.info("Processing task {}".format(task.task_short_uid))
 
-    def log(message, status="info"):
-        print("*** wOrkIn~ {} {}".format(status.upper(), message))
-
-    def post(username, base_url, endpoint, payload):
-        url = "{}/@@API/senaite/v1/{}".format(base_url, endpoint)
+    def post(username, site_url, endpoint, payload):
+        url = "{}/@@API/senaite/v1/{}".format(site_url, endpoint)
 
         # POST authenticated with the username
         auth = QueueAuth(username)
         payload = payload or {}
-        log(url, "info")
+        logger.info(url)
         response = requests.post(url, json=payload, auth=auth)
 
         # Check the request was successful. Raise exception otherwise
         response.raise_for_status()
 
+    user_id = _api.get_current_user().id
+    base_url = _api.get_url(_api.get_portal())
+    server_url = api.get_server_url()
     request = _api.get_request()
-    payload = {
-        "task_uid": task_uid,
+    data = {
+        "task_uid": task.task_uid,
+        "consumer_id": request.get("SERVER_URL"),
         "__zeo": request.get("SERVER_URL")
     }
     try:
         # POST to the 'process' endpoint from the Queue's consumer,
         # authenticated as the user who added the task
-        # TODO Implement timeout here!
-        post(task_userid, site_url, "queue_consumer/process", payload)
+        post(task.username, base_url, "queue_consumer/process", data)
     except Exception as e:
         # Handle the failed task gracefully
-        # *** NOTE: We don't have context here
-        msg = "{}: {}".format(type(e).__name__, str(e))
-        log(msg, "error")
+        message = "{}: {}".format(type(e).__name__, str(e))
+        logger.error(message)
+
         try:
             # POST to the fail endpoint from the Queue's server, authenticated
             # as the user who initiated the consumer
-            payload.update({"error_message": msg})
-            post(userid, server_url, "queue_server/fail", payload)
+            data.update({"error_message": message})
+            post(user_id, server_url, "queue_server/fail", data)
         except Exception as e:
-            msg = "{}: {}".format(type(e).__name__, str(e))
-            log(msg, "error")
+            message = "{}: {}".format(type(e).__name__, str(e))
+            logger.error(message, "error")
         finally:
-            return
+            return message
 
     # Task succeeded
     try:
         # POST to the done endpoint from the Queue's server, authenticated
         # as the user who initiated the consumer
-        post(userid, server_url, "queue_server/done", payload)
+        post(user_id, server_url, "queue_server/done", data)
     except Exception as e:
-        msg = "{}: {}".format(type(e).__name__, str(e))
-        log(msg, "error")
+        message = "{}: {}".format(type(e).__name__, str(e))
+        logger.error(message, "error")
+        return message
+
+    return "Task processed: {}".format(consumer_id)
 
 
-def get_consumer():
-    """Returns the consumer thread that is currently running, if any
-    :return: threading.Thread
-    """
-    def is_consumer_thread(t):
-        return t.getName().startswith(CONSUMER_THREAD_PREFIX)
+def msg(message, mode="info"):
+    func = getattr(logger, mode)
+    func(message)
+    return message
 
-    threads = filter(is_consumer_thread, threading.enumerate())
-    if len(threads) > 0:
-        return threads[0]
-    return None
+
+def info(message):
+    return msg(message)
+
+
+def warn(message):
+    return msg(message, mode="warn")
+
+
+def error(message):
+    return msg(message, mode="error")
