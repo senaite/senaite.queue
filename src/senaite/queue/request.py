@@ -187,6 +187,17 @@ def get_task_url(task):
     ])
 
 
+def is_valid_zeo_host(host):
+    """Returns whether the host passed-in is a valid host
+    """
+    try:
+        result = parse.urlparse(host)
+        return all([result.scheme, result.netloc])
+    except:  # noqa
+        pass
+    return False
+
+
 def get_post_zeo():
     """Returns the value of param "__zeo" from the request's POST. If not
     present or url is not valid, returns empty str

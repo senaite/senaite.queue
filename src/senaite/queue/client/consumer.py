@@ -23,6 +23,7 @@ from senaite.queue import api
 from senaite.queue import is_installed
 from senaite.queue import logger
 from senaite.queue.pasplugin import QueueAuth
+from senaite.queue.request import is_valid_zeo_host
 
 from bika.lims import api as _api
 from bika.lims.decorators import synchronized
@@ -34,6 +35,12 @@ def consume_task():
     """
     if not is_installed():
         return info("Queue is not installed")
+
+    host = _api.get_request().get("SERVER_URL")
+    if not is_valid_zeo_host(host):
+        return error("zeo host not set or not valid: {} [SKIP]".format(host))
+
+    logger.info("Queue client: {}".format(host))
 
     # Server's queue URL
     server = api.get_server_url()
@@ -57,7 +64,7 @@ def consume_task():
         logger.warn("\n".join(message))
 
     # Pop next task to process
-    consumer_id = _api.get_request().get("SERVER_URL")
+    consumer_id = host
     try:
         task = api.get_queue().pop(consumer_id)
         if not task:
@@ -90,11 +97,10 @@ def process_task(task, consumer_id):
     user_id = _api.get_current_user().id
     base_url = _api.get_url(_api.get_portal())
     server_url = api.get_server_url()
-    request = _api.get_request()
     data = {
         "task_uid": task.task_uid,
-        "consumer_id": request.get("SERVER_URL"),
-        "__zeo": request.get("SERVER_URL")
+        "consumer_id": consumer_id,
+        "__zeo": consumer_id
     }
     try:
         # POST to the 'process' endpoint from the Queue's consumer,
