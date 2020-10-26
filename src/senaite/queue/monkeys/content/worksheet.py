@@ -119,6 +119,10 @@ def _apply_worksheet_template_routine_analyses(self, wst):
     # SENAITE.QUEUE-SPECIFIC
     task_name = "task_assign_analyses"
     new_analyses = map(lambda a: (a[0], samples_slots[a[1]]), new_analyses)
+    if not new_analyses:
+        # No analyses to add, skip
+        return
+
     if api.is_queue_ready(task_name):
         # Queue the assignment of analyses
         analyses, slots = zip(*new_analyses)
