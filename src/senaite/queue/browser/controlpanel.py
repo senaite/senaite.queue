@@ -52,7 +52,7 @@ def valid_url_constraint(value):
 
 
 # Default number of objects per task
-DEFAULT_OBJ_TASK = 5
+DEFAULT_OBJ_TASK = 10
 
 
 class IQueueControlPanel(Interface):
@@ -90,7 +90,7 @@ class IQueueControlPanel(Interface):
             "Default value: {}".format(DEFAULT_OBJ_TASK)
         ),
         min=0,
-        max=10,
+        max=20,
         default=DEFAULT_OBJ_TASK,
         required=True,
     )
