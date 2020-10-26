@@ -1,0 +1,41 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:tal="http://xml.zope.org/namespaces/tal"
+      xmlns:metal="http://xml.zope.org/namespaces/metal"
+      metal:use-macro="here/main_template/macros/master"
+      i18n:domain="senaite.queue">
+  <head>
+    <metal:block fill-slot="style_slot">
+      <style>
+        .text-monospace {
+          font-family: monospace;
+          font-size:0.9em;
+          width: 7ch;
+          overflow: hidden;
+          white-space: nowrap;
+        }
+      </style>
+    </metal:block>
+  </head>
+  <body>
+
+    <!-- Title -->
+    <metal:title fill-slot="content-title">
+      <h1 i18n:translate="">
+        Queue monitor
+      </h1>
+    </metal:title>
+
+    <!-- Description -->
+    <metal:title fill-slot="content-description">
+      <div class="visualClear"></div>
+    </metal:title>
+
+    <!-- Content -->
+    <metal:core fill-slot="content-core">
+      <div id="folderlisting-main-table"
+           tal:content="structure view/contents_table">
+      </div>
+    </metal:core>
+
+  </body>
+</html>
