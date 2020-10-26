@@ -3,6 +3,14 @@
     xmlns:browser="http://namespaces.zope.org/browser"
     i18n_domain="senaite.queue">
 
+  <!-- Tasks view -->
+  <browser:page
+    for="*"
+    name="queue_tasks"
+    class=".tasks.TasksView"
+    permission="senaite.core.permissions.ManageBika"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+
   <!-- When a Worksheet is created and the worksheet is queued, redirect to
   the Worksheet listing -->
   <browser:page

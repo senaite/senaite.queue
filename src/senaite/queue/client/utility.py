@@ -210,6 +210,7 @@ class ClientQueueUtility(object):
             task.update({"offline": "add"})
 
         # Add the task to our local pool
+        task.update({"status": "queued"})
         if task not in self._tasks:
             self._tasks.append(task)
         return task

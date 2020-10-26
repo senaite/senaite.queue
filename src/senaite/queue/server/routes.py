@@ -123,7 +123,6 @@ def search(context, request):  # noqa
 
 @add_route("/queue_server/<string(length=32):task_uid>",
            "senaite.queue.server.get", methods=["GET", "POST"])
-@check_server
 @handle_queue_errors
 def get(context, request, task_uid):  # noqa
     """Returns a JSON representation of the task with the specified task uid
