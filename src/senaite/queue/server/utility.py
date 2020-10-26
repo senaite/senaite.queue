@@ -47,6 +47,10 @@ class ServerQueueUtility(object):
         self.__lock = threading.Lock()
 
     def get_since_time(self):
+        """Returns the time since epoch when the oldest task the queue contains
+        was created, failed tasks excluded. Returns -1 if queue has no queued
+        or running tasks
+        """
         return self._since_time
 
     def add(self, task):
@@ -244,7 +248,8 @@ class ServerQueueUtility(object):
             return len(filter(lambda t: t.status in status, self._tasks))
 
     def update_since_time(self):
-        """Returns the created value from oldest task. If no tasks, returns -1
+        """Returns the created time since epoch from oldest task. If no tasks,
+        returns -1
         """
         created = map(lambda t: t.created, self._tasks)
         self._since_time = created and min(created) or -1

@@ -61,7 +61,7 @@ class ClientQueueUtility(object):
         return self._last_sync + self._sync_frequency < time.time()
 
     def sync(self):
-        """Synchronizes the local pool of tasks with the server queue
+        """Synchronizes the local pool of tasks with the queue server
 
         The synchronization comprehends two processes:
 
@@ -144,7 +144,7 @@ class ClientQueueUtility(object):
         offline = copy.deepcopy(filter(lambda t: t.get("offline"), self._tasks))
 
         if oldest < 0:
-            # Server Queue does not have tasks. Remove all
+            # Queue server does not have tasks. Remove all
             self._tasks = []
         else:
             self._tasks = filter(lambda t: t.created >= oldest, self._tasks)
@@ -203,7 +203,7 @@ class ClientQueueUtility(object):
             err = "{}: {}".format(e.status, e.message)
 
         if err:
-            # Not able to add the task to the server queue. Keep it locally
+            # Not able to add the task to the queue server. Keep it locally
             # so it can be synchronized as soon as we have connectivity again
             logger.warn(err)
             capi.get_request().response.setStatus(200)
@@ -265,7 +265,7 @@ class ClientQueueUtility(object):
             err = "{}: {}".format(e.status, e.message)
 
         if err:
-            # Not able to tell the server queue. Keep it locally so it can be
+            # Not able to tell the queue server. Keep it locally so it can be
             # synchronized as soon as we have connectivity again
             logger.warn(err)
             capi.get_request().response.setStatus(200)

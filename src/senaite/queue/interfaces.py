@@ -150,6 +150,12 @@ class IServerQueueUtility(IQueueUtility):
     client that acts as the server
     """
 
+    def get_since_time(self):
+        """Returns the time since epoch when the oldest task the queue contains
+        was created, failed tasks excluded. Returns -1 if queue has no queued
+        or running tasks
+        """
+
     def is_busy(self):
         """Returns whether the queue is busy
         """
@@ -163,3 +169,12 @@ class IClientQueueUtility(IQueueUtility):
     """Marker interface for the Queue global utility (singleton) used by the
     zeo clients that act as queue clients
     """
+
+    def is_out_of_date(self):
+        """Returns whether this client queue utility is out-of-date and requires
+        a synchronization of tasks with the queue server
+        """
+
+    def sync(self):
+        """Synchronizes the client queue utility with the queue server
+        """
