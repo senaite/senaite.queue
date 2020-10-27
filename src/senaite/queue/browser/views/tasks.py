@@ -25,18 +25,24 @@ from datetime import datetime
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile
 from senaite.queue import api as qapi
 from senaite.queue import messageFactory as _
+from senaite.queue.queue import get_max_retries
 
 from bika.lims import api
 from bika.lims.browser.bika_listing import BikaListingView
 from bika.lims.utils import get_link
+from bika.lims.browser.workflow import RequestContextAware
+from bika.lims.interfaces import IWorkflowActionUIDsAdapter
+from zope.component.interfaces import implements
 
 
-class TasksView(BikaListingView):
+class TasksListingView(BikaListingView):
+    """BrowserView with the listing of Queued Tasks
+    """
 
     template = ViewPageTemplateFile("templates/tasks.pt")
 
     def __init__(self, context, request):
-        super(TasksView, self).__init__(context, request)
+        super(TasksListingView, self).__init__(context, request)
 
         # Query is ignored in `folderitems` method and only there to override
         # the default settings
@@ -46,7 +52,7 @@ class TasksView(BikaListingView):
         # Set the view name with `@@` prefix to get the right API URL
         self.__name__ = "@@queue_tasks"
 
-        self.show_select_column = False
+        self.show_select_column = True
         self.show_search = False
 
         self.show_categories = False
@@ -88,21 +94,33 @@ class TasksView(BikaListingView):
             })
         ))
 
-        self.review_states = [
-            {
-                "id": "default",
-                "title": _("All tasks"),
-                "contentFilter": {},
-                "columns": self.columns.keys(),
-            },
-        ]
+        url = api.get_url(self.context)
+        url = "{}/workflow_action?action=".format(url)
+        self.review_states = [{
+            "id": "default",
+            "title": _("All tasks"),
+            "contentFilter": {},
+            "columns": self.columns.keys(),
+            "transitions": [],
+            "custom_transitions": [
+                {"id": "queue_requeue",
+                 "title": _("Requeue"),
+                 "url": "{}{}".format(url, "queue_requeue")},
+                {"id": "queue_remove",
+                 "title": _("Remove"),
+                 "url": "{}{}".format(url, "queue_remove")}
+            ],
+            "confirm_transitions": [
+                "queue_remove",
+            ]
+        }]
 
     def update(self):
         """Update hook
         """
         self.request.set("disable_border", 1)
         self.request.set("disable_plone.rightcolumn", 1)
-        super(TasksView, self).update()
+        super(TasksListingView, self).update()
 
     def folderitems(self):
         # flag for manual sorting
@@ -142,11 +160,11 @@ class TasksView(BikaListingView):
         sort_on = self.manual_sort_on in self.columns.keys() or "priority"
         reverse = self.get_sort_order() == "ascending"
         items = sorted(items, key=itemgetter(sort_on), reverse=reverse)
-
         return items
 
     def make_empty_item(self, **kw):
-        """Creates a new empty item
+        """Creates an empty listing item
+        :return: a dict that with the basic structure of a listing item
         """
         item = {
             "uid": None,
@@ -161,6 +179,10 @@ class TasksView(BikaListingView):
         return item
 
     def make_item(self, task):
+        """Makes an item from a QueueTask object
+        :param task: QueueTask object to make an item from
+        :return: a listing item that represents the QueueTask object
+        """
         item = self.make_empty_item()
         item.update({
             "uid": task.task_uid,
@@ -171,5 +193,59 @@ class TasksView(BikaListingView):
             "context_path": task.context_path,
             "username": task.username,
             "status": task.status,
+            "disabled": task.status in ["running", ]
         })
         return item
+
+    def get_allowed_transitions_for(self, uids):
+        """Overrides get_allowed_transations_for from paranet class. Our UIDs
+        are not from objects, but from tasks, so none of them have
+        workflow-based transitions
+        """
+        if not uids:
+            return []
+
+        return self.review_state.get("custom_transitions", [])
+
+    def get_transitions_for(self, obj):
+        """Overrides get_transitions_for from parent class. Our UIDs are not
+        from objects, but from tasks, so none of them have workflow-based
+        transitions
+        """
+        return []
+
+
+class WorkflowActionRequeueAdapter(RequestContextAware):
+    """Adapter in charge of queue tasks' requeue action
+    """
+    implements(IWorkflowActionUIDsAdapter)
+
+    def __call__(self, action, uids):
+        """Re-queues the selected tasks and redirects to the previous URL
+        """
+        queue = qapi.get_queue()
+        for uid in uids:
+            task = queue.get_task(uid)
+            task.retries = get_max_retries()
+            queue.delete(uid)
+            queue.add(task)
+
+        url = api.get_url(api.get_portal())
+        url = "{}/queue_tasks".format(url)
+        return self.redirect(url)
+
+
+class WorkflowActionRemoveAdapter(RequestContextAware):
+    """Adapter in charge of queue tasks' remove action
+    """
+    implements(IWorkflowActionUIDsAdapter)
+
+    def __call__(self, action, uids):
+        """Removes the selected tasks and redirects to the previous URL
+        """
+        queue = qapi.get_queue()
+        map(queue.delete, uids)
+
+        url = api.get_url(api.get_portal())
+        url = "{}/queue_tasks".format(url)
+        return self.redirect(url)
