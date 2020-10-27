@@ -76,6 +76,13 @@ class QueuedAnalysesSampleViewlet(ViewletBase):
         return len(queued)
 
 
+def _server_status_cache_key(method, self):
+    """Returns a tuple with current's queue server url and floor division of
+    time since epoch by 60 - it's value changes every 60 seconds
+    """
+    return api.get_server_url(), time.time() // 60
+
+
 class QueueServerStatusViewlet(ViewletBase):
     """Prints a viewlet to display a message when the status of the queue
     server is not suitable
@@ -89,7 +96,7 @@ class QueueServerStatusViewlet(ViewletBase):
         self.request = request
         self.view = view
 
-    @ram.cache(lambda *args: time.time() // 60)
+    @ram.cache(_server_status_cache_key)
     def get_server_status(self):
         """Returns the current status of the queue server
         """
