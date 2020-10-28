@@ -96,6 +96,14 @@ class ClientQueueUtility(object):
     def _sync_pull(self):
         """Updates the local tasks with those from the queue server
         """
+        def is_not_running(task):
+            if task.get("offline"):
+                return True
+            return task.status != "running"
+
+        # Exclude running tasks we have not notified about
+        self._tasks = filter(is_not_running, self._tasks)
+
         # We are not interested on failed tasks
         created = map(lambda t: t.created, self._tasks)
         since = created and max(created) or 0
@@ -168,8 +176,8 @@ class ClientQueueUtility(object):
             action = task.get("offline")
             action_func = getattr(self, action)
             try:
-                action_func(task)
                 task.pop("offline")
+                action_func(task)
             except Exception as e:
                 # push is not critical to operate, dismiss
                 err = "{}: {}".format(type(e).__name__, str(e))

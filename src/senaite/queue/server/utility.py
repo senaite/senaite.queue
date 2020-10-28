@@ -251,7 +251,10 @@ class ServerQueueUtility(object):
         """Returns the created time since epoch from oldest task. If no tasks,
         returns -1
         """
-        created = map(lambda t: t.created, self._tasks)
+        # Update the since time (failed tasks are stored for traceability,
+        # but they are excluded from everywhere unless explicitly requested
+        active = filter(lambda t: t.status != "failed", self._tasks)
+        created = map(lambda t: t.created, active)
         self._since_time = created and min(created) or -1
 
     def is_empty(self):
