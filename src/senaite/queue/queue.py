@@ -33,16 +33,27 @@ class QueueTask(dict):
 
     def __init__(self, name, request, context, *arg, **kw):
         super(QueueTask, self).__init__(*arg, **kw)
-        if not api.is_object(context):
+        if api.is_uid(context):
+            context_uid = context
+            context_path = kw.get("context_path")
+            if not context_path:
+                raise ValueError("context_path is missing")
+
+        elif api.is_object(context):
+            context_uid = api.get_uid(context)
+            context_path = api.get_path(context)
+
+        else:
             raise TypeError("No valid context object")
+
         kw = kw or {}
         # Set defaults
         self.update({
             "task_uid": kw.get("task_uid") or tmpID(),
             "name": name,
             "request": self._get_request_data(request),
-            "context_uid": api.get_uid(context),
-            "context_path": api.get_path(context),
+            "context_uid": context_uid,
+            "context_path": context_path,
             "uids": kw.get("uids", []),
             "created": kw.get("created", time.time()),
             "status": kw.get("status", None),
@@ -195,21 +206,17 @@ def to_task(task_dict):
     name = task_dict.get("name")
     request = task_dict.get("request")
     context_uid = task_dict.get("context_uid")
-    if not all([name, request, context_uid]):
-        return None
-
-    # The task must have a valid context
-    context = api.get_object_by_uid(context_uid, default=None)
-    if not context:
+    context_path = task_dict.get("context_path")
+    if not all([name, request, context_uid, context_path]):
         return None
 
     # Skip attrs that are assigned when the QueueTask is instantiated
-    exclude = ["name", "request", "context_uid", "context_path"]
+    exclude = ["name", "request"]
     out_keys = filter(lambda k: k not in exclude, task_dict.keys())
     kwargs = dict(map(lambda k: (k, task_dict[k]), out_keys))
 
     # Create the Queue Task
-    task = QueueTask(name, api.get_request(), context, **kwargs)
+    task = QueueTask(name, api.get_request(), context_uid, **kwargs)
 
     # Update with the original request
     task.update({"request": request})
