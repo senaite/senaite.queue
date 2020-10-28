@@ -127,7 +127,8 @@ class TasksListingView(BikaListingView):
         self.manual_sort_on = self.get_sort_on()
 
         # Get the items
-        items = map(self.make_item, qapi.get_queue().get_tasks())
+        status = ["running", "queued", "failed"]
+        items = map(self.make_item, qapi.get_queue().get_tasks(status=status))
 
         # Infere the priorities
         site_url = api.get_url(api.get_portal())
