@@ -59,10 +59,15 @@ def tasks(context, request, status=None):  # noqa
     # Maybe the status has been sent via POST
     request_data = req.get_json()
     status = status or request_data.get("status")
+    ghosts = request_data.get("ghosts", False)
     since = request_data.get("since", 0)
 
     # Get the tasks
     items = qapi.get_queue().get_tasks(status)
+
+    # Skip ghosts
+    if not ghosts:
+        items = filter(lambda t: not t.get("ghost"), items)
 
     # Skip older
     items = filter(lambda t: t.created > since, items)

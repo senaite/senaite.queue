@@ -138,6 +138,8 @@ def add_task(name, context, **kwargs):
             there is no other task with same name and for same context
     :param chunk_size: (optional) the number of items to process asynchronously
             at once from this task (if it contains multiple elements)
+    :param ghost: (optional) if True, clients won't get notified about the task
+            but consumers only. This setting is set to False by default
     :return: the QueueTask object added to the queue, if any
     :rtype: senaite.queue.queue.QueueTask
     """
