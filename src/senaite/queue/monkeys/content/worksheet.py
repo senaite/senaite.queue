@@ -84,6 +84,10 @@ def _apply_worksheet_template_routine_analyses(self, wst):
 
         analysis = _api.get_object(analysis)
 
+        if analysis.getWorksheet():
+            # TODO FIX IN CORE, duplicate record or bad value for review_state?
+            continue
+
         if instrument and not analysis.isInstrumentAllowed(instrument):
             # WST's Instrument does not supports this analysis
             continue
@@ -122,6 +126,9 @@ def _apply_worksheet_template_routine_analyses(self, wst):
     if not new_analyses:
         # No analyses to add, skip
         return
+
+    # Sort them by slot number
+    new_analyses.sort(key=lambda t: t[1])
 
     if api.is_queue_ready(task_name):
         # Queue the assignment of analyses
