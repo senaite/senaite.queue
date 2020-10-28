@@ -117,8 +117,9 @@ InitializeClass(QueueAuthPlugin)
 class QueueAuth(AuthBase):
     """Attaches HTTP Queue Authentication to the given Request object
     """
-    def __init__(self, username):
+    def __init__(self, username, key=None):
         self.username = username
+        self.key = key
 
     def __call__(self, r):
         # We want our key to be valid for 10 seconds only
@@ -126,8 +127,9 @@ class QueueAuth(AuthBase):
         token = "{}:{}".format(secs, self.username)
 
         # Encrypt the token using our symmetric auth key
-        key = api.get_registry_record("senaite.queue.auth_key")
-        auth_token = Fernet(str(key)).encrypt(token)
+        if not self.key:
+            self.key = api.get_registry_record("senaite.queue.auth_key")
+        auth_token = Fernet(str(self.key)).encrypt(token)
 
         # Modify and return the request
         r.headers["X-Queue-Auth-Token"] = auth_token
