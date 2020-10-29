@@ -98,7 +98,7 @@ class TasksListingView(BikaListingView):
         url = "{}/workflow_action?action=".format(url)
         self.review_states = [{
             "id": "default",
-            "title": _("All tasks"),
+            "title": _("Active tasks"),
             "contentFilter": {},
             "columns": self.columns.keys(),
             "transitions": [],
@@ -113,7 +113,25 @@ class TasksListingView(BikaListingView):
             "confirm_transitions": [
                 "queue_remove",
             ]
-        }]
+        }, {
+            "id": "failed",
+            "title": _("Failed tasks"),
+            "contentFilter": {},
+            "columns": self.columns.keys(),
+            "transitions": [],
+            "custom_transitions": [
+                {"id": "queue_requeue",
+                 "title": _("Requeue"),
+                 "url": "{}{}".format(url, "queue_requeue")},
+                {"id": "queue_remove",
+                 "title": _("Remove"),
+                 "url": "{}{}".format(url, "queue_remove")}
+            ],
+            "confirm_transitions": [
+                "queue_requeue",
+            ]
+        }
+        ]
 
     def update(self):
         """Update hook
@@ -127,7 +145,10 @@ class TasksListingView(BikaListingView):
         self.manual_sort_on = self.get_sort_on()
 
         # Get the items
-        status = ["running", "queued", "failed"]
+        status = ["running", "queued"]
+        if self.review_state.get("id") == "failed":
+            status = ["failed"]
+
         items = map(self.make_item, qapi.get_queue().get_tasks(status=status))
 
         # Infere the priorities
