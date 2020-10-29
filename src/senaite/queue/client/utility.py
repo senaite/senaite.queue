@@ -96,27 +96,17 @@ class ClientQueueUtility(object):
     def _sync_pull(self):
         """Updates the local tasks with those from the queue server
         """
-        def is_not_running(task):
-            if task.get("offline"):
-                return True
-            return task.status != "running"
-
-        # Exclude running tasks we have not notified about
-        self._tasks = filter(is_not_running, self._tasks)
-
-        # We are not interested on failed tasks
-        created = map(lambda t: t.created, self._tasks)
-        since = created and max(created) or 0
+        # Tell the server the task uids we have in our local pool
         query = {
+            "uids": map(lambda t: t.task_uid, self._tasks),
             "status": ["queued", "running"],
-            "since": since,
             "complete": True,
         }
 
         err = None
         data = None
         try:
-            data = self._post("tasks", payload=query)
+            data = self._post("diff", payload=query)
         except (ConnectionError, Timeout, TooManyRedirects) as e:
             err = "{}: {}".format(type(e).__name__, str(e))
 
@@ -144,26 +134,29 @@ class ClientQueueUtility(object):
         # Restore sync_frequency (just in case)
         self._sync_frequency = 2
 
-        # Get the time of the oldest task the queue server contains and remove
-        # our older tasks, so we only need the diff to be in-sync
-        oldest = data.get("since_time", 0)
+        # Get the unknown and stale task uids from the response
+        unknown = filter(None, data.get("unknown", []))
+        stale = filter(None, data.get("stale", []))
 
-        # Keep the tasks that have been processed off-line
-        offline = copy.deepcopy(filter(lambda t: t.get("offline"), self._tasks))
+        def keep(task):
+            if task.task_uid in unknown:
+                return True
+            if task.get("offline"):
+                return True
+            if task.task_uid in stale:
+                return False
+            return True
 
-        if oldest < 0:
-            # Queue server does not have tasks. Remove all
-            self._tasks = []
-        else:
-            self._tasks = filter(lambda t: t.created >= oldest, self._tasks)
+        # Keep unknowns, offline tasks and remove stales
+        self._tasks = filter(keep, self._tasks)
 
-        # Extend with the off-line tasks
-        self._tasks.extend(offline)
+        # Extend with the new tasks retrieved from the server
+        new_tasks = data.get("items", [])
+        new_tasks = filter(None, map(to_task, new_tasks))
+        self._tasks.extend(new_tasks)
 
-        # Add the new tasks
-        tasks = map(to_task, data.get("items", []))
-        tasks = filter(None, tasks)
-        self._tasks.extend(tasks)
+        # Sort by priority + created
+        self._tasks.sort(key=lambda t: (t.created + (300 * t.priority)))
 
         # Update the last synchronization time
         self._last_sync = time.time()
@@ -221,6 +214,10 @@ class ClientQueueUtility(object):
         task.update({"status": "queued"})
         if task not in self._tasks:
             self._tasks.append(task)
+
+            # Sort by priority + created
+            self._tasks.sort(key=lambda t: (t.created + (300 * t.priority)))
+
         return task
 
     def pop(self, consumer_id):
@@ -243,6 +240,9 @@ class ClientQueueUtility(object):
             tasks[0].update(task)
         else:
             self._tasks.append(task)
+
+            # Sort by priority + created
+            self._tasks.sort(key=lambda t: (t.created + (300 * t.priority)))
 
         # Return the task
         return copy.deepcopy(task)
@@ -337,7 +337,7 @@ class ClientQueueUtility(object):
 
     def get_tasks(self, status=None):
         """Returns a deep copy list with the tasks from the queue
-        :param status: (Optional) a string or list with status. If None, only
+        :param status: (Optional) a string or list with status: If None, only
             "running" and "queued" are considered
         :return list of QueueTask objects
         :rtype: list
@@ -348,10 +348,12 @@ class ClientQueueUtility(object):
         if not status:
             return copy.deepcopy(self._tasks)
 
-        if "failed" in status:
-            # We only keep running and queued tasks in our local pool
+        # "ghost" and "failed" statuses require a POST to queue server, cause
+        # we only keep running and queued tasks in our local pool
+        ask_server = any(map(lambda s: s in status, ["ghost", "failed"]))
+        if ask_server:
             query = {
-                "status": status or "",
+                "status": status,
                 "complete": True,
             }
             tasks = self._post("tasks", payload=query)

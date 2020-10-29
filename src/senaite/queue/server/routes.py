@@ -58,15 +58,14 @@ def tasks(context, request, status=None):  # noqa
     """
     # Maybe the status has been sent via POST
     request_data = req.get_json()
-    status = status or request_data.get("status")
-    ghosts = request_data.get("ghosts", False)
+    status = status or request_data.get("status", [])
     since = request_data.get("since", 0)
 
     # Get the tasks
     items = qapi.get_queue().get_tasks(status)
 
-    # Skip ghosts
-    if not ghosts:
+    # Skip ghosts unless explicitly asked
+    if "ghost" not in status:
         items = filter(lambda t: not t.get("ghost"), items)
 
     # Skip older
@@ -79,6 +78,43 @@ def tasks(context, request, status=None):  # noqa
     # Update the summary with the created time of oldest task
     summary.update({
         "since_time": qapi.get_queue().get_since_time()
+    })
+    return summary
+
+
+@add_route("/queue_server/diff",
+           "senaite.queue.server.diff", methods=["GET", "POST"])
+@check_server
+@handle_queue_errors
+def diff(context, request):
+    request_data = req.get_json()
+    status = request_data.get("status", [])
+    client_uids = request_data.get("uids", [])
+    client_uids = filter(api.is_uid, client_uids)
+
+    # Get the tasks
+    items = qapi.get_queue().get_tasks(status)
+
+    # Keep track of the uids the client has to remove
+    server_uids = map(lambda t: t.task_uid, items)
+    stale_uids = filter(lambda uid: uid not in server_uids, client_uids)
+
+    # Remove the tasks the client has already
+    items = filter(lambda t: t.task_uid not in client_uids, items)
+
+    # Skip ghosts unless explicitly asked
+    if "ghost" not in status:
+        items = filter(lambda t: not t.get("ghost"), items)
+
+    # Convert to the dict representation
+    complete = request_data.get("complete") or False
+    summary = get_tasks_summary(list(items), "server.diff", complete=complete)
+
+    # Update the summary with the uids the client has to remove
+    summary.update({
+        "stale": stale_uids,
+        # TODO Implement unknowns
+        "unknown": []
     })
     return summary
 
