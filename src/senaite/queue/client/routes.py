@@ -105,7 +105,7 @@ def process(context, request, task_uid=None):  # noqa
 def get_task(task_uid):
     """Resolves the task for the given task uid
     """
-    if not capi.is_uid(task_uid) and task_uid != "0":
+    if not capi.is_uid(task_uid) or task_uid == "0":
         # 400 Bad Request, wrong task uid
         _fail(400, "Bad Request. Task uid empty or no valid format")
 

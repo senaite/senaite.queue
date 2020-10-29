@@ -135,7 +135,8 @@ def add_task(name, context, **kwargs):
     :param username: (optional) str, the name of the user assigned to the task
     :param priority: (optional) int, the priority value for this task
     :param unique: (optional) bool, if True, the task will only be added if
-            there is no other task with same name and for same context
+            there is no other task with same name and for same context. This
+            setting is set to False by default
     :param chunk_size: (optional) the number of items to process asynchronously
             at once from this task (if it contains multiple elements)
     :param ghost: (optional) if True, clients won't get notified about the task

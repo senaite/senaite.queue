@@ -75,7 +75,7 @@ def reset_settings(portal):
     """
     logger.info("Reset Queue settings ...")
     default_settings = {
-        "default": 5,
+        "default": 10,
         "max_retries": 3,
         "min_seconds_task": 3,
         "max_seconds_unlock": 120,

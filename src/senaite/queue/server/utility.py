@@ -46,6 +46,7 @@ class ServerQueueUtility(object):
         self._since_time = -1
         self.__lock = threading.Lock()
 
+    # TODO REMOVE (no longer required)
     def get_since_time(self):
         """Returns the time since epoch when the oldest task the queue contains
         was created, failed tasks excluded. Returns -1 if queue has no queued
