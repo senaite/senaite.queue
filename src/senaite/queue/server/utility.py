@@ -340,11 +340,12 @@ class ServerQueueUtility(object):
             return None
 
         # Do not add the task if unique and task for same context and name
-        unique = task.get("unique", False)
-        if unique and self.has_tasks_for(task.context_uid, name=task.name):
-            logger.debug("Task for {} and {} in the queue already".format(
-                    task.name, task.context_path))
-            return None
+        if task.get("unique", False):
+            query = {"context_uid": task.context_uid, "name": task.name}
+            if self.search(query):
+                logger.debug("Task {} for {} in the queue already".format(
+                        task.name, task.context_path))
+                return None
 
         # Update task status and append to the list of tasks
         task.update({"status": "queued"})
@@ -365,3 +366,13 @@ class ServerQueueUtility(object):
         logger.info("Added task {} ({}): {}"
                     .format(task.name, task.task_short_uid, task.context_path))
         return task
+
+    def search(self, query):
+        def is_match(task):
+            for k, v in query.items():
+                attr = getattr(task, k)
+                if not attr or attr != v:
+                    return False
+            return True
+
+        return copy.deepcopy(filter(is_match, self._tasks))
