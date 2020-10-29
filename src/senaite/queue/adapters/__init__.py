@@ -83,6 +83,19 @@ class QueuedAssignAnalysesTaskAdapter(object):
         uids_slots = zip(uids, slots)
         uids_slots = sorted(uids_slots, key=lambda i: i[1])
 
+        # Remove those with no valid uids
+        uids_slots = filter(lambda us: _api.is_uid(us[0]), uids_slots)
+
+        # Remove duplicate uids while keeping the order
+        seen = set()
+        uids_slots = filter(lambda us: not (us[0] in seen or seen.add(us[0])),
+                            uids_slots)
+
+        # Remove uids that are already in the worksheet (just in case)
+        layout = filter(None, worksheet.getLayout() or [])
+        existing = map(lambda r: r.get("analysis_uid"), layout)
+        uids_slots = filter(lambda us: us[0] not in existing, uids_slots)
+
         # If there are too many objects to process, split them in chunks to
         # prevent the task to take too much time to complete
         chunks = get_chunks_for(task.name, uids_slots)
