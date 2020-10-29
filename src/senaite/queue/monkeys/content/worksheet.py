@@ -74,11 +74,9 @@ def _apply_worksheet_template_routine_analyses(self, wst):
 
     # Map existing sample uids with slots
     samples_slots = dict(self.get_containers_slots())
-    new_sample_uids = []
     new_analyses = []
 
     for analysis in analyses:
-        # SENAITE.QUEUE-Specific
         if api.is_queued(analysis):
             continue
 
@@ -89,15 +87,16 @@ def _apply_worksheet_template_routine_analyses(self, wst):
             continue
 
         if instrument and not analysis.isInstrumentAllowed(instrument):
-            # WST's Instrument does not supports this analysis
+            # Template's Instrument does not support this analysis
             continue
 
         if method and not analysis.isMethodAllowed(method):
-            # WST's method does not supports this analysis
+            # Template's method does not support this analysis
             continue
 
         # Get the slot where analyses from this sample are located
-        sample_uid = analysis.getRequestUID()
+        sample = analysis.getRequest()
+        sample_uid = _api.get_uid(sample)
         slot = samples_slots.get(sample_uid)
         if not slot:
             if len(available_slots) == 0:
@@ -107,42 +106,55 @@ def _apply_worksheet_template_routine_analyses(self, wst):
             # Pop next available slot
             slot = available_slots.pop()
 
-            # Feed the samples_slots
-            samples_slots[sample_uid] = slot
-            new_sample_uids.append(sample_uid)
-
         # Keep track of the analyses to add
-        new_analyses.append((analysis, sample_uid))
+        analysis_info = {
+            "analysis": analysis,
+            "sample_uid": sample_uid,
+            "sample_id": _api.get_id(sample),
+            "slot": slot,
+        }
+        new_analyses.append(analysis_info)
 
-    # Re-sort slots for new samples to display them in natural order
-    new_slots = map(lambda s: samples_slots.get(s), new_sample_uids)
-    sorted_slots = zip(sorted(new_sample_uids), sorted(new_slots))
-    for sample_uid, slot in sorted_slots:
-        samples_slots[sample_uid] = slot
-
-    # SENAITE.QUEUE-SPECIFIC
-    task_name = "task_assign_analyses"
-    new_analyses = map(lambda a: (a[0], samples_slots[a[1]]), new_analyses)
     if not new_analyses:
-        # No analyses to add, skip
+        # No analyses to add
         return
 
-    # Sort them by slot number
-    new_analyses.sort(key=lambda t: t[1])
+    # No need to sort slots for analyses with a pre-existing sample/slot
+    with_samp = filter(lambda a: a["sample_uid"] in samples_slots, new_analyses)
+    analyses_slots = map(lambda s: (s["analysis"], s["slot"]), with_samp)
 
-    if api.is_queue_ready(task_name):
+    # Re-sort slots for analyses without a pre-existing sample/slot
+    # Analyses retrieved from database are sorted by priority, but we want them
+    # to be displayed in natural order in the worksheet
+    without_samp = filter(lambda a: a not in with_samp, new_analyses)
+    # Sort the items by sample id
+    without_samp.sort(key=lambda a: a["sample_id"])
+    # Extract the list of analyses (sorted by sample id)
+    without_samp_analyses = map(lambda a: a["analysis"], without_samp)
+    # Extract the list of assigned slots and sort them in natural order
+    without_samp_slots = sorted(map(lambda a: a["slot"], without_samp))
+    # Generate the tuple (analysis, slot)
+    without_samp_slots = zip(without_samp_analyses, without_samp_slots)
+    # Append to those non sorted because of pre-existing slots
+    analyses_slots.extend(without_samp_slots)
+
+    if api.is_queue_ready("task_assign_analyses"):
         # Queue the assignment of analyses
-        analyses, slots = zip(*new_analyses)
-        api.add_assign_task(self, analyses=analyses, slots=slots)
+        analyses, slots = zip(*analyses_slots)
+
+        # Be sure that nobody else other than us is applying a template
+        kwargs = {"unique": True}
+        api.add_assign_task(self, analyses=analyses, slots=slots, **kwargs)
 
         # Reindex the worksheet to update the WorksheetTemplate meta column
         self.reindexObject()
+        return
 
-    else:
-        map(lambda a: self.addAnalysis(a[0], a[1]), new_analyses)
+    # Queue is not ready, add the analyses as usual
+    map(lambda a: self.addAnalysis(a[0], a[1]), analyses_slots)
 
 
-def addAnalyses(self, analyses):
+def addAnalyses(self, analyses):  # noqa non-lowercase func name
     """Adds a collection of analyses to the Worksheet at once
     """
     to_queue = list()
