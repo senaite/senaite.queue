@@ -47,7 +47,7 @@ Alternatively, you can directly feed the queue programmatically:
 .. code-block:: python
 
     from senaite.queue import api
-    api.queue_action(objects, action)
+    api.add_action_task(objects, action)
 
 
 Parameter objects can be either a brain, an object, a uid or a list/tuple of any
@@ -74,12 +74,12 @@ directly by your own:
 
             # Queue the task
             params = {"uids": uids}
-            api.queue_task("my.addon.task_dispatch", self.request, self.context, **params)
+            api.add_task("my.addon.task_dispatch", self.context, **params)
 
 
 Note the following:
 
-* We use a "uids" field to store the objects to be processed
+* We use a "uids" field to store the list of objects to be processed
 * We've set a custom task id `my.addon.task_dispatch`. This task id will be used
   by `senaite.queue` to look for a suitable adapter able to handle tasks with
   this id.
@@ -91,6 +91,7 @@ Create an adapter in charge of handling the task:
     from bika.lims import api as _api
     from Products.Archetypes.interfaces.base import IBaseObject
     from senaite.queue import api
+    from senaite.queue.queue import get_chunks_for
     from senaite.queue.interfaces import IQueuedTaskAdapter
 
     DISPATCH_TASK_ID = "my.addon.task_dispatch"
@@ -109,7 +110,7 @@ Create an adapter in charge of handling the task:
             """
             # If there are too many objects to process, split them in chunks to
             # prevent the task to take too much time to complete
-            chunks = api.get_chunks(task.name, task["uids"])
+            chunks = get_chunks_for(task.name, task["uids"])
 
             # Process the first chunk
             objects = map(_api.get_object_by_uid, chunks[0])
@@ -117,7 +118,7 @@ Create an adapter in charge of handling the task:
 
             # Add remaining objects to the queue
             params = {"uids": chunks[1]}
-            api.queue_task(DISPATCH_TASK_ID, self.request, self.context, **params)
+            api.add_task(DISPATCH_TASK_ID, self.context, **params)
 
         def dispatch_sample(self, sample):
             """Generates a dispatch report for this sample
