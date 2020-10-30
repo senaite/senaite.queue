@@ -30,8 +30,9 @@ from senaite.queue.queue import is_task
 from zope.interface import implements  # noqa
 
 from bika.lims import api as capi
-
 # Maximum number of concurrent tasks to be processed at a time
+from bika.lims import APIError
+
 MAX_CONCURRENT_TASKS = 4
 
 
@@ -121,7 +122,7 @@ class ServerQueueUtility(object):
             elif capi.is_uid(task):
                 task_uid = task
             else:
-                raise ValueError("Type not supported")
+                raise ValueError("{} is not supported".format(repr(task)))
 
             # We do this dance because the task passed in is probably a copy,
             # but self._fail expects a reference to self._tasks
@@ -180,21 +181,26 @@ class ServerQueueUtility(object):
         return list(out)
 
     def get_tasks_for(self, context_or_uid, name=None):
-        """Returns an iterable with the queued or running tasks the queue
-        contains for the given context and name, if provided.
-        Failed tasks are not considered
+        """Returns a list with the queued or running tasks the queue contains
+        for the given context and name, if provided. Failed tasks are not
+        considered
         :param context_or_uid: object/brain/uid to look for in the queue
         :param name: name of the type of the task to look for
-        :return: iterable of QueueTask objects
-        :rtype: iterator
+        :return: list of QueueTask objects
+        :rtype: list
         """
-        # TODO Make this to return a list instead of an iterable
-        uid = capi.get_uid(context_or_uid)
+        try:
+            uid = capi.get_uid(context_or_uid)
+        except APIError:
+            raise ValueError("{} is not supported".format(repr(context_or_uid)))
+
+        tasks = []
         for task in self._tasks:
             if name and task.name != name:
                 continue
             if task.context_uid == uid or uid in task.uids:
-                yield copy.deepcopy(task)
+                tasks.append(copy.deepcopy(task))
+        return tasks
 
     def has_task(self, task):
         """Returns whether the queue contains a given task
@@ -211,7 +217,7 @@ class ServerQueueUtility(object):
         name if provided.
         """
         tasks = self.get_tasks_for(context_or_uid, name=name)
-        return any(list(tasks))
+        return any(tasks)
 
     def get_consumer_tasks(self, consumer_id):
         """Returns the tasks the consumer is currently processing
@@ -332,7 +338,7 @@ class ServerQueueUtility(object):
     def _add(self, task):
         # Only QueueTask type is supported
         if not is_task(task):
-            raise TypeError("Not supported: {}".format(repr(type(task))))
+            raise ValueError("{} is not supported".format(repr(task)))
 
         # Don't add to the queue if the task is already in there
         if task in self._tasks:

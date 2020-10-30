@@ -377,21 +377,26 @@ class ClientQueueUtility(object):
         return list(out)
 
     def get_tasks_for(self, context_or_uid, name=None):
-        """Returns an iterable with the queued or running tasks the queue
-        contains for the given context and name, if provided.
-        Failed tasks are not considered
+        """Returns a list with the queued or running tasks the queue contains
+        for the given context and name, if provided. Failed tasks are not
+        considered
         :param context_or_uid: object/brain/uid to look for in the queue
         :param name: name of the type of the task to look for
-        :return: iterable of QueueTask objects
-        :rtype: iterator
+        :return: list of QueueTask objects
+        :rtype: list
         """
-        # TODO Make this to return a list instead of an iterable
-        uid = capi.get_uid(context_or_uid)
+        try:
+            uid = capi.get_uid(context_or_uid)
+        except capi.APIError:
+            raise ValueError("{} is not supported".format(repr(context_or_uid)))
+
+        tasks = []
         for task in self._tasks:
             if name and task.name != name:
                 continue
             if task.context_uid == uid or uid in task.uids:
-                yield copy.deepcopy(task)
+                tasks.append(copy.deepcopy(task))
+        return tasks
 
     def has_task(self, task):
         """Returns whether the queue contains a given task

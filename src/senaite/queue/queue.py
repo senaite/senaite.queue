@@ -310,5 +310,5 @@ def get_task_uid(task_or_uid, default=_marker):
         task_uid = task_or_uid.get("task_uid", None)
         return get_task_uid(task_uid, default=default)
     if default is _marker:
-        raise ValueError("Not supported type: {}".format(task_or_uid))
+        raise ValueError("{} is not supported".format(repr(task_or_uid)))
     return default

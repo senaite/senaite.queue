@@ -113,13 +113,13 @@ class IQueueUtility(Interface):
         """
 
     def get_tasks_for(self, context_or_uid, name=None):
-        """Returns an iterable with the queued or running tasks the queue
-        contains for the given context and name, if provided.
-        Failed tasks are not considered
+        """Returns a list with the queued or running tasks the queue contains
+        for the given context and name, if provided. Failed tasks are not
+        considered
         :param context_or_uid: object/brain/uid to look for in the queue
         :param name: (Optional) name of the type of the task to look for
-        :return: iterable of QueueTask objects
-        :rtype: iterator
+        :return: a list of QueueTask objects
+        :rtype: list
         """
 
     def has_task(self, task):

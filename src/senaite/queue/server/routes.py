@@ -159,7 +159,7 @@ def search(context, request):  # noqa
 
     # Get the tasks from the utility
     items = qapi.get_queue().get_tasks_for(uid, name=name)
-    return get_tasks_summary(list(items), "server.search", complete=complete)
+    return get_tasks_summary(items, "server.search", complete=complete)
 
 
 @add_route("/queue_server/<string(length=32):task_uid>",
