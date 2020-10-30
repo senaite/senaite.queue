@@ -23,19 +23,19 @@ from operator import itemgetter
 import collections
 from datetime import datetime
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile
+from senaite.core.listing import ListingView
 from senaite.queue import api as qapi
 from senaite.queue import messageFactory as _
 from senaite.queue.queue import get_max_retries
-
-from bika.lims import api
-from bika.lims.browser.bika_listing import BikaListingView
-from bika.lims.utils import get_link
-from bika.lims.browser.workflow import RequestContextAware
-from bika.lims.interfaces import IWorkflowActionUIDsAdapter
 from zope.component.interfaces import implements
 
+from bika.lims import api
+from bika.lims.browser.workflow import RequestContextAware
+from bika.lims.interfaces import IWorkflowActionUIDsAdapter
+from bika.lims.utils import get_link
 
-class TasksListingView(BikaListingView):
+
+class TasksListingView(ListingView):
     """BrowserView with the listing of Queued Tasks
     """
 
@@ -52,8 +52,11 @@ class TasksListingView(BikaListingView):
         # Set the view name with `@@` prefix to get the right API URL
         self.__name__ = "@@queue_tasks"
 
+        self.pagesize = 20
         self.show_select_column = True
         self.show_search = False
+        self.show_table_footer = True
+        self.show_workflow_action_buttons = True
 
         self.show_categories = False
         self.expand_all_categories = True
@@ -130,6 +133,14 @@ class TasksListingView(BikaListingView):
             "confirm_transitions": [
                 "queue_requeue",
             ]
+        }, {
+            "id": "all",
+            "title": _("All tasks"),
+            "contentFilter": {},
+            "columns": self.columns.keys(),
+            "transitions": [],
+            "custom_transitions": [],
+            "confirm_transitions": []
         }
         ]
 
@@ -141,6 +152,12 @@ class TasksListingView(BikaListingView):
         super(TasksListingView, self).update()
 
     def folderitems(self):
+        states_map = {
+            "running": "state-published",
+            "failed": "state-retracted",
+            "queued": "state-active",
+            "ghost": "state-unassigned",
+        }
         # flag for manual sorting
         self.manual_sort_on = self.get_sort_on()
 
@@ -148,6 +165,8 @@ class TasksListingView(BikaListingView):
         status = ["running", "queued"]
         if self.review_state.get("id") == "failed":
             status = ["failed"]
+        elif self.review_state.get("id") == "all":
+            status = ["running", "queued", "failed", "ghost"]
 
         items = map(self.make_item, qapi.get_queue().get_tasks(status=status))
 
@@ -168,8 +187,13 @@ class TasksListingView(BikaListingView):
             task_link = "{}/{}".format(api_url, item["uid"])
             params = {"class": "text-monospace"}
             task_link = get_link(task_link, item["task_short_uid"], **params)
+
+            css_class = states_map.get(item["status"])
+            if item.get("ghost"):
+                css_class = "{} {}".format(css_class, states_map["ghost"])
             item.update(
                 {"priority": str(priority).zfill(4),
+                 "state_class": css_class,
                  "replace": {
                      "status": _(item["status"]),
                      "context_path": context_link,
@@ -182,7 +206,13 @@ class TasksListingView(BikaListingView):
         sort_on = self.manual_sort_on in self.columns.keys() or "priority"
         reverse = self.get_sort_order() == "ascending"
         items = sorted(items, key=itemgetter(sort_on), reverse=reverse)
-        return items
+
+        # Pagination
+        self.total = len(items)
+        limit_from = self.get_limit_from()
+        if limit_from and len(items) > limit_from:
+            return items[limit_from:self.pagesize + limit_from]
+        return items[:self.pagesize]
 
     def make_empty_item(self, **kw):
         """Creates an empty listing item
@@ -215,6 +245,7 @@ class TasksListingView(BikaListingView):
             "context_path": task.context_path,
             "username": task.username,
             "status": task.status,
+            "ghost": task.get("ghost") or False,
             "disabled": task.status in ["running", ]
         })
         return item
