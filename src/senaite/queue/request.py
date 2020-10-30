@@ -34,6 +34,75 @@ from six.moves.urllib import parse
 from bika.lims import api as capi
 
 
+status_reasons = {
+    # Informational
+    100: 'Continue',
+    101: 'Switching Protocols',
+    102: 'Processing',
+
+    # Successful
+    200: 'OK',
+    201: 'Created',
+    202: 'Accepted',
+    203: 'Non-Authoritative Information',
+    204: 'No Content',
+    205: 'Reset Content',
+    206: 'Partial Content',
+    207: 'Multi-Status',
+    226: 'IM Used',
+
+    # Redirection
+    300: 'Multiple Choices',
+    301: 'Moved Permanently',
+    302: 'Found',
+    303: 'See Other',
+    304: 'Not Modified',
+    305: 'Use Proxy',
+    307: 'Temporary Redirect',
+    308: 'Permanent Redirect',
+
+    # Client Error
+    400: 'Bad Request',
+    401: 'Unauthorized',
+    402: 'Payment Required',
+    403: 'Forbidden',
+    404: 'Not Found',
+    405: 'Method Not Allowed',
+    406: 'Not Acceptable',
+    407: 'Proxy Authentication Required',
+    408: 'Request Timeout',
+    409: 'Conflict',
+    410: 'Gone',
+    411: 'Length Required',
+    412: 'Precondition Failed',
+    413: 'Request Entity Too Large',
+    414: 'Request-URI Too Long',
+    415: 'Unsupported Media Type',
+    416: 'Requested Range Not Satisfiable',
+    417: 'Expectation Failed',
+    418: "I'm a teapot",
+    422: 'Unprocessable Entity',
+    423: 'Locked',
+    424: 'Failed Dependency',
+    426: 'Upgrade Required',
+    428: 'Precondition Required',
+    429: 'Too Many Requests',
+    431: 'Request Header Fields Too Large',
+    451: 'Unavailable for Legal Reasons',
+
+    # Server Error
+    500: 'Internal Server Error',
+    501: 'Not Implemented',
+    502: 'Bad Gateway',
+    503: 'Service Unavailable',
+    504: 'Gateway Timeout',
+    505: 'HTTP Version Not Supported',
+    507: 'Insufficient Storage',
+    510: 'Not Extended',
+    511: 'Network Authentication Required',
+}
+
+
 def handle_queue_errors(func):
     """Decorator that handles queue-specific errors and exceptions gracefully
     """
@@ -41,16 +110,16 @@ def handle_queue_errors(func):
         try:
             if japi.is_anonymous():
                 # 401 Unauthorized, user needs to authenticate
-                fail(401, "Unauthorized")
+                fail(401)
             return func(*args, **kwargs)
         except ConnectionError:
             # Queue server refused the connection (probably stopped)
-            fail(504, "Queue Server Timeout. Refused connection")
+            fail(504, "Refused connection")
         except Timeout:
             # Queue server timeout
-            fail(504, "Queue Server Timeout. Busy")
+            fail(504, "Busy")
         except TooManyRedirects:
-            fail(500, "Internal Server Error. Too many redirects")
+            fail(500, "Too many redirects")
         except HTTPError as e:
             status = e.response.status_code or 500
             message = e.response.json() or {}
@@ -61,17 +130,20 @@ def handle_queue_errors(func):
         except Exception as e:
             traceback.print_exc()
             msg = "{}: {}".format(type(e).__name__, str(e))
-            fail(500, "Internal Server Error. {}".format(msg))
+            fail(500, msg)
 
     return wrapper
 
 
-def fail(status_code, message):
+def fail(status_code, message=None):
     """Raises an API error
     :param status_code: HTTP Response status code
     :param message: error message
     """
-    japi.fail(status_code, message)
+    reason = [status_reasons.get(status_code), message]
+    reason = filter(None, reason)
+    reason = reason and " - ".join(reason) or "Unknown reason"
+    japi.fail(status_code, reason)
 
 
 def get_message_summary(message, endpoint, **kwargs):

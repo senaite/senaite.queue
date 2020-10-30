@@ -42,7 +42,7 @@ def check_server(func):
     """
     def wrapper(*args, **kwargs):
         if not qapi.is_queue_server():
-            _fail(400, "Bad Request. Not a Queue Server")
+            _fail(405, "Not a Queue Server")
         return func(*args, **kwargs)
     return wrapper
 
@@ -191,7 +191,7 @@ def add(context, request):  # noqa
     items = map(to_task, raw_tasks)
     valid = map(is_task, items)
     if not all(valid):
-        _fail(400, "Bad Request. No valid task(s)")
+        _fail(406, "No valid task(s)")
 
     # Add the task(s) to the queue
     map(qapi.get_queue().add, items)
@@ -210,7 +210,7 @@ def pop(context, request):  # noqa
     # Get the consumer ID
     consumer_id = req.get_json().get("consumer_id")
     if not is_consumer_id(consumer_id):
-        _fail(400, "Bad Request. No valid consumer id")
+        _fail(428, "No valid consumer id")
 
     # Pop the task from the queue
     task = qapi.get_queue().pop(consumer_id)
@@ -234,7 +234,7 @@ def done(context, request):  # noqa
     # Get the task
     task = get_task(task_uid)
     if task.status not in ["running", ]:
-        _fail(400, "Bad Request. Task is not running")
+        _fail(412, "Task is not running")
 
     # Notify the queue
     qapi.get_queue().done(task)
@@ -260,7 +260,7 @@ def fail(context, request):  # noqa
     # Get the task
     task = get_task(task_uid)
     if task.status not in ["running", ]:
-        _fail(400, "Bad Request. Task is not running")
+        _fail(412, "Task is not running")
 
     # Notify the queue
     qapi.get_queue().fail(task, error_message=error_message)
@@ -324,11 +324,11 @@ def get_task(task_uid):
     """
     if not api.is_uid(task_uid) or task_uid == "0":
         # 400 Bad Request, wrong task uid
-        _fail(400, "Bad Request. Task uid empty or no valid format")
+        _fail(412, "Task uid empty or no valid format")
 
     task = qapi.get_queue().get_task(task_uid)
     if not task:
-        _fail(404, "Task not found: {}".format(task_uid))
+        _fail(404, "Task {}".format(task_uid))
 
     return task
 

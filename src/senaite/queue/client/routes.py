@@ -66,18 +66,18 @@ def process(context, request, task_uid=None):  # noqa
     task = get_task(task_uid)
     if task.username != capi.get_current_user().id:
         # 403 Authenticated, but user does not have access to the resource
-        _fail(403, "Forbidden")
+        _fail(403)
 
     # Process
     t0 = time.time()
     task_context = task.get_context()
     if not task_context:
-        _fail(500, "Internal Server Error. Task's context not available")
+        _fail(500, "Task's context is not available")
 
     # Get the adapter able to process this specific type of task
     adapter = queryAdapter(task_context, IQueuedTaskAdapter, name=task.name)
     if not adapter:
-        _fail(501, "Not implemented. No adapter for {}".format(task.name))
+        _fail(501, "No adapter found for {}".format(task.name))
 
     logger.info("Processing task {}: '{}' for '{}' ({}) ...".format(
         task.task_short_uid, task.name, capi.get_id(task_context),
@@ -107,13 +107,13 @@ def get_task(task_uid):
     """
     if not capi.is_uid(task_uid) or task_uid == "0":
         # 400 Bad Request, wrong task uid
-        _fail(400, "Bad Request. Task uid empty or no valid format")
+        _fail(412, "Task uid empty or no valid format")
 
     task = api.get_queue().get_task(task_uid)
     if not task:
-        _fail(404, "Task not found: {}".format(task_uid))
+        _fail(404, "Task {}".format(task_uid))
 
     if not capi.is_uid(task.context_uid):
-        _fail(500, "Internal Server Error. Task's context uid is not valid")
+        _fail(500, "Task's context uid is not valid")
 
     return task
