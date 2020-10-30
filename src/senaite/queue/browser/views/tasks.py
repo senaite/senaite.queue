@@ -188,14 +188,17 @@ class TasksListingView(ListingView):
             params = {"class": "text-monospace"}
             task_link = get_link(task_link, item["task_short_uid"], **params)
 
+            status_msg = _(item["status"])
             css_class = states_map.get(item["status"])
             if item.get("ghost"):
                 css_class = "{} {}".format(css_class, states_map["ghost"])
+                status_msg = "{} ({})".format(status_msg, _("ghost"))
+
             item.update(
                 {"priority": str(priority).zfill(4),
                  "state_class": css_class,
                  "replace": {
-                     "status": _(item["status"]),
+                     "status": status_msg,
                      "context_path": context_link,
                      "task_short_uid": task_link,
                      "created": created,
