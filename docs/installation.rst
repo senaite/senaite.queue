@@ -84,6 +84,8 @@ sections as you need with the additional `clock-server` zope configuration. Do
 not forget to set the value `host` correctly to all them, because this value is
 used by the queue server to identify the consumers when tasks are requested.
 
+The maximum number of concurrent consumers supported by the queue server is 4.
+
 Run `bin/buildout` afterwards. With this configuration, buildout will download
 and install the latest published release of `senaite.queue from Pypi`_.
 
