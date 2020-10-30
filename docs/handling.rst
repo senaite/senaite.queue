@@ -6,9 +6,9 @@ Each time the clock wakes-up (*clock-server* directive in *buildout*
 configuration, see :doc:`installation`), the system checks if the queue is
 currently locked by a tasks consumer. If locked, the system does nothing and
 returns to a neutral state, awaiting for the undergoing task to finish. If the
-queue is not locked, a producer pops the next task from the queue and make it
-available to a task consumer. This task consumer starts in a new thread and is
-responsible of delivering the task to the suitable adapter for its processing.
+queue is not locked, the consumer pops the next task from the queue. This task
+consumer starts in a new thread and is responsible of delivering the task to the
+suitable adapter for its processing.
 
 As soon as the processing of the task finishes, the consumer notifies the Queue
 so it can return to a neutral state and dispatch next task. This task is removed
@@ -18,7 +18,6 @@ If an error arises while processing the task, the consumer notifies the Queue
 about the incident as well. This time, the queue resumes to neutral state, but
 labels the task as "failed" and is not removed.
 
-
 Prioritization
 --------------
 
@@ -26,9 +25,8 @@ Two factors are taken into account for tasks prioritization: creation date time
 and task custom priority value.
 
 By default, system applies a priority value of 10 for all type of tasks. This
-value can be changed for specific tasks though (see :doc:`doctests` for
-additional information). The lesser the priority value, the higher will be the
-priority of that task over others.
+value can be changed for specific tasks though. The lesser the priority value,
+the higher will be the priority of that task over others.
 
 However, the creation date time is also used for tasks prioritization. So, even
 if a task has a higher priority based on the priority value explained before,
@@ -96,8 +94,7 @@ stopped while a task was being processed. These are the two scenarios the last
 reason refers to. In such cases, the Queue does not know if the task is actually
 running or is not. Still, the Queue needs to resume because otherwise, no
 further tasks will ever be processed: the queue would enter into a dead-lock
-status. The Timeout mechanism (see next section) prevents this to happen,
-but at a cost: the thread that was handling the task might be still running.
+status. The Timeout mechanism (see next section) prevents this to happen.
 
 
 Timeout
@@ -106,21 +103,18 @@ Timeout
 When system retries a task, it will increase the timeout for that specific task.
 Timeout is the time in seconds the Queue will wait for the task to complete
 before being discarded as failed. By default, this value is set to 120 seconds,
-but can be changed in :ref:`QueueControlPanel`: *Seconds to wait before unlock*.
+but can be changed in :ref:`QueueControlPanel`: *Maximum seconds*.
 
 Given a value of timeout of 120 seconds, if a task fails the first time, the
-system will increase the timeout for that task to 240 seconds. If it fails a
-second time, it will increase its timeout to 480 seconds.
+system will increase the timeout for that task to 180 seconds. If it fails a
+second time, it will increase its timeout to 270 seconds: the system multiplies
+the seconds by a factor of 1.5 each time.
 
 .. note:: Note that if *Maximum retries* is set to 5 and the timeout is 120
           seconds, the time in seconds the Queue will wait for the task to
-          complete in the last attempt will be 3,840 seconds (64 minutes).
-          Take this into account when configuring default values for *Seconds
-          to wait before unlock* and *Maximum retries*.
-
-If a task is timed out, the thread in charge of processing might be still
-running in the background, while a new thread in charge of the new task will
-be started.
+          complete in the last attempt will be 608 seconds (10 minutes).
+          Take this into account when configuring default values for
+          *Maximum seconds* and *Maximum retries*.
 
 
 Transaction commit conflicts
