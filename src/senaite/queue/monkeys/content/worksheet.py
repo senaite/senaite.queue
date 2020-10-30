@@ -142,8 +142,10 @@ def _apply_worksheet_template_routine_analyses(self, wst):
         # Queue the assignment of analyses
         analyses, slots = zip(*analyses_slots)
 
-        # Be sure that nobody else other than us is applying a template
-        kwargs = {"unique": True}
+        # Be sure that nobody else other than us is applying a template and add
+        # some delay to prevent the consumers to start processing while the
+        # life-cycle of current request has not yet finished
+        kwargs = {"unique": True, "delay": 5}
         api.add_assign_task(self, analyses=analyses, slots=slots, **kwargs)
 
         # Reindex the worksheet to update the WorksheetTemplate meta column

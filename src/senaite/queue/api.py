@@ -141,6 +141,8 @@ def add_task(name, context, **kwargs):
             at once from this task (if it contains multiple elements)
     :param ghost: (optional) if True, clients won't get notified about the task
             but consumers only. This setting is set to False by default
+    :param delay: (optional) delay in seconds before the task becomes available
+            for processing to consumers. Default: 0
     :return: the QueueTask object added to the queue, if any
     :rtype: senaite.queue.queue.QueueTask
     """

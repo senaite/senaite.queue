@@ -81,9 +81,9 @@ class ServerQueueUtility(object):
                 self._purge()
                 return None
 
-            # If other consumers are processing tasks, pick the one with
-            # more priority, but with different context_path and different name
-            # to prevent unnecessary conflicts on transaction.commit
+            # If other consumers are processing tasks, pick the one with more
+            # priority, but with different context_path and different name to
+            # prevent unnecessary conflicts on transaction.commit
             task_names = self.get_running_task_names()
             paths = self.get_running_context_paths()
 
@@ -92,6 +92,13 @@ class ServerQueueUtility(object):
                 if task.name in task_names:
                     continue
                 if self.strip_path(task.context_path) in paths:
+                    continue
+
+                # Wait some secs before a task is available for pop. We do not
+                # want to start processing the task while the life-cycle of the
+                # request that added the task is still alive
+                delay = capi.to_int(task.get("delay"), default=0)
+                if task.created + delay > time.time():
                     continue
 
                 # Update and return the task
