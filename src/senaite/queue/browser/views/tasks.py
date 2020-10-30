@@ -101,7 +101,7 @@ class TasksListingView(ListingView):
         url = "{}/workflow_action?action=".format(url)
         self.review_states = [{
             "id": "default",
-            "title": _("Active tasks"),
+            "title": _("Queued tasks"),
             "contentFilter": {},
             "columns": self.columns.keys(),
             "transitions": [],
