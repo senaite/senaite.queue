@@ -20,6 +20,7 @@
 
 import copy
 
+import math
 import requests
 import time
 from requests.exceptions import ConnectionError
@@ -48,6 +49,10 @@ class ClientQueueUtility(object):
     # This is used to keep the local store of tasks up-to-date
     _sync_frequency = 2
 
+    # Maximum seconds to wait before requests when no server response
+    # System keeps increasing the frequency until this value is reached
+    _sync_frequency_max = 30
+
     # Last synchronization time millis
     _last_sync = None
 
@@ -60,6 +65,7 @@ class ClientQueueUtility(object):
             return True
         return self._last_sync + self._sync_frequency < time.time()
 
+    # TODO Add a synchronize decorator here?
     def sync(self):
         """Synchronizes the local pool of tasks with the queue server
 
@@ -122,16 +128,18 @@ class ClientQueueUtility(object):
                 raise e
             err = "{}: {}".format(e.status, e.message)
 
-        # If handled error, increase the sync frequency, set the HTTP response
-        # status to 200 and do nothing else
+        # If handled error, increase the sync frequency (up to 30 seconds), set
+        # the HTTP response status to 200 and do nothing else
         if err:
-            logger.warn("{} (Operating in headless mode)".format(err))
-            self._sync_frequency = 5
+            logger.warn("{} (Operating in server-less mode)".format(err))
+            self._sync_frequency = math.ceil(self._sync_frequency * 1.5)
+            self._sync_frequency = min([self._sync_frequency_max,
+                                        self._sync_frequency])
             self._last_sync = time.time()
             capi.get_request().response.setStatus(200)
             return False
 
-        # Restore sync_frequency (just in case)
+        # Restore sync_frequency
         self._sync_frequency = 2
 
         # Get the unknown and stale task uids from the response
