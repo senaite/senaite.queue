@@ -142,6 +142,7 @@ def process_task(task_uid, task_username, consumer_id, base_url, server_url,
         except Exception as e:
             message = "{}: {}".format(type(e).__name__, str(e))
             print(message)
+        finally:
             return message
 
     # Task succeeded
