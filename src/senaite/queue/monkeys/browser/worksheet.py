@@ -29,6 +29,10 @@ def handle_submit(self):
     if not wst_uid:
         return False
 
+    # Do not allow the assignment of a worksheet template when queued
+    if api.is_queued(self.context):
+        return False
+
     # Current context is the worksheet
     worksheet = self.context
     layout = worksheet.getLayout()
