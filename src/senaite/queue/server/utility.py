@@ -332,13 +332,13 @@ class ServerQueueUtility(object):
             # cause is a reference to the object stored in self._tasks
             # - Reduce the number of remaining retries
             # - Update the create time to make room for other tasks
-            # - Reduce the chunk size (less change of a transaction conflict)
-            chunk_size = -(task.get("chunk_size", 10) // -2)
+            # - Reduce the chunk size for less change of a transaction conflict
+            # - Add a delay of 5 seconds
             task.update({
                 "error_message": error_message,
                 "retries": task.retries - 1,
                 "created": time.time(),
-                "chunk_size": chunk_size,
+                "chunk_size": -(-task.get("chunk_size", 10) // 2),
                 "status": "queued",
                 "delay": 5,
             })
