@@ -32,6 +32,7 @@ from senaite.queue.request import is_valid_zeo_host
 
 from bika.lims import api as _api
 from bika.lims.decorators import synchronized
+from requests.exceptions import Timeout
 
 
 CONSUMER_THREAD_PREFIX = "queue.consumer."
@@ -134,11 +135,14 @@ def process_task(task_uid, task_username, consumer_id, base_url, server_url,
         message = "{}: {}".format(type(e).__name__, str(e))
         print(message)
 
+        endpoint = isinstance(e, Timeout) and "timeout" or "fail"
+        err_url = "queue_server/{}".format(endpoint)
+
         try:
-            # POST to the fail endpoint from the Queue's server, authenticated
-            # as the user who initiated the consumer
+            # POST to the fail/timeout endpoint from the Queue's server,
+            # authenticated as the user who initiated the consumer
             data.update({"error_message": message})
-            post(user_id, server_url, "queue_server/fail", data, timeout=5)
+            post(user_id, server_url, err_url, data, timeout=5)
         except Exception as e:
             message = "{}: {}".format(type(e).__name__, str(e))
             print(message)
