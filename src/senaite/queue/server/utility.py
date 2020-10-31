@@ -328,17 +328,17 @@ class ServerQueueUtility(object):
 
     def _fail(self, task, error_message=None):
         if task.retries > 0:
-            # Update the create time millis to make room for other tasks, even
-            # if it keeps failing again and again (create is used to sort tasks,
-            # together with priority)
-            created = time.time()
-
             # Update the status of the task. Note we directly update the task,
             # cause is a reference to the object stored in self._tasks
+            # - Reduce the number of remaining retries
+            # - Update the create time to make room for other tasks
+            # - Reduce the chunk size (less change of a transaction conflict)
+            chunk_size = -(task.get("chunk_size", 10) // -2)
             task.update({
                 "error_message": error_message,
                 "retries": task.retries - 1,
-                "created": created,
+                "created": time.time(),
+                "chunk_size": chunk_size,
                 "status": "queued",
                 "delay": 5,
             })
