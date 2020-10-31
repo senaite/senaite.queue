@@ -87,7 +87,6 @@ class IQueueUtility(Interface):
     def timeout(self, task):
         """Notifies the queue that the processing of the task timed out
         :param task: task's unique id (task_uid) or QueueTask object
-        :param error_message: (Optional) the error/traceback
         """
 
     def delete(self, task):

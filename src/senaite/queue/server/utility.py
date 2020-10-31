@@ -30,9 +30,9 @@ from senaite.queue.queue import is_task
 from zope.interface import implements  # noqa
 
 from bika.lims import api as capi
-# Maximum number of concurrent tasks to be processed at a time
 from bika.lims import APIError
 
+# Maximum number of concurrent tasks to be processed at a time
 MAX_CONCURRENT_TASKS = 4
 
 
@@ -75,7 +75,7 @@ class ServerQueueUtility(object):
                 # Maybe some tasks got stuck
                 self._purge()
 
-            consumer_tasks = self.get_consumer_tasks(consumer_id)
+            consumer_tasks = self._get_consumer_tasks(consumer_id)
             if consumer_tasks:
                 # This consumer has tasks running already, mark those that have
                 # been running for more than 10s as failed. We assume here the
@@ -137,10 +137,9 @@ class ServerQueueUtility(object):
         :param error_message: (Optional) the error/traceback
         """
         with self.__lock:
-            task_uid = get_task_uid(task)
-
             # We do this dance because the task passed in is probably a copy,
             # but self._fail expects a reference to self._tasks
+            task_uid = get_task_uid(task)
             task = filter(lambda t: t.task_uid == task_uid, self._tasks)
             if not task:
                 raise ValueError("Task is not in the queue")
@@ -149,17 +148,16 @@ class ServerQueueUtility(object):
             self._fail(task[0], error_message=error_message)
 
     def timeout(self, task):
-        """Notifies the queue that the processing of the task timed out. Removes
-        the task from the running tasks. Is re-queued if there are remaining
-        retries still. Otherwise, adds the task to the pool of failed
+        """Notifies the queue that the processing of the task timed out.
+        Increases the max_seconds to spend with this task in 1.5 and removes
+        the task from the running tasks. If remaining retries, the task is
+        eventually re-queued. Is added to the pool of failed otherwise
         :param task: task's unique id (task_uid) or QueueTask object
-        :param error_message: (Optional) the error/traceback
         """
         with self.__lock:
-            task_uid = get_task_uid(task)
-
             # We do this dance because the task passed in is probably a copy,
-            # but self._fail expects a reference to self._tasks
+            # but self._timeout expects a reference to self._tasks
+            task_uid = get_task_uid(task)
             task = filter(lambda t: t.task_uid == task_uid, self._tasks)
             if not task:
                 raise ValueError("Task is not in the queue")
@@ -254,12 +252,12 @@ class ServerQueueUtility(object):
         tasks = self.get_tasks_for(context_or_uid, name=name)
         return any(tasks)
 
-    def get_consumer_tasks(self, consumer_id):
+    def _get_consumer_tasks(self, consumer_id):
         """Returns the tasks the consumer is currently processing
         :param consumer_id: unique id of the consumer
         """
-        tasks = self.get_tasks(status="running")
-        return filter(lambda t: t.get("consumer_id") == consumer_id, tasks)
+        running = filter(lambda t: t.status == "running", self._tasks)
+        return filter(lambda t: t.get("consumer_id") == consumer_id, running)
 
     def get_running_context_paths(self):
         """Returns a list with the context paths of the tasks that are running.

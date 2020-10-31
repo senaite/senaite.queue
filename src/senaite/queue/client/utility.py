@@ -317,11 +317,8 @@ class ClientQueueUtility(object):
         """Notifies the queue that the processing of the task timed out. Sends a
         POST to the queue server, but keeps the local pool untouched
         :param task: task's unique id (task_uid) or QueueTask object
-        :param error_message: (Optional) the error/traceback
         """
-        payload = {
-            "task_uid": get_task_uid(task),
-        }
+        payload = {"task_uid": get_task_uid(task)}
         self._post("timeout", payload=payload)
 
     def delete(self, task):
