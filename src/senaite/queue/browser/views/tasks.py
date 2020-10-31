@@ -139,8 +139,17 @@ class TasksListingView(ListingView):
             "contentFilter": {},
             "columns": self.columns.keys(),
             "transitions": [],
-            "custom_transitions": [],
-            "confirm_transitions": []
+            "custom_transitions": [
+                {"id": "queue_requeue",
+                 "title": _("Requeue"),
+                 "url": "{}{}".format(url, "queue_requeue")},
+                {"id": "queue_remove",
+                 "title": _("Remove"),
+                 "url": "{}{}".format(url, "queue_remove")}
+            ],
+            "confirm_transitions": [
+                "queue_remove",
+            ]
         }
         ]
 
