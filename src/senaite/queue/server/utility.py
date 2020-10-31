@@ -69,37 +69,50 @@ class ServerQueueUtility(object):
         :rtype: queue.QueueTask
         """
         with self.__lock:
+            # Get the queued tasks
+            queued = filter(lambda t: t.status == "queued", self._tasks)
+            if not queued:
+                # Maybe some tasks got stuck
+                self._purge()
+
+            consumer_tasks = self.get_consumer_tasks(consumer_id)
+            if consumer_tasks:
+                # This consumer has tasks running already, mark those that have
+                # been running for more than 10s as failed. We assume here the
+                # consumer always checks there is no thread running from his
+                # side before doing a pop(). Thus, we consider that when a
+                # consumer does a pop(), he did not succeed with running ones.
+                for consumer_task in consumer_tasks:
+                    started = consumer_task.get("started")
+                    if not started or started + 10 < time.time():
+                        msg = "Purged on pop ({})".format(consumer_id)
+                        self._fail(consumer_task, error_message=msg)
+                return None
+
             if self.is_busy():
                 # We've reached the max number of tasks to process at same time
                 return None
 
-            # Get the queued tasks
-            queued = filter(lambda t: t.status == "queued", self._tasks)
-            if not queued or self.get_consumer_tasks(consumer_id):
-                # Queue does not have tasks available or consumer is already
-                # processing some. Maybe there are some that got stack though
-                self._purge()
-                return None
-
-            # If other consumers are processing tasks, pick the one with more
-            # priority, but with different context_path and different name to
-            # prevent unnecessary conflicts on transaction.commit
-            task_names = self.get_running_task_names()
-            paths = self.get_running_context_paths()
+            # Get the names and paths of tasks that are currently running
+            running_names = self.get_running_task_names()
+            running_paths = self.get_running_context_paths()
 
             # Tasks are sorted from highest to lowest priority
             for task in queued:
-                if task.name in task_names:
-                    continue
-                if self.strip_path(task.context_path) in paths:
-                    continue
-
                 # Wait some secs before a task is available for pop. We do not
                 # want to start processing the task while the life-cycle of the
                 # request that added the task is still alive
                 delay = capi.to_int(task.get("delay"), default=0)
                 if task.created + delay > time.time():
                     continue
+
+                # Be sure there is no other consumer working in a same type of
+                # task and for the same path
+                if task.name in running_names:
+                    # There is another consumer processing a task of same type
+                    if self.strip_path(task.context_path) in running_paths:
+                        # Same path, skip
+                        continue
 
                 # Update and return the task
                 task.update({
@@ -124,12 +137,7 @@ class ServerQueueUtility(object):
         :param error_message: (Optional) the error/traceback
         """
         with self.__lock:
-            if is_task(task):
-                task_uid = task.task_uid
-            elif capi.is_uid(task):
-                task_uid = task
-            else:
-                raise ValueError("{} is not supported".format(repr(task)))
+            task_uid = get_task_uid(task)
 
             # We do this dance because the task passed in is probably a copy,
             # but self._fail expects a reference to self._tasks
@@ -139,6 +147,25 @@ class ServerQueueUtility(object):
 
             # Label the task as failed
             self._fail(task[0], error_message=error_message)
+
+    def timeout(self, task):
+        """Notifies the queue that the processing of the task timed out. Removes
+        the task from the running tasks. Is re-queued if there are remaining
+        retries still. Otherwise, adds the task to the pool of failed
+        :param task: task's unique id (task_uid) or QueueTask object
+        :param error_message: (Optional) the error/traceback
+        """
+        with self.__lock:
+            task_uid = get_task_uid(task)
+
+            # We do this dance because the task passed in is probably a copy,
+            # but self._fail expects a reference to self._tasks
+            task = filter(lambda t: t.task_uid == task_uid, self._tasks)
+            if not task:
+                raise ValueError("Task is not in the queue")
+
+            # Mark the task as failed by timeout
+            self._timeout(task[0])
 
     def delete(self, task):
         """Removes a task from the queue
@@ -154,6 +181,7 @@ class ServerQueueUtility(object):
         :return: the task from the queue
         :rtype: queue.QueueTask
         """
+        task_uid = get_task_uid(task_uid)
         for task in self._tasks:
             if task.task_uid == task_uid:
                 return copy.deepcopy(task)
@@ -245,9 +273,7 @@ class ServerQueueUtility(object):
         """Strips levels 0 and 1 from the context path passed-in
         """
         parts = context_path.strip("/").split("/")
-        if len(parts) > 2:
-            return "/".join(parts[2:])
-        return ""
+        return "/".join(parts[2:])
 
     def get_running_task_names(self):
         """Returns a list with the names of the tasks that are running
@@ -300,16 +326,10 @@ class ServerQueueUtility(object):
         stuck = filter(is_stuck, self._tasks)
 
         # Re-queue or add to pool of failed
-        map(lambda t: self._fail(t, "Timeout"), stuck)
+        map(lambda t: self._timeout(t), stuck)
 
     def _fail(self, task, error_message=None):
         if task.retries > 0:
-            # Increase the max number of seconds to wait before this task is
-            # being considered stuck. Might happen the task is considered
-            # failed because there was no enough time for the task to complete
-            max_seconds = task.get("max_seconds", 60)
-            max_seconds = int(math.ceil(max_seconds * 1.5))
-
             # Update the create time millis to make room for other tasks, even
             # if it keeps failing again and again (create is used to sort tasks,
             # together with priority)
@@ -320,8 +340,9 @@ class ServerQueueUtility(object):
             task.update({
                 "error_message": error_message,
                 "retries": task.retries - 1,
-                "max_seconds": max_seconds,
                 "created": created,
+                "status": "queued",
+                "delay": 5,
             })
         else:
             # Consider the task as failed
@@ -333,6 +354,18 @@ class ServerQueueUtility(object):
         # Update the since time (failed tasks are stored for traceability,
         # but they are excluded from everywhere unless explicitly requested
         self.update_since_time()
+
+    def _timeout(self, task):
+        # Increase the max number of seconds to wait before this task is
+        # being considered stuck
+        max_seconds = task.get("max_seconds", 60)
+        max_seconds = int(math.ceil(max_seconds * 1.5))
+        task.update({
+            "max_seconds": max_seconds,
+        })
+
+        # Label the task as failed
+        self._fail(task, error_message="Timeout")
 
     def _delete(self, task_uid):
         task = self.get_task(task_uid)

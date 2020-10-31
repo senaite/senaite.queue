@@ -271,6 +271,30 @@ def fail(context, request):  # noqa
     return get_message_summary(msg, "server.fail", **task_info)
 
 
+@add_route("/queue_server/timeout", "senaite.queue.server.timeout",
+           methods=["POST"])
+@check_server
+@handle_queue_errors
+def timeout(context, request):  # noqa
+    """The task timed out
+    """
+    # Get the task uid
+    request_data = req.get_json()
+    task_uid = request_data.get("task_uid")
+
+    # Get the task
+    task = get_task(task_uid)
+    if task.status not in ["running", ]:
+        _fail(412, "Task is not running")
+
+    # Notify the queue
+    qapi.get_queue().timeout(task)
+
+    # Return the process summary
+    task_info = {"task": get_task_info(task)}
+    return get_message_summary(task_uid, "server.timeout", **task_info)
+
+
 @add_route("/queue_server/requeue",
            "senaite.queue.server.requeue", methods=["POST"])
 @add_route("/queue_server/requeue/<string(length=32):task_uid>",

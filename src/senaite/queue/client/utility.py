@@ -42,6 +42,9 @@ from bika.lims import api as capi
 class ClientQueueUtility(object):
     implements(IClientQueueUtility)
 
+    # The HTTP requests handler
+    _req = requests
+
     # Local store of tasks that is kept up-to-date with queue server
     _tasks = []
 
@@ -310,6 +313,17 @@ class ClientQueueUtility(object):
         }
         self._post("fail", payload=payload)
 
+    def timeout(self, task):
+        """Notifies the queue that the processing of the task timed out. Sends a
+        POST to the queue server, but keeps the local pool untouched
+        :param task: task's unique id (task_uid) or QueueTask object
+        :param error_message: (Optional) the error/traceback
+        """
+        payload = {
+            "task_uid": get_task_uid(task),
+        }
+        self._post("timeout", payload=payload)
+
     def delete(self, task):
         """Removes a task from the queue. Sends a POST to the queue server and
         removes the task from the local pool of tasks
@@ -452,10 +466,13 @@ class ClientQueueUtility(object):
         payload.update({"__zeo": request.get("SERVER_URL")})
 
         # This might rise exceptions (e.g. TimeoutException)
-        response = requests.post(url, json=payload, auth=auth, timeout=timeout)
+        response = self._req.post(url, json=payload, auth=auth, timeout=timeout)
 
         # Check the request is successful. Raise exception otherwise
         response.raise_for_status()
 
         # Return the result
         return response.json()
+
+    def __len__(self):
+        return len(self._tasks)
