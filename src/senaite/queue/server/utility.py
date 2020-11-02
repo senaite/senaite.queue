@@ -271,7 +271,7 @@ class ServerQueueUtility(object):
         """Strips levels 0 and 1 from the context path passed-in
         """
         parts = context_path.strip("/").split("/")
-        return "/".join(parts[2:])
+        return len(parts) > 2 and parts[2] or ""
 
     def get_running_task_names(self):
         """Returns a list with the names of the tasks that are running
