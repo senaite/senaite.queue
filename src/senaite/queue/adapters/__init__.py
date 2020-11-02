@@ -107,6 +107,9 @@ class QueuedAssignAnalysesTaskAdapter(object):
             analysis = _api.get_object_by_uid(uid)
             worksheet.addAnalysis(analysis, slot)
 
+        # Reindex the worksheet
+        worksheet.reindexObject()
+
         if chunks[1]:
             # Unpack the remaining analyses-slots and add them to the queue
             uids, slots = zip(*chunks[1])
