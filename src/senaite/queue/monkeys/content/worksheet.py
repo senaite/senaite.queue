@@ -74,6 +74,10 @@ def _apply_worksheet_template_routine_analyses(self, wst):
 
     # Map existing sample uids with slots
     samples_slots = dict(self.get_containers_slots())
+
+    # Keep track of the UIDs of pre-existing Samples
+    existing = samples_slots.keys()
+
     new_analyses = []
 
     for analysis in analyses:
@@ -106,6 +110,9 @@ def _apply_worksheet_template_routine_analyses(self, wst):
             # Pop next available slot
             slot = available_slots.pop()
 
+        # Keep track of the slot where analyses from this sample must live
+        samples_slots[sample_uid] = slot
+
         # Keep track of the analyses to add
         analysis_info = {
             "analysis": analysis,
@@ -120,7 +127,7 @@ def _apply_worksheet_template_routine_analyses(self, wst):
         return
 
     # No need to sort slots for analyses with a pre-existing sample/slot
-    with_samp = filter(lambda a: a["sample_uid"] in samples_slots, new_analyses)
+    with_samp = filter(lambda a: a["sample_uid"] in existing, new_analyses)
     analyses_slots = map(lambda s: (s["analysis"], s["slot"]), with_samp)
 
     # Re-sort slots for analyses without a pre-existing sample/slot
