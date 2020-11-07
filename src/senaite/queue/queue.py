@@ -18,340 +18,13 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-import threading
-import time
-
 import six
-from BTrees.OOBTree import OOBTree
-from senaite.queue import logger
-from senaite.queue.interfaces import IQueueUtility
-from zope.annotation.interfaces import IAnnotations
-from zope.interface import implements
+import time
 
 from bika.lims import api
 from bika.lims.utils import tmpID
 
-# The id of the storage for queued tasks
-TASKS_QUEUE_STORAGE_TOOL_ID = "senaite.queue.main.storage.tasks"
-
-# Maximum number of concurrent tasks to be processed at a time
-MAX_CONCURRENT_TASKS = 1
-
-
-class QueueStorage(object):
-    """Storage that provides access to the tasks from a queue
-    """
-
-    @property
-    def container(self):
-        """The container the annotations storage belongs to
-        """
-        return api.get_setup()
-
-    @property
-    def annotations(self):
-        """Returns the annotation's storage of the queue
-        """
-        annotations = IAnnotations(self.container)
-        if annotations.get(TASKS_QUEUE_STORAGE_TOOL_ID) is None:
-            annotations[TASKS_QUEUE_STORAGE_TOOL_ID] = OOBTree()
-        return annotations[TASKS_QUEUE_STORAGE_TOOL_ID]
-
-    def get(self, key, default=None):
-        return self.annotations.get(key, default)
-
-    def set(self, key, value):
-        annotations = self.annotations
-        annotations[key] = value
-        annotations._p_changed = True
-        self.container._p_changed = True
-
-    def sync(self):
-        objs = [self.annotations, self.container]
-        for obj in objs:
-            p_jar = obj._p_jar
-            if p_jar is not None:
-                p_jar.sync()
-
-    @property
-    def tasks(self):
-        """The outstanding tasks from the queue
-        """
-        return self.get("tasks", default=[])[:]
-
-    @property
-    def running_tasks(self):
-        """The ongoing tasks
-        """
-        return self.get("running_tasks", default=[])[:]
-
-    @property
-    def failed_tasks(self):
-        """The ongoing tasks
-        """
-        return self.get("failed_tasks", default=[])[:]
-
-    @tasks.setter
-    def tasks(self, value):
-        self.set("tasks", value)
-
-    @running_tasks.setter
-    def running_tasks(self, value):
-        self.set("running_tasks", value)
-
-    @failed_tasks.setter
-    def failed_tasks(self, value):
-        self.set("failed_tasks", value)
-
-
-class QueueUtility(object):
-    """General utility acting as a singleton that provides the basic actions to
-    handle a queue of tasks
-    """
-    implements(IQueueUtility)
-
-    _storage = None
-
-    def __init__(self):
-        self.__lock = threading.Lock()
-        self._storage = QueueStorage()
-
-    def __len__(self):
-        with self.__lock:
-            return len(self._storage.tasks)
-
-    def sync(self):
-        with self.__lock:
-            self._storage.sync()
-
-    def is_empty(self):
-        """Returns whether there are no remaining tasks in the queue
-        """
-        return self.__len__() <= 0
-
-    def is_busy(self):
-        """Returns whether a task is being processed
-        """
-        with self.__lock:
-            # Check if the number of running tasks is above max
-            return len(self._storage.running_tasks) >= MAX_CONCURRENT_TASKS
-
-    def purge(self):
-        """Purges running tasks that got stuck for too long
-        """
-        with self.__lock:
-            self._purge()
-
-    def _purge(self):
-        def is_stuck(task):
-            max_sec = task.get("max_seconds", 60)
-            started = task.get("started", time.time() - max_sec - 1)
-            return started + max_sec < time.time()
-
-        # Get non-stuck tasks
-        tasks = self._storage.running_tasks
-        stuck = filter(is_stuck, tasks)
-        if not stuck:
-            # No running tasks got stuck
-            return
-
-        # Re-queue or add to pool of failed
-        map(lambda t: self._fail(t, "Timeout"), stuck)
-
-    def pop(self):
-        """Returns the next task to process, if any. Otherwise, return None
-        """
-        with self.__lock:
-            tasks = self._storage.tasks
-            if len(tasks) <= 0:
-                return None
-
-            # Pop the task with more priority
-            task = tasks.pop()
-
-            # Assign the tasks to the queue
-            self._storage.tasks = tasks
-
-            # Add the task to the running tasks
-            task.update({
-                "started": time.time(),
-                "status": "running"}
-            )
-            running = self._storage.running_tasks
-            running.append(task)
-            self._storage.running_tasks = running
-
-            # Return the task
-            logger.info("Pop task {} ({}): {}"
-                        .format(task.name, task.task_short_uid,
-                                task.context_path))
-            return task
-
-    def fail(self, task, error_message=None):
-        """Removes the task from the running tasks. Is re-queued if there are
-        remaining retries still. Otherwise, adds the task to the pool of failed
-        """
-        with self.__lock:
-            self._fail(task, error_message=error_message)
-
-    def _fail(self, task, error_message=None):
-        # Get the running tasks, but the current one
-        tasks = self._storage.running_tasks
-        other_tasks = filter(lambda t: t.task_uid != task.task_uid, tasks)
-        if len(other_tasks) != len(tasks):
-            # Remove the task from the pool of running tasks
-            self._storage.running_tasks = other_tasks
-
-            # Set the error message
-            task["error_message"] = error_message
-
-            # Check if we've reached the max number of remaining retries
-            if task.retries > 0:
-                task["retries"] -= 1
-                # Increase the max number of seconds to wait before this task
-                # is being considered stuck. Might happen the task is considered
-                # failed because there was no enought time for the task to
-                # complete
-                max_sec = task.get("max_seconds", 60)
-
-                # Update the create timemillis to make room for other tasks,
-                # even if it keeps failing again and again (create is used to
-                # sort tasks, together with priority)
-                created = time.time()
-                task.update({
-                    "created": created,
-                    "max_seconds": max_sec * 2
-                })
-                self._add(task)
-            else:
-                # Add in failed tasks
-                failed_tasks = self._storage.failed_tasks
-                task.update({"status": "failed"})
-                failed_tasks.append(task)
-                self._storage.failed_tasks = failed_tasks
-                logger.warn("Failed task {} ({}): {}"
-                            .format(task.name, task.task_short_uid,
-                                    task.context_path))
-
-    def success(self, task):
-        """Removes the task from the queue
-        """
-        with self.__lock:
-            self._remove(task.task_uid)
-
-    def get_task(self, task_uid):
-        """Returns the task for for the TUID passed in
-        """
-        tasks = self._storage.tasks + self._storage.running_tasks + \
-                self._storage.failed_tasks
-        for task in tasks:
-            if task.task_uid == task_uid:
-                return task
-        return None
-
-    def has_task(self, task):
-        """Returns whether the queue contains the task passed in by tuid
-        """
-        out_task = self.get_task(task.task_uid)
-        if out_task:
-            return True
-        return False
-
-    def get_tasks_for(self, context_or_uid, name=None):
-        """Returns an iterable with the tasks the queue contains for the given
-        context and name if provided
-        """
-        uid = api.get_uid(context_or_uid)
-
-        # Look into both queued and running tasks
-        tasks = self._storage.tasks + self._storage.running_tasks
-        for task in tasks:
-            if name and name != task.name:
-                continue
-
-            # Check whether the context passed-in matches with the task's
-            # context or with other objects involved in this task
-            if uid == task.context_uid or uid in task.get("uids", []):
-                yield task
-
-    def has_tasks_for(self, context_or_uid, name=None):
-        """Returns whether the queue contains a task for the given context and
-        name if provided.
-        """
-        tasks = self.get_tasks_for(context_or_uid, name=name)
-        return any(tasks)
-
-    def add(self, task, unique=False):
-        """Adds a task to the queue
-        """
-        with self.__lock:
-            return self._add(task, unique=unique)
-
-    def remove(self, task_uid):
-        """Removes a task from the queue
-        """
-        with self.__lock:
-            self._remove(task_uid)
-
-    def _remove(self, task_uid):
-        task = self.get_task(task_uid)
-        if not task:
-            return
-
-        if task.status == "queued":
-            self._storage.tasks = filter(
-                lambda t: t.task_uid != task_uid,
-                self._storage.tasks)
-
-        elif task.status == "failed":
-            self._storage.failed_tasks = filter(
-                lambda t: t.task_uid != task_uid,
-                self._storage.failed_tasks)
-
-        elif task.status == "running":
-            self._storage.running_tasks = filter(
-                lambda t: task_uid != task_uid,
-                self._storage.running_tasks)
-
-    def _add(self, task, unique=False):
-        # Only QueueTask type is supported
-        if not isinstance(task, QueueTask):
-            raise TypeError("Not supported: {}".format(repr(type(task))))
-
-        # Don't add to the queue if the task is already in there
-        if self.has_task(task):
-            logger.warn("Task {} ({}) in the queue already"
-                        .format(task.name, task.task_short_uid))
-            return None
-
-        # Do not add the task if unique and task for same context and name
-        if unique and self.has_tasks_for(task.context_uid, name=task.name):
-            logger.debug("Task for {} and {} in the queue already".format(
-                    task.name, task.context_path))
-            return None
-
-        # Append to the list of tasks
-        tasks = self._storage.tasks
-        task.update({"status": "queued"})
-        tasks.append(task)
-
-        # Sort by priority + created reverse
-        # We multiply the priority for 300 sec. (5 minutes) and then we sum the
-        # result to the time the task was created. This way, we ensure tasks
-        # priority at the same time we guarantee older, with low priority
-        # tasks don't fall into the cracks.
-        # We sort the list reversed because pop() always return the last item
-        # of the list and we are sorting by priority (lesser value, the better)
-        tasks = sorted(tasks, key=lambda t: (t.created + (300 * t.priority)),
-                       reverse=True)
-
-        # Assign the tasks to the queue
-        # Note _storage does a _p_changed already
-        self._storage.tasks = tasks
-
-        logger.info("Added task {} ({}): {}"
-                    .format(task.name, task.task_short_uid, task.context_path))
-        return task
+_marker = object()
 
 
 class QueueTask(dict):
@@ -360,48 +33,56 @@ class QueueTask(dict):
 
     def __init__(self, name, request, context, *arg, **kw):
         super(QueueTask, self).__init__(*arg, **kw)
-        if not api.is_object(context):
+        if api.is_uid(context):
+            context_uid = context
+            context_path = kw.get("context_path")
+            if not context_path:
+                raise ValueError("context_path is missing")
+
+        elif api.is_object(context):
+            context_uid = api.get_uid(context)
+            context_path = api.get_path(context)
+
+        else:
             raise TypeError("No valid context object")
+
+        # Set defaults
         kw = kw or {}
+        task_uid = str(kw.get("task_uid", tmpID()))
+        uids = map(str, kw.get("uids", []))
+        created = api.to_float(kw.get("created"), default=time.time())
+        status = kw.get("status", None)
+        min_sec = api.to_int(kw.get("min_seconds"), default=get_min_seconds())
+        max_sec = api.to_int(kw.get("max_seconds"), default=get_max_seconds())
+        priority = api.to_int(kw.get("priority"), default=10)
+        retries = api.to_int(kw.get("retries"), default=get_max_retries())
+        unique = self._is_true(kw.get("unique", False))
+        chunks = api.to_int(kw.get("chunk_size"), default=get_chunk_size(name))
+        username = kw.get("username", self._get_authenticated_user(request))
+        err_message = kw.get("error_message", None)
+
         self.update({
-            "task_uid": tmpID(),
+            "task_uid": task_uid,
             "name": name,
-            "context_uid": api.get_uid(context),
-            "context_path": api.get_path(context),
-            "request": self._get_request_data(request),
-            "retries": kw.get("retries", 3),
-            "priority": api.to_int(kw.get("priority"), default=10),
-            "uids": kw.get("uids", []),
-            "created": time.time(),
-            "status": None,
-            "error_message": None,
+            "context_uid": context_uid,
+            "context_path": context_path,
+            "uids": uids,
+            "created": created,
+            "status": status and str(status) or None,
+            "error_message": err_message and str(err_message) or None,
+            "min_seconds": min_sec,
+            "max_seconds": max_sec,
+            "priority": priority,
+            "retries": retries,
+            "unique": unique,
+            "chunk_size": chunks,
+            "username": str(username),
         })
 
-    def _get_request_data(self, request):
-        data = {
-            "__ac": request.get("__ac") or "",
-            "_orig_env": self._get_orig_env(request),
-            "_ZopeId": request.get("_ZopeId") or "",
-            "X_FORWARDED_FOR": request.get("X_FORWARDED_FOR") or "",
-            "X_REAL_IP": request.get("X_REAL_IP") or "",
-            "REMOTE_ADDR": request.get("REMOTE_ADDR") or "",
-            "HTTP_USER_AGENT": request.get("HTTP_USER_AGENT") or "",
-            "HTTP_REFERER": request.get("HTTP_REFERER") or "",
-            "AUTHENTICATED_USER": self._get_authenticated_user(request),
-        }
-        return data
-
-    def _get_orig_env(self, request):
-        env = {}
-        if hasattr(request, "_orig_env"):
-            env = getattr(request, "_orig_env", {})
-            if not env and hasattr(request, "__dict__"):
-                env = self._get_orig_env(request.__dict__)
-        elif isinstance(request, dict):
-            env = request.get("_orig_env", {})
-        elif hasattr(request, "__dict__"):
-            env = self._get_orig_env(request.__dict__)
-        return env
+    def _is_true(self, val):
+        """Returns whether the value passed in evaluates to True
+        """
+        return str(val).lower() in ["y", "yes", "1", "true"]
 
     def _get_authenticated_user(self, request):
         authenticated_user = request.get("AUTHENTICATED_USER")
@@ -456,12 +137,16 @@ class QueueTask(dict):
         self["retries"] = value
 
     @property
+    def uids(self):
+        return self["uids"]
+
+    @property
     def username(self):
-        return self.request["AUTHENTICATED_USER"]
+        return self["username"]
 
     @username.setter
     def username(self, value):
-        self["request"]["AUTHENTICATED_USER"] = value
+        self["username"] = value
 
     @property
     def context_path(self):
@@ -472,3 +157,147 @@ class QueueTask(dict):
 
     def __eq__(self, other):
         return other and self.task_uid == other.task_uid
+
+
+def new_task(name, context, **kw):
+    """Creates a QueueTask
+    :param name: the name of the task
+    :param context: the context the task is bound or relates to
+    :param min_seconds: (optional) int, minimum seconds to book for the task
+    :param max_seconds: (optional) int, maximum seconds to wait for the task
+    :param retries: (optional) int, maximum number of retries on failure
+    :param username: (optional) str, the name of the user assigned to the task
+    :param priority: (optional) int, the priority value for this task
+    :param unique: (optional) bool, if True, the task will only be added if
+            there is no other task with same name and for same context
+    :param chunk_size: (optional) the number of items to process asynchronously
+            at once from this task (if it contains multiple elements)
+    :return: :class:`QueueTask <QueueTask>`
+    :rtype: senaite.queue.queue.QueueTask
+    """
+    # Skip attrs that are assigned when the QueueTask is instantiated
+    exclude = ["task_uid", "name", "request", "context_uid", "context_path"]
+    out_keys = filter(lambda k: k not in exclude, kw.keys())
+    kwargs = dict(map(lambda k: (k, kw[k]), out_keys))
+
+    # Create the Queue Task
+    task = QueueTask(name, api.get_request(), context, **kwargs)
+
+    # Set the username (if provided in kw)
+    task.username = kw.get("username", task.username)
+    return task
+
+
+def to_task(task_dict):
+    """Converts a dict representation of a task to a QueueTask object
+    :param task_dict: dict that represents a task
+    :return: the QueueTask object the passed-in task_dict represents
+    :rtype: QueueTask
+    """
+    name = task_dict.get("name")
+    context_uid = task_dict.get("context_uid")
+    context_path = task_dict.get("context_path")
+    if not all([name, context_uid, context_path]):
+        return None
+
+    # Skip attrs that are assigned when the QueueTask is instantiated
+    exclude = ["name", "request"]
+    out_keys = filter(lambda k: k not in exclude, task_dict.keys())
+    kwargs = dict(map(lambda k: (k, task_dict[k]), out_keys))
+
+    # Create the Queue Task
+    return QueueTask(name, api.get_request(), context_uid, **kwargs)
+
+
+def is_task(task):
+    """Returns whether the value passed in is a task
+    """
+    return isinstance(task, QueueTask)
+
+
+def get_min_seconds(default=3):
+    """Returns the minimum number of seconds to book per task
+    """
+    registry_id = "senaite.queue.min_seconds_task"
+    min_seconds = api.get_registry_record(registry_id)
+    min_seconds = api.to_int(min_seconds, default=default)
+    return min_seconds >= 1 and min_seconds or default
+
+
+def get_max_seconds(default=120):
+    """Returns the max number of seconds to wait for a task to finish
+    """
+    registry_id = "senaite.queue.max_seconds_unlock"
+    max_seconds = api.get_registry_record(registry_id)
+    max_seconds = api.to_int(max_seconds, default=default)
+    return max_seconds >= 30 and max_seconds or default
+
+
+def get_max_retries(default=3):
+    """Returns the number of retries before considering a task as failed
+    """
+    registry_id = "senaite.queue.max_retries"
+    max_retries = api.get_registry_record(registry_id)
+    max_retries = api.to_int(max_retries, default=default)
+    return max_retries >= 1 and max_retries or default
+
+
+def get_chunk_size(name_or_action=None):
+    """Returns the number of items to process at once for the given task name
+    :param name_or_action: task name or workflow action id
+    :returns: the number of items from the task to process async at once
+    :rtype: int
+    """
+    chunk_size = api.get_registry_record("senaite.queue.default")
+    chunk_size = api.to_int(chunk_size, 0)
+    if chunk_size <= 0:
+        # Queue disabled
+        return 0
+
+    if name_or_action:
+        # TODO Retrieve task-specific chunk-sizes via adapters
+        pass
+
+    if chunk_size < 0:
+        chunk_size = 0
+
+    return chunk_size
+
+
+def get_chunks_for(task, items=None):
+    """Returns the items splitted into a list. The first element contains the
+    first chunk and the second element contains the rest of the items
+    """
+    if items is None:
+        items = task.get("uids", [])
+
+    chunk_size = get_chunk_size(task.name)
+    return get_chunks(items, chunk_size)
+
+
+def get_chunks(items, chunk_size):
+    """Returns the items splitted into a list of two items. The first element
+    contains the first chunk and the second element contains the rest of the
+    items
+    """
+    if chunk_size <= 0 or chunk_size >= len(items):
+        return [items, []]
+    return [items[:chunk_size], items[chunk_size:]]
+
+
+def get_task_uid(task_or_uid, default=_marker):
+    """Returns the task unique identifier
+    :param task_or_uid: QueueTask/task uid/dict
+    :param default: (Optional) fallback value
+    :return: the task's unique identifier
+    """
+    if api.is_uid(task_or_uid) and task_or_uid != "0":
+        return task_or_uid
+    if isinstance(task_or_uid, QueueTask):
+        return get_task_uid(task_or_uid.task_uid, default=default)
+    if isinstance(task_or_uid, dict):
+        task_uid = task_or_uid.get("task_uid", None)
+        return get_task_uid(task_uid, default=default)
+    if default is _marker:
+        raise ValueError("{} is not supported".format(repr(task_or_uid)))
+    return default

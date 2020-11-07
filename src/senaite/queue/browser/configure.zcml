@@ -3,6 +3,16 @@
     xmlns:browser="http://namespaces.zope.org/browser"
     i18n_domain="senaite.queue">
 
+  <!-- Static resource directory -->
+  <browser:resourceDirectory
+    name="senaite.queue.static"
+    directory="static"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer"/>
+
+  <!-- Package includes -->
+  <include package=".viewlets"/>
+  <include package=".views"/>
+
   <!-- Queue Control panel -->
   <browser:page
     name="queue-controlpanel"
@@ -10,68 +20,5 @@
     class=".controlpanel.QueueControlPanelView"
     permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
-  <!-- Queue dispatcher view -->
-  <browser:page
-    for="*"
-    name="queue_dispatcher"
-    class=".views.dispatcher.QueueDispatcherView"
-    permission="senaite.core.permissions.ManageBika"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
-  <!-- Queue consumer view -->
-  <browser:page
-    for="*"
-    name="queue_consumer"
-    class=".views.consumer.QueueConsumerView"
-    permission="zope2.View"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
-  <!-- Tasks view -->
-  <browser:page
-    for="*"
-    name="queue_tasks"
-    class=".views.tasks.TasksView"
-    permission="senaite.core.permissions.ManageBika"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
-  <!-- Task view (JSON) -->
-  <browser:page
-    for="*"
-    name="queue_task"
-    class=".views.task.TaskView"
-    permission="senaite.core.permissions.ManageBika"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
-  <!-- When a Worksheet is created and the worksheet is queued, redirect to
-  the Worksheet listing -->
-  <browser:page
-    for="bika.lims.interfaces.IWorksheetFolder"
-    name="worksheet_add"
-    class=".views.worksheet.AddWorksheetQueueView"
-    permission="zope.Public"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
-
-  <!-- Analyses in queue: Worksheet -->
-  <browser:viewlet
-    for="bika.lims.interfaces.IWorksheet"
-    name="senaite.queue.worksheet_analyses_queue_viewlet"
-    class=".viewlets.QueuedAnalysesViewlet"
-    manager="plone.app.layout.viewlets.interfaces.IAboveContent"
-    template="viewlets/templates/queued_analyses_viewlet.pt"
-    permission="zope2.View"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer"
-  />
-
-  <!-- Analyses in queue: Sample -->
-  <browser:viewlet
-    for="bika.lims.interfaces.IAnalysisRequest"
-    name="senaite.queue.worksheet_analyses_sample_queue_viewlet"
-    class=".viewlets.QueuedAnalysesSampleViewlet"
-    manager="plone.app.layout.viewlets.interfaces.IAboveContent"
-    template="viewlets/templates/queued_analyses_sample_viewlet.pt"
-    permission="zope2.View"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer"
-  />
 
 </configure>

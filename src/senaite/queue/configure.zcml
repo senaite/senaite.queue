@@ -14,25 +14,21 @@
   <!-- Needed for "BIKA: Manage Bika" permission -->
   <include package="bika.lims" file="permissions.zcml" />
 
-  <!-- Register Queue utility so it's used as a singleton -->
-  <utility
-    provides=".interfaces.IQueueUtility"
-    factory=".queue.QueueUtility" />
+  <!-- Queue's server utility -->
+  <utility provides=".interfaces.IServerQueueUtility"
+           factory=".server.utility.ServerQueueUtility" />
+
+  <!-- Queue's client utility -->
+  <utility provides=".interfaces.IClientQueueUtility"
+           factory=".client.utility.ClientQueueUtility" />
 
   <!-- Package includes -->
   <include package=".adapters"/>
   <include package=".browser"/>
+  <include package=".client"/>
   <include package=".monkeys"/>
   <include package=".upgrade"/>
-
-  <!-- Static resource directory -->
-  <browser:resourceDirectory
-    name="senaite.queue.static"
-    directory="static"
-    layer="senaite.queue.interfaces.ISenaiteQueueLayer"/>
-
-  <!-- Package includes -->
-  <include package=".monkeys"/>
+  <include package=".server"/>
 
   <!-- Default profile -->
   <genericsetup:registerProfile

@@ -18,12 +18,15 @@ Test Setup
 
 Needed imports:
 
+    >>> import transaction
     >>> from bika.lims import api as _api
+    >>> from plone import api as plone_api
     >>> from plone.app.testing import setRoles
     >>> from plone.app.testing import TEST_USER_ID
     >>> from plone.app.testing import TEST_USER_PASSWORD
     >>> from senaite.queue import api
     >>> from senaite.queue.tests import utils as test_utils
+    >>> from zope import globalrequest
 
 Functional Helpers:
 
@@ -38,17 +41,23 @@ Functional Helpers:
     ...         analyses.extend(sample.getAnalyses(full_objects=True))
     ...     worksheet = _api.create(portal.worksheets, "Worksheet")
     ...     worksheet.addAnalyses(analyses)
+    ...     transaction.commit()
     ...     return worksheet
 
     >>> def set_analyses_results(worksheet):
     ...     for analysis in worksheet.getAnalyses():
     ...         analysis.setResult(13)
+    ...     transaction.commit()
 
 Variables:
 
     >>> portal = self.portal
     >>> request = self.request
     >>> setup = _api.get_setup()
+    >>> browser = self.getBrowser()
+    >>> globalrequest.setRequest(request)
+    >>> setRoles(portal, TEST_USER_ID, ["LabManager", "Manager"])
+    >>> transaction.commit()
 
 Create some basic objects for the test:
 
@@ -61,40 +70,31 @@ Create some basic objects for the test:
     >>> category = _api.create(setup.bika_analysiscategories, "AnalysisCategory", title="Metals", Department=department)
     >>> Cu = _api.create(setup.bika_analysisservices, "AnalysisService", title="Copper", Keyword="Cu", Price="15", Category=category.UID(), Accredited=True)
 
-Disable the queue for `task_assign_analyses` so we can create Worksheets to test
-generic actions (`assign` action is not a generic one because involves handling
-a worksheet, slot positions, etc.).
-
-    >>> api.disable_queue("task_assign_analyses")
-    >>> api.is_queue_enabled("task_assign_analyses")
-    False
-
-And submit transition as well:
-
-    >>> api.disable_queue("submit")
-    >>> api.is_queue_enabled("submit")
-    False
-
-Enable the self-verification too:
+Enable the self-verification:
 
     >>> setup.setSelfVerificationEnabled(True)
     >>> setup.getSelfVerificationEnabled()
     True
 
-Make the test a bit faster by reducing the min_seconds:
+Setup the current instance as the queue server too:
 
-    >>> test_utils.set_min_seconds(1)
+    >>> key = "senaite.queue.server"
+    >>> host = u'http://nohost/plone'
+    >>> plone_api.portal.set_registry_record(key, host)
+    >>> transaction.commit()
+    >>> api.get_queue()
+    <senaite.queue.server.utility.ServerQueueUtility object at...
 
 
 Verify transition
 ~~~~~~~~~~~~~~~~~
 
-Set the number of analyses to be transitioned in a single queued task:
+Disable the queue first, so `submit` and `assign` transitions are performed
+non-async:
 
-    >>> action = "verify"
-    >>> api.set_chunk_size(action, 5)
-    >>> api.get_chunk_size(action)
-    5
+    >>> chunk_key = "senaite.queue.default"
+    >>> plone_api.portal.set_registry_record(chunk_key, 0)
+    >>> transaction.commit()
 
 Create a worksheet with some analyses, set a result and submit all them:
 
@@ -103,154 +103,252 @@ Create a worksheet with some analyses, set a result and submit all them:
     >>> set_analyses_results(worksheet)
     >>> test_utils.handle_action(worksheet, analyses, "submit")
 
+Enable the queue so we can trap the `verify` transition:
+
+    >>> plone_api.portal.set_registry_record(chunk_key, 5)
+    >>> transaction.commit()
+
 Verify the results:
 
-    >>> test_utils.handle_action(worksheet, analyses, action)
+    >>> test_utils.handle_action(worksheet, analyses, "verify")
 
-The worksheet is now queued:
+The worksheet is queued and the analyses as well:
 
     >>> api.is_queued(worksheet)
     True
 
-No analyses have been transitioned yet:
-
-    >>> transitioned = test_utils.filter_by_state(analyses, "verified")
-    >>> len(transitioned)
+    >>> len(test_utils.filter_by_state(analyses, "verified"))
     0
-    >>> _api.get_review_status(worksheet)
-    'to_be_verified'
-
-And all them are queued:
 
     >>> all(map(api.is_queued, analyses))
     True
 
-We manually trigger the queue dispatcher:
+And the queue contains one task:
 
-    >>> test_utils.dispatch()
-    "Task 'task_action_verify' for ... processed"
+    >>> queue = api.get_queue()
+    >>> queue.is_empty()
+    False
 
-Only the first chunk of analyses has been transitioned non-async:
+    >>> len(queue)
+    1
+
+    >>> len(queue.get_tasks_for(worksheet))
+    1
+
+Pop a task and process:
+
+    >>> popped = queue.pop("http://nohost")
+    >>> test_utils.process(browser, popped.task_uid)
+    '{...Processed...}'
+
+The first chunk of analyses has been processed:
 
     >>> transitioned = test_utils.filter_by_state(analyses, "verified")
     >>> len(transitioned)
     5
 
-And none of them provide are queued anymore:
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "to_be_verified")
+    >>> len(non_transitioned)
+    10
 
     >>> any(map(api.is_queued, transitioned))
     False
 
-While the rest of analyses, not yet transitioned, are still queued:
-
-    >>> non_transitioned = test_utils.filter_by_state(analyses, "to_be_verified")
-    >>> len(non_transitioned)
-    10
     >>> all(map(api.is_queued, non_transitioned))
+    True
+
+And the worksheet is still queued:
+
+    >>> api.is_queued(worksheet)
     True
 
 As the queue confirms:
 
-    >>> queue = test_utils.get_queue_tool()
     >>> queue.is_empty()
     False
 
-We trigger the queue dispatcher again:
+    >>> len(queue)
+    1
 
-    >>> test_utils.dispatch()
-    "Task 'task_action_verify' for ... processed"
+    >>> queue.has_tasks_for(worksheet)
+    True
 
-The next chunk of analyses has been processed:
+Pop and process again:
+
+    >>> popped = queue.pop("http://nohost")
+    >>> test_utils.process(browser, popped.task_uid)
+    '{...Processed...}'
+
+Next chunk of analyses has been processed:
 
     >>> transitioned = test_utils.filter_by_state(analyses, "verified")
     >>> len(transitioned)
     10
+
     >>> non_transitioned = test_utils.filter_by_state(analyses, "to_be_verified")
     >>> len(non_transitioned)
     5
+
     >>> any(map(api.is_queued, transitioned))
     False
+
     >>> all(map(api.is_queued, non_transitioned))
     True
 
-Since there are still 5 analyses remaining, the Worksheet is queued:
+Since there are still 5 analyses remaining, the Worksheet is still queued:
 
     >>> api.is_queued(worksheet)
     True
-    >>> _api.get_review_status(worksheet)
-    'to_be_verified'
 
-Change the number of items to process per task to 2:
+Pop and process again:
 
-    >>> api.set_chunk_size(action, 2)
-    >>> api.get_chunk_size(action)
-    2
+    >>> popped = queue.pop("http://nohost")
+    >>> test_utils.process(browser, popped.task_uid)
+    '{...Processed...}'
 
-And dispatch again:
+Last chunk of analyses is processed:
 
-    >>> test_utils.dispatch()
-    "Task 'task_action_verify' for ... processed"
-
-Now, only 2 analyses have been transitioned:
-
-    >>> transitioned = test_utils.filter_by_state(analyses, "verified")
-    >>> len(transitioned)
-    12
-    >>> non_transitioned = test_utils.filter_by_state(analyses, "to_be_verified")
-    >>> len(non_transitioned)
-    3
-    >>> any(map(api.is_queued, transitioned))
-    False
-    >>> all(map(api.is_queued, non_transitioned))
-    True
-    >>> api.is_queued(worksheet)
-    True
-
-As we've seen, the queue for this task is enabled:
-
-    >>> api.is_queue_enabled(action)
-    True
-
-But we can disable the queue for this task if we set the number of items to
-process per task to 0:
-
-    >>> api.disable_queue(action)
-    >>> api.is_queue_enabled(action)
-    False
-    >>> api.get_chunk_size(action)
-    0
-
-But still, if we manually trigger the dispatch with the queue being disabled,
-the action will take place. Thus, disabling the queue only prevents the system
-to add new tasks to the queue, but won't have effect to those that remain in
-the queue. Rather all remaining tasks will be processed in just one shot:
-
-    >>> test_utils.dispatch()
-    "Task 'task_action_verify' for ... processed"
-    >>> queue.is_empty()
-    True
     >>> transitioned = test_utils.filter_by_state(analyses, "verified")
     >>> len(transitioned)
     15
+
     >>> non_transitioned = test_utils.filter_by_state(analyses, "to_be_verified")
     >>> len(non_transitioned)
     0
+
     >>> any(map(api.is_queued, transitioned))
     False
 
-Since all analyses have been processed, the worksheet is no longer queued:
+The queue is now empty:
+
+    >>> queue.is_empty()
+    True
+
+And the worksheet is no longer queued:
 
     >>> api.is_queued(worksheet)
     False
 
-The worksheet has been transitioned:
 
-    >>> _api.get_review_status(worksheet)
-    'verified'
+Verify transition (with ClientQueue)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-And all samples as well:
+Perform same test as before, but now using the `ClientQueueUtility`:
 
-    >>> samples = map(lambda an: an.getRequest(), analyses)
-    >>> statuses = map(lambda samp: _api.get_review_status(samp) == "verified", samples)
-    >>> all(statuses)
+    >>> queue = test_utils.get_client_queue(browser, self.request)
+
+Disable the queue first, so `submit` and `assign` transitions are performed
+non-async:
+
+    >>> chunk_key = "senaite.queue.default"
+    >>> plone_api.portal.set_registry_record(chunk_key, 0)
+    >>> transaction.commit()
+
+Create a worksheet with some analyses, set a result and submit all them:
+
+    >>> worksheet = new_worksheet(15)
+    >>> analyses = worksheet.getAnalyses()
+    >>> set_analyses_results(worksheet)
+    >>> test_utils.handle_action(worksheet, analyses, "submit")
+
+Enable the queue so we can trap the `verify` transition:
+
+    >>> plone_api.portal.set_registry_record(chunk_key, 5)
+    >>> transaction.commit()
+
+Verify the results:
+
+    >>> test_utils.handle_action(worksheet, analyses, "verify")
+
+The queue contains one task:
+
+    >>> queue.sync()
+    >>> queue.is_empty()
+    False
+
+    >>> len(queue)
+    1
+
+    >>> len(queue.get_tasks_for(worksheet))
+    1
+
+    >>> all(filter(queue.get_tasks_for, analyses))
     True
+
+Pop a task and process:
+
+    >>> popped = queue.pop("http://nohost")
+    >>> test_utils.process(browser, popped.task_uid)
+    '{...Processed...}'
+
+The first chunk of analyses has been processed:
+
+    >>> transitioned = test_utils.filter_by_state(analyses, "verified")
+    >>> len(transitioned)
+    5
+
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "to_be_verified")
+    >>> len(non_transitioned)
+    10
+
+    >>> queue.sync()
+    >>> any(map(queue.has_tasks_for, transitioned))
+    False
+
+    >>> all(map(queue.has_tasks_for, non_transitioned))
+    True
+
+    >>> queue.has_tasks_for(worksheet)
+    True
+
+Pop and process again:
+
+    >>> popped = queue.pop("http://nohost")
+    >>> test_utils.process(browser, popped.task_uid)
+    '{...Processed...}'
+
+Next chunk of analyses has been processed:
+
+    >>> transitioned = test_utils.filter_by_state(analyses, "verified")
+    >>> len(transitioned)
+    10
+
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "to_be_verified")
+    >>> len(non_transitioned)
+    5
+
+    >>> queue.sync()
+    >>> any(map(queue.has_tasks_for, transitioned))
+    False
+
+    >>> all(map(queue.has_tasks_for, non_transitioned))
+    True
+
+    >>> queue.has_tasks_for(worksheet)
+    True
+
+Pop and process again:
+
+    >>> popped = queue.pop("http://nohost")
+    >>> test_utils.process(browser, popped.task_uid)
+    '{...Processed...}'
+
+Last chunk of analyses is processed:
+
+    >>> transitioned = test_utils.filter_by_state(analyses, "verified")
+    >>> len(transitioned)
+    15
+
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "to_be_verified")
+    >>> len(non_transitioned)
+    0
+
+    >>> queue.sync()
+    >>> any(map(queue.has_tasks_for, transitioned))
+    False
+
+    >>> queue.is_empty()
+    True
+
+    >>> queue.has_tasks_for(worksheet)
+    False

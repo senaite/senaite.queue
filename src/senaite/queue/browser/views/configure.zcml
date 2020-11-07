@@ -1,0 +1,41 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    i18n_domain="senaite.queue">
+
+  <!-- Tasks view -->
+  <browser:page
+    for="*"
+    name="queue_tasks"
+    class=".tasks.TasksListingView"
+    permission="senaite.core.permissions.ManageBika"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+
+  <!-- Adapter for re-queueing tasks -->
+  <adapter
+    name="workflow_action_queue_requeue"
+    for="*
+         zope.publisher.interfaces.browser.IBrowserRequest"
+    factory=".tasks.WorkflowActionRequeueAdapter"
+    provides="bika.lims.interfaces.IWorkflowActionAdapter"
+    permission="zope.Public" />
+
+  <!-- Adapter for re-queueing tasks -->
+  <adapter
+    name="workflow_action_queue_remove"
+    for="*
+         zope.publisher.interfaces.browser.IBrowserRequest"
+    factory=".tasks.WorkflowActionRemoveAdapter"
+    provides="bika.lims.interfaces.IWorkflowActionAdapter"
+    permission="zope.Public" />
+
+  <!-- When a Worksheet is created and the worksheet is queued, redirect to
+  the Worksheet listing -->
+  <browser:page
+    for="bika.lims.interfaces.IWorksheetFolder"
+    name="worksheet_add"
+    class=".worksheet.AddWorksheetQueueView"
+    permission="zope.Public"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+
+</configure>

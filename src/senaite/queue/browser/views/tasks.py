@@ -18,127 +18,299 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-import time
+from operator import itemgetter
+
+import collections
 from datetime import datetime
-
 from Products.Five.browser.pagetemplatefile import ViewPageTemplateFile
-from senaite.queue import api
+from senaite.core.listing import ListingView
+from senaite.queue import api as qapi
 from senaite.queue import messageFactory as _
+from senaite.queue.queue import get_max_retries
+from zope.component.interfaces import implements
 
-from bika.lims.browser import BrowserView
+from bika.lims import api
+from bika.lims.browser.workflow import RequestContextAware
+from bika.lims.interfaces import IWorkflowActionUIDsAdapter
+from bika.lims.utils import get_link
 
 
-class TasksView(BrowserView):
-    """View that displays the on-going and queued tasks
+class TasksListingView(ListingView):
+    """BrowserView with the listing of Queued Tasks
     """
+
     template = ViewPageTemplateFile("templates/tasks.pt")
 
     def __init__(self, context, request):
-        super(TasksView, self).__init__(context, request)
-        self.context = context
-        self.request = request
-        self._queue_tool = None
+        super(TasksListingView, self).__init__(context, request)
 
-    def __call__(self):
+        # Query is ignored in `folderitems` method and only there to override
+        # the default settings
+        self.catalog = "uid_catalog"
+        self.contentFilter = {"UID": api.get_uid(context)}
+
+        # Set the view name with `@@` prefix to get the right API URL
+        self.__name__ = "@@queue_tasks"
+
+        self.pagesize = 20
+        self.show_select_column = True
+        self.show_search = False
+        self.show_table_footer = True
+        self.show_workflow_action_buttons = True
+
+        self.show_categories = False
+        self.expand_all_categories = True
+        self.categories = []
+
+        self.title = _("Queue monitor")
+        self.sort_on = "priority"
+        self.sort_order = "ascending"
+
+        self.columns = collections.OrderedDict((
+            ("task_short_uid", {
+                "title": _("Task UID"),
+                "sortable": False,
+            }),
+            ("priority", {
+                "title": _("Priority"),
+                "sortable": True,
+            }),
+            ("created", {
+                "title": _("Created"),
+                "sortable": True,
+            }),
+            ("name", {
+                "title": _("Name"),
+                "sortable": True,
+            }),
+            ("context_path", {
+                "title": _("Context"),
+                "sortable": True,
+            }),
+            ("username", {
+                "title": _("Username"),
+                "sortable": True,
+            }),
+            ("status", {
+                "title": _("Status"),
+                "sortable": True,
+            })
+        ))
+
+        url = api.get_url(self.context)
+        url = "{}/workflow_action?action=".format(url)
+        self.review_states = [{
+            "id": "default",
+            "title": _("Active tasks"),
+            "contentFilter": {},
+            "columns": self.columns.keys(),
+            "transitions": [],
+            "custom_transitions": [
+                {"id": "queue_requeue",
+                 "title": _("Requeue"),
+                 "url": "{}{}".format(url, "queue_requeue")},
+                {"id": "queue_remove",
+                 "title": _("Remove"),
+                 "url": "{}{}".format(url, "queue_remove")}
+            ],
+            "confirm_transitions": [
+                "queue_remove",
+            ]
+        }, {
+            "id": "failed",
+            "title": _("Failed tasks"),
+            "contentFilter": {},
+            "columns": self.columns.keys(),
+            "transitions": [],
+            "custom_transitions": [
+                {"id": "queue_requeue",
+                 "title": _("Requeue"),
+                 "url": "{}{}".format(url, "queue_requeue")},
+                {"id": "queue_remove",
+                 "title": _("Remove"),
+                 "url": "{}{}".format(url, "queue_remove")}
+            ],
+            "confirm_transitions": [
+                "queue_requeue",
+            ]
+        }, {
+            "id": "all",
+            "title": _("All tasks +ghosts"),
+            "contentFilter": {},
+            "columns": self.columns.keys(),
+            "transitions": [],
+            "custom_transitions": [
+                {"id": "queue_requeue",
+                 "title": _("Requeue"),
+                 "url": "{}{}".format(url, "queue_requeue")},
+                {"id": "queue_remove",
+                 "title": _("Remove"),
+                 "url": "{}{}".format(url, "queue_remove")}
+            ],
+            "confirm_transitions": [
+                "queue_remove",
+            ]
+        }
+        ]
+
+    def update(self):
+        """Update hook
+        """
         self.request.set("disable_border", 1)
         self.request.set("disable_plone.rightcolumn", 1)
+        super(TasksListingView, self).update()
 
-        remove_uid = self.request.get("remove")
-        if remove_uid:
-            # Remove the task
-            self.remove_task(remove_uid)
-            return self.redirect()
+    def folderitems(self):
+        states_map = {
+            "running": "state-published",
+            "failed": "state-retracted",
+            "queued": "state-active",
+            "ghost": "state-unassigned",
+        }
+        # flag for manual sorting
+        self.manual_sort_on = self.get_sort_on()
 
-        requeue_uid = self.request.get("requeue")
-        if requeue_uid:
-            # Requeue the task
-            self.requeue_task(requeue_uid)
-            return self.redirect()
+        # Get the items
+        status = ["running", "queued"]
+        if self.review_state.get("id") == "failed":
+            status = ["failed"]
+        elif self.review_state.get("id") == "all":
+            status = ["running", "queued", "failed", "ghost"]
 
-        form = self.request.form
+        items = map(self.make_item, qapi.get_queue().get_tasks(status=status))
 
-        # Form submit toggle
-        form_submitted = form.get("submitted", False)
-        form_remove_failed = form.get("button_remove_failed", False)
-        form_requeue_failed = form.get("button_requeue_failed", False)
-        form_remove_all = form.get("button_remove_all", False)
+        # Infere the priorities
+        site_url = api.get_url(api.get_portal())
+        api_url = "{}/@@API/v1/@@API/senaite/v1/queue_server".format(site_url)
+        idx = 1
+        for item in items:
+            if item["status"] not in ["queued", "running"]:
+                priority = 0
+            else:
+                priority = idx
+                idx += 1
 
-        # Handle remove all failed tasks
-        if form_submitted and form_remove_failed:
-            failed = self.get_failed_tasks()
-            tuids = map(lambda t: t.get("task_uid"), failed)
-            map(self.remove_task, tuids)
+            created = datetime.fromtimestamp(int(item["created"])).isoformat()
+            context_link = get_link(item["context_path"], item["context_path"])
 
-        elif form_submitted and form_requeue_failed:
-            failed = self.get_failed_tasks()
-            tuids = map(lambda t: t.get("task_uid"), failed)
-            map(self.requeue_task, tuids)
+            task_link = "{}/{}".format(api_url, item["uid"])
+            params = {"class": "text-monospace"}
+            task_link = get_link(task_link, item["task_short_uid"], **params)
 
-        elif form_submitted and form_remove_all:
-            self.queue_tool._storage.tasks = []
-            self.queue_tool._storage.failed_tasks = []
+            status_msg = _(item["status"])
+            css_class = states_map.get(item["status"])
+            if item.get("ghost"):
+                css_class = "{} {}".format(css_class, states_map["ghost"])
+                status_msg = "{} ({})".format(status_msg, _("ghost"))
 
-        return self.template()
+            item.update(
+                {"priority": str(priority).zfill(4),
+                 "state_class": css_class,
+                 "replace": {
+                     "status": status_msg,
+                     "context_path": context_link,
+                     "task_short_uid": task_link,
+                     "created": created,
+                 }}
+            )
 
-    def redirect(self, url=None):
-        if not url:
-            url = "{}/queue_tasks".format(self.portal_url)
-        self.request.response.redirect(url)
+        # Sort the items
+        sort_on = self.manual_sort_on in self.columns.keys() or "priority"
+        reverse = self.get_sort_order() == "ascending"
+        items = sorted(items, key=itemgetter(sort_on), reverse=reverse)
 
-    @property
-    def queue_tool(self):
-        return api.get_queue()
+        # Pagination
+        self.total = len(items)
+        limit_from = self.get_limit_from()
+        if limit_from and len(items) > limit_from:
+            return items[limit_from:self.pagesize + limit_from]
+        return items[:self.pagesize]
 
-    def remove_task(self, tuid):
-        self.queue_tool.remove(tuid)
-
-    def requeue_task(self, tuid):
-        qtool = self.queue_tool
-        task = qtool.get_task(tuid)
-        if task:
-            qtool.remove(tuid)
-            task.retries = api.get_max_retries()
-            qtool.add(task)
-
-    def get_tasks(self):
-        # Failed tasks
-        tasks = self.get_failed_tasks()
-
-        # Undergoing task
-        current = self.queue_tool._storage.running_tasks
-        current = current and self.get_task_data(dict(current[0]), "active") or None
-        if current:
-            tasks.append(current)
-
-        # Awaiting tasks
-        queued = self.queue_tool._storage.tasks
-        queued = map(lambda task: self.get_task_data(dict(task), "queued"), queued)
-        tasks.extend(reversed(queued))
-
-        # Remove empties
-        return filter(None, tasks)
-
-    def get_failed_tasks(self):
-        failed = self.queue_tool._storage.failed_tasks
-        tasks = map(lambda task: self.get_task_data(dict(task), "failed"), failed)
-        return tasks
-
-    def get_task_data(self, task, status_id):
-        """Adds additional metadata to the task for the template
+    def make_empty_item(self, **kw):
+        """Creates an empty listing item
+        :return: a dict that with the basic structure of a listing item
         """
-        if not task:
-            return None
-        created = task.get("created") or time.time()
-        task["task_status_id"] = status_id
-        task["task_status"] = _(status_id)
-        task["created_date"] = datetime.fromtimestamp(int(created)).isoformat()
-        started = task.get("started")
-        if started:
-            started = datetime.fromtimestamp(int(started)).isoformat()
-        task["started_date"] = started
-        return task
+        item = {
+            "uid": None,
+            "before": {},
+            "after": {},
+            "replace": {},
+            "allow_edit": [],
+            "disabled": False,
+            "state_class": "state-active",
+        }
+        item.update(**kw)
+        return item
 
-    def get_task_json(self, task):
-        """Returns the url that displays the task in JSON format
+    def make_item(self, task):
+        """Makes an item from a QueueTask object
+        :param task: QueueTask object to make an item from
+        :return: a listing item that represents the QueueTask object
         """
-        return "{}/queue_task?uid={}".format(self.portal_url, task["task_uid"])
+        item = self.make_empty_item()
+        item.update({
+            "uid": task.task_uid,
+            "task_short_uid": task.task_short_uid,
+            "priority": task.priority,
+            "created": task.created,
+            "name": task.name,
+            "context_path": task.context_path,
+            "username": task.username,
+            "status": task.status,
+            "ghost": task.get("ghost") or False,
+            "disabled": task.status in ["running", ]
+        })
+        return item
+
+    def get_allowed_transitions_for(self, uids):
+        """Overrides get_allowed_transations_for from paranet class. Our UIDs
+        are not from objects, but from tasks, so none of them have
+        workflow-based transitions
+        """
+        if not uids:
+            return []
+
+        return self.review_state.get("custom_transitions", [])
+
+    def get_transitions_for(self, obj):
+        """Overrides get_transitions_for from parent class. Our UIDs are not
+        from objects, but from tasks, so none of them have workflow-based
+        transitions
+        """
+        return []
+
+
+class WorkflowActionRequeueAdapter(RequestContextAware):
+    """Adapter in charge of queue tasks' requeue action
+    """
+    implements(IWorkflowActionUIDsAdapter)
+
+    def __call__(self, action, uids):
+        """Re-queues the selected tasks and redirects to the previous URL
+        """
+        queue = qapi.get_queue()
+        for uid in uids:
+            task = queue.get_task(uid)
+            task.retries = get_max_retries()
+            queue.delete(uid)
+            queue.add(task)
+
+        url = api.get_url(api.get_portal())
+        url = "{}/queue_tasks".format(url)
+        return self.redirect(url)
+
+
+class WorkflowActionRemoveAdapter(RequestContextAware):
+    """Adapter in charge of queue tasks' remove action
+    """
+    implements(IWorkflowActionUIDsAdapter)
+
+    def __call__(self, action, uids):
+        """Removes the selected tasks and redirects to the previous URL
+        """
+        queue = qapi.get_queue()
+        map(queue.delete, uids)
+
+        url = api.get_url(api.get_portal())
+        url = "{}/queue_tasks".format(url)
+        return self.redirect(url)

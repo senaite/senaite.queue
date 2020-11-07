@@ -30,9 +30,10 @@ class WorkflowActionGenericQueueAdapter(WorkflowActionGenericAdapter):
 
     def do_action(self, action, objects):
 
-        if api.is_queue_enabled(action):
+        if api.is_queue_ready(action):
             # Add to the queue
-            api.queue_action(objects, action, self.context, self.request)
+            kwargs = {"unique": True}
+            api.add_action_task(objects, action, self.context, **kwargs)
             return objects
 
         # Delegate to base do_action

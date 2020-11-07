@@ -18,26 +18,6 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-from Acquisition import aq_base
 
-from senaite.queue import api
-
-
-def _recursive_reindex_object_security(self, obj):
-    """Reindex object security recursively, but using the queue
-    """
-    if api.is_queue_ready("task_reindex_object_security"):
-        api.add_reindex_obj_security_task(obj)
-        return
-
-    # Do classic reindex
-    _recursive_reindex_object_security_wo_queue(self, obj)
-
-
-def _recursive_reindex_object_security_wo_queue(self, obj):
-    """Classic reindex object security, without queue
-    """
-    if hasattr(aq_base(obj), "objectValues"):
-        for child_obj in obj.objectValues():
-            _recursive_reindex_object_security_wo_queue(self, child_obj)
-    obj.reindexObjectSecurity()
+# This import is required for registering the routes
+from senaite.queue.server import routes

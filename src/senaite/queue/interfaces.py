@@ -20,7 +20,7 @@
 
 from bika.lims.interfaces import IBikaLIMS
 from senaite.lims.interfaces import ISenaiteLIMS
-from zope.interface import Interface
+from zope.interface import Interface  # noqa
 
 
 class ISenaiteQueueLayer(IBikaLIMS, ISenaiteLIMS):
@@ -48,7 +48,7 @@ class IQueuedTaskAdapter(Interface):
     """Marker interface for adapters in charge of processing queued tasks
     """
 
-    def __init__(self, context):
+    def __init__(self, context):  # noqa
         """Initializes the adapter with the context adapted
         """
 
@@ -58,47 +58,128 @@ class IQueuedTaskAdapter(Interface):
 
 
 class IQueueUtility(Interface):
-    """Marker interface for Queue global utility (singleton)
+    """Interface that provide basic signatures for Queue utilities
     """
 
-    def pop(self):
-        """Returns the next task to process, if any
+    def add(self, task):
+        """Adds a task to the queue
+        :param task: the QueueTask to add
         """
 
-    def add(self):
-        """Adds a task to the queue
+    def pop(self, consumer_id):
+        """Returns the next task to process, if any
+        :param consumer_id: id of the consumer thread that will process the task
+        :return: the task to be processed or None
+        :rtype: queue.QueueTask
+        """
+
+    def done(self, task):
+        """Notifies the queue that the task has been processed successfully
+        :param task: task's unique id (task_uid) or QueueTask object
+        """
+
+    def fail(self, task, error_message=None):
+        """Notifies the queue that the processing of the task failed
+        :param task: task's unique id (task_uid) or QueueTask object
+        :param error_message: (Optional) the error/traceback
+        """
+
+    def timeout(self, task):
+        """Notifies the queue that the processing of the task timed out
+        :param task: task's unique id (task_uid) or QueueTask object
+        """
+
+    def delete(self, task):
+        """Removes a task from the queue
+        :param task: task's unique id (task_uid) or QueueTask object
+        """
+
+    def get_task(self, task_uid):
+        """Returns the task with the given task uid
+        :param task_uid: task's unique id
+        :return: the task from the queue
+        :rtype: queue.QueueTask
+        """
+
+    def get_tasks(self, status=None):
+        """Returns an iterable with the tasks from the queue
+        :param status: (Optional) a string or list with status. If None, only
+            "running" and "queued" are considered
+        :return iterable of QueueTask objects
+        :rtype: iterator
+        """
+
+    def get_uids(self, status=None):
+        """Returns a list with the uids from the queue
+        :param status: (Optional) a string or list with status. If None, only
+            "running" and "queued" are considered
+        :return list of uids
+        :rtype: list
+        """
+
+    def get_tasks_for(self, context_or_uid, name=None):
+        """Returns a list with the queued or running tasks the queue contains
+        for the given context and name, if provided. Failed tasks are not
+        considered
+        :param context_or_uid: object/brain/uid to look for in the queue
+        :param name: (Optional) name of the type of the task to look for
+        :return: a list of QueueTask objects
+        :rtype: list
+        """
+
+    def has_task(self, task):
+        """Returns whether the queue contains a given task
+        :param task: task's unique id (task_uid) or QueueTask object
+        :return: True if the queue contains the task
+        :rtype: bool
+        """
+
+    def has_tasks_for(self, context_or_uid, name=None):
+        """Returns whether the queue contains a task for the given context and
+        name if provided.
+        :param context_or_uid: object/brain/uid to look for in the queue
+        :param name: (Optional) name of the type of the task to look for
+        :return: True if the queue contains the task
+        :rtype: bool
         """
 
     def is_empty(self):
-        """Returns whether the queue is empty
+        """Returns whether the queue is empty. Failed tasks are not considered
+        :return: True if the queue does not have running nor queued tasks
+        :rtype: bool
+        """
+
+
+class IServerQueueUtility(IQueueUtility):
+    """Marker interface for Queue global utility (singleton) used by the zeo
+    client that acts as the server
+    """
+
+    def get_since_time(self):
+        """Returns the time since epoch when the oldest task the queue contains
+        was created, failed tasks excluded. Returns -1 if queue has no queued
+        or running tasks
         """
 
     def is_busy(self):
         """Returns whether the queue is busy
         """
 
-    def fail(self, task, error_message=None):
-        """Notifies that the task failed
-        """
-
-    def success(self, task):
-        """Notifies that the task succeed
-        """
-
     def purge(self):
         """Purges the queue of invalid/stuck tasks
         """
 
-    def get_task(self, task_uid):
-        """Returns the task with the given tuid
+
+class IClientQueueUtility(IQueueUtility):
+    """Marker interface for the Queue global utility (singleton) used by the
+    zeo clients that act as queue clients
+    """
+
+    def is_out_of_date(self):
+        """Returns whether this client queue utility is out-of-date and requires
+        a synchronization of tasks with the queue server
         """
 
-    def get_tasks_for(self, context_or_uid, name=None):
-        """Returns an iterable with the tasks the queue contains for the given
-        context and name if provided
-        """
-
-    def has_tasks_for(self, context_or_uid, name=None):
-        """Returns whether the queue contains a task for the given context and
-        name if provided.
+    def sync(self):
+        """Synchronizes the client queue utility with the queue server
         """

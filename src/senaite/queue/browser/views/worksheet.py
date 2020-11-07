@@ -30,12 +30,17 @@ from bika.lims.utils import tmpID
 
 
 class AddWorksheetQueueView(AddWorksheetView):
-    """ Handler for the "Add Worksheet" button in Worksheet Folder.
-        If a template was selected, the worksheet is pre-populated here.
+    """Handler for the "Add Worksheet" button in Worksheet Folder.
+    If a template is selected, the worksheet template is applied and user
+    redirected back to the "manage_results" view
+
+    N.B. Mostly grabbed from core's worksheet/browser/views/add_worksheet,
+         except those parts related with the queue
     """
 
     def __call__(self):
-        # Validation
+        # N.B.
+
         form = self.request.form
         analyst = self.request.get('analyst', '')
         template = self.request.get('template', '')

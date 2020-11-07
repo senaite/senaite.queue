@@ -1,0 +1,21 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    i18n_domain="senaite.queue">
+
+  <!--
+  This configure.zcml, even if empty, is required for the routes to be
+  registered on initialization
+  -->
+
+  <!-- End-point for the consumer clock
+  Alternatively: /@@API/senaite/v1/queue_consumer/consume
+  -->
+  <browser:page
+    for="*"
+    name="queue_consume"
+    class=".views.ConsumerView"
+    permission="senaite.core.permissions.ManageBika"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer" />
+
+</configure>

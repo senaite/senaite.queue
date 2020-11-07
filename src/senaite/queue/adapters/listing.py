@@ -25,6 +25,28 @@ from senaite.queue import messageFactory as _
 from zope.component import adapts
 from zope.interface import implements
 
+from bika.lims import api as capi
+from bika.lims.utils import render_html_attributes
+
+
+def get_queue_image(name, **kwargs):
+    """Returns a well-formed image
+    :param name: file name of the image
+    :param kwargs: additional attributes and values
+    :return: a well-formed html img
+    """
+    if not name:
+        return ""
+    attr = render_html_attributes(**kwargs)
+    return '<img src="{}" {}/>'.format(get_queue_image_url(name), attr)
+
+
+def get_queue_image_url(name):
+    """Returns the url for the given image
+    """
+    portal_url = capi.get_url(capi.get_portal())
+    return "{}/++resource++senaite.queue.static/{}".format(portal_url, name)
+
 
 class QueuedWorksheetsViewAdapter(object):
     """Disables the worksheets with analyses awaiting for assignment (queued)
@@ -43,9 +65,13 @@ class QueuedWorksheetsViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
+        # Don't do anything if senaite.queue is not enabled
+        if not api.is_queue_enabled():
+            return
+
         if api.is_queued(obj):
             item["disabled"] = True
-            icon = api.get_queue_image("queued.gif", width="55px")
+            icon = get_queue_image("queued.gif", width="55px")
             item["replace"]["state_title"] = _("Queued")
             item["replace"]["getProgressPercentage"] = icon
         return item
@@ -69,6 +95,10 @@ class QueuedWorksheetAnalysesViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
+        # Don't do anything if senaite.queue is not enabled
+        if not api.is_queue_enabled():
+            return
+
         if api.is_queued(self.context):
             item["disabled"] = True
         return item
@@ -91,6 +121,10 @@ class QueuedAddAnalysesViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
+        # Don't do anything if senaite.queue is not enabled
+        if not api.is_queue_enabled():
+            return
+
         if api.is_queued(self.context):
             # If the worksheet is in the queue, do not display analyses, but
             # those to be added and disabled
@@ -121,11 +155,14 @@ class QueuedAnalysesViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
+        # Don't do anything if senaite.queue is not enabled
+        if not api.is_queue_enabled():
+            return
+
         if api.is_queued(obj):
             item["disabled"] = True
-            icon = api.get_queue_image("queued.gif", title=_("Queued"),
-                                      width="55px")
-            item["replace"]["state_title"] = icon
+            ico = get_queue_image("queued.gif", title=_("Queued"), width="55px")
+            item["replace"]["state_title"] = ico
         return item
 
 
@@ -147,6 +184,10 @@ class QueuedSampleAnalysisServicesViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
+        # Don't do anything if senaite.queue is not enabled
+        if not api.is_queue_enabled():
+            return
+
         if api.is_queued(obj):
             item["disabled"] = True
         return item
@@ -170,9 +211,13 @@ class QueuedSamplesViewAdapter(object):
         return
 
     def folder_item(self, obj, item, index):
+        # Don't do anything if senaite.queue is not enabled
+        if not api.is_queue_enabled():
+            return
+
         if api.is_queued(obj):
             item["disabled"] = True
-            icon = api.get_queue_image("queued.gif", width="55px")
+            icon = get_queue_image("queued.gif", width="55px")
             item["replace"]["state_title"] = _("Queued")
             item["replace"]["Progress"] = icon
         return item

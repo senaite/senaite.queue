@@ -2,9 +2,10 @@ Quickstart
 ==========
 
 This section gives an introduction about `senaite.queue`_. It assumes you
-have `SENAITE LIMS`_ and `senaite.queue` already installed, with a reserved zeo
-client listening at port 8089 and a regular zeo client listening at port 8080.
-Please read the :doc:`installation` for further details.
+have `SENAITE LIMS`_ and `senaite.queue` already installed, with a consumer
+listening at port 8089, the queue server listening at port 8090 and a regular
+zeo client listening at port 8080. Please read the :doc:`installation` for
+further details.
 
 .. _QueueControlPanel:
 
@@ -20,7 +21,45 @@ http://localhost:8080/senaite/@@queue-controlpanel
 In most cases, the settings that come by default will fit well. Modifying some
 of them might speed-up the processing of queued tasks, but might also increase
 the chance of conflicts. Therefore, is strongly recommended to monitor the
-instance while modifying this settings.
+instance while modifying this settings:
+
+* **Queue server**: URL of the zeo client that will act as the queue server.
+  This is, the zeo client others will rely on regarding tasks addition,
+  retrieval and removal. An empty value or a non-reachable queue server disables
+  the asynchronous processing of tasks. In such case, system will behave as if
+  senaite.queue was not installed.
+
+* **Number of objects to process per task**: This is the default number of
+  objects to process in a single request when the task contains multiple items.
+  The items from a task are processed in chunks, and remaining are re-queued for
+  later. For instance, when a user selects multiple analyses for their
+  assignment to a worksheet, only one task is generated. If the value defined is
+  5, the analyses will be assigned in chunks of this size, and the system will
+  keep generating tasks for the remaining analyses until all them are finally
+  assigned. Higher values increment the chance of transaction commit conflicts,
+  while lower values tend to slow down the completion of the whole task.
+  A value of 0 disables queueing if tasks functionality at all.
+
+* **Maximum retries**: Number of times a task will be re-queued before being
+  considered as failed. A value of 0 disables the re-queue of failing tasks.
+
+* **Minimum seconds**: Minimum number of seconds to book per task. If the task
+  is performed very rapidly, it will have priority over a transaction done from
+  userland. In case of conflict, the transaction from userland will fail and
+  will be retried up to 3 times. This setting makes the thread that handles the
+  task to take some time to complete, thus preventing threads from userland to
+  be delayed or fail.
+
+* **Maximum seconds**: Number of seconds to wait for a task to finish before
+  being re-queued or considered as failed. System will keep retrying the task
+  until the value set in 'Maximum retries' is reached, at which point the task
+  will be eventually considered as failed and no further actions will take place.
+
+* **Auth secret key**: This secret key is used by senaite.queue to generate an
+  encrypted token (symmetric encryption) for the authentication of requests sent
+  by queue clients and consumers to the Queue's server API. Must be 32 url-safe
+  base64-encoded bytes.
+
 
 Queueing a task
 ---------------
@@ -39,8 +78,9 @@ Keep pressing the "Refresh" button and the message will eventually disappear, as
 soon as the reserved client finishes processing the task.
 
 .. note:: If you don't see any change after refreshing the page several times,
-          check that you have the queued reserved client running in background
-          and the reserved user for the queue is properly configured.
+          check that you have the consumer client running in background
+          and the reserved user is properly configured.
+
 
 Queue monitoring
 ----------------
@@ -55,18 +95,14 @@ their Task Unique Identifiers (TUIDs). From this view, the user can manually
 re-queue or remove tasks at a glance:
 
 .. image:: static/queue_monitor.png
-  :width: 1084
+  :width: 700
   :alt: Queue monitor view
 
 Failed tasks shouldn't be the norm, but there is always the chance that a task
 cannot complete. In order to provide insights about the reason/s behind a
 failure, the monitor listing displays also the error trace raised by the system
-when trying to process the task. In this example, system was not able to process
-the first task because the user who triggered the task is not from SENAITE's
-domain.
+when trying to process the task.
 
-The "retries" column indicates the number of attempts before the task being
-considered as failed and therefore, discarded for further processing.
 
 Queued task details
 -------------------
@@ -93,25 +129,7 @@ above is a link to the full detail of the task:
         ],
         "created": 1598626797.74663,
         "error_message": null,
-        "request": {
-            "__ac": "ol4yjEYYg82gR14ZIbh1vI2zrD3i+LfBp30+G6MyyPw1ZjQ5MTMzOWFpYnN0IQ==",
-            "HTTP_USER_AGENT": "Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0",
-            "X_REAL_IP": "",
-            "_orig_env": {
-                "SERVER_SOFTWARE": "Zope/(2.13.28, python 2.7.16, linux2) ZServer/1.1",
-                "REQUEST_METHOD": "POST",
-                "PATH_INFO": "/senaite/worksheets/WS-018/workflow_action",
-                "SERVER_PROTOCOL": "HTTP/1.1",
-                ...
-                "CONTENT_TYPE": "application/x-www-form-urlencoded",
-                "HTTP_ACCEPT_ENCODING": "gzip, deflate"
-            },
-            "HTTP_REFERER": "http://localhost:8080/senaite/worksheets/WS-018/manage_results",
-            "REMOTE_ADDR": "127.0.0.1",
-            "AUTHENTICATED_USER": "analyst1",
-            "X_FORWARDED_FOR": "",
-            "_ZopeId": "68044235A9oxFuzwE6o"
-        },
+        "username": "analyst1",
         "priority": 10,
         "max_seconds": 60,
         "task_uid": "2bb771e4bb7cbcf9625bf761377292d8",
@@ -123,10 +141,9 @@ The fields displayed might vary depending on the type of task (the "name" field
 defines the type of the task). In the example above, the task refers to the
 submission (field `action`) of results for 6 analyses from worksheet with id
 "WS-018" (field `context_path`). This action has been triggered by the user
-with id "analyst1" (field `AUTHENTICATED_USER`). The field `uids`
-contains the unique identifiers of the analyses to be submitted, and the
-`context_uid` indicates the unique identifier of the object from which the
-action/task has been triggered.
+with id "analyst1" (field `username`). The field `uids` contains the unique
+identifiers of the analyses to be submitted, and the `context_uid` indicates the
+unique identifier of the object from which the action/task was triggered.
 
 
 .. note:: There are plenty of add-ons for browsers that beautify the generated

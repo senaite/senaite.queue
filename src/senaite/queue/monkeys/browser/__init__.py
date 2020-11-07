@@ -17,24 +17,3 @@
 #
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
-
-import json
-
-from Products.Five.browser import BrowserView
-from senaite.queue import api
-
-
-class TaskView(BrowserView):
-    """View that displays a Queue Task in JSON format
-    """
-
-    def __init__(self, context, request):
-        super(TaskView, self).__init__(context, request)
-        self.context = context
-        self.request = request
-
-    def __call__(self):
-        task_uid = self.request.get("uid", None)
-        queue = api.get_queue()
-        task = queue.get_task(task_uid) or {}
-        return json.dumps(task)

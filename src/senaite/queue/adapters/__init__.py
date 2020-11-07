@@ -18,19 +18,18 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-from bika.lims import api as _api
-from bika.lims.interfaces import IWorksheet
-from bika.lims.interfaces.analysis import IRequestAnalysis
-from bika.lims.workflow import doActionFor
-
-from senaite.queue import api
-from senaite.queue.queue import QueueTask
-from senaite.queue.interfaces import IQueuedTaskAdapter
-
 from Products.Archetypes.interfaces.base import IBaseObject
-
+from senaite.queue import api
+from senaite.queue.interfaces import IQueuedTaskAdapter
+from senaite.queue.queue import get_chunks
+from senaite.queue.queue import get_chunks_for
+from senaite.queue.queue import QueueTask
 from zope.component import adapts
 from zope.interface import implements
+
+from bika.lims import api as _api
+from bika.lims.interfaces import IWorksheet
+from bika.lims.workflow import doActionFor
 
 
 class QueuedActionTaskAdapter(object):
@@ -47,14 +46,14 @@ class QueuedActionTaskAdapter(object):
         """
         # If there are too many objects to process, split them in chunks to
         # prevent the task to take too much time to complete
-        chunks = api.get_chunks(task.name, task["uids"])
+        chunks = get_chunks_for(task)
 
         # Process the first chunk
         objects = map(_api.get_object_by_uid, chunks[0])
         map(lambda obj: doActionFor(obj, task["action"]), objects)
 
         # Add remaining objects to the queue
-        api.queue_action(chunks[1], task["action"], self.context)
+        api.add_action_task(chunks[1], task["action"], self.context)
 
 
 class QueuedAssignAnalysesTaskAdapter(object):
@@ -84,9 +83,22 @@ class QueuedAssignAnalysesTaskAdapter(object):
         uids_slots = zip(uids, slots)
         uids_slots = sorted(uids_slots, key=lambda i: i[1])
 
+        # Remove those with no valid uids
+        uids_slots = filter(lambda us: _api.is_uid(us[0]), uids_slots)
+
+        # Remove duplicate uids while keeping the order
+        seen = set()
+        uids_slots = filter(lambda us: not (us[0] in seen or seen.add(us[0])),
+                            uids_slots)
+
+        # Remove uids that are already in the worksheet (just in case)
+        layout = filter(None, worksheet.getLayout() or [])
+        existing = map(lambda r: r.get("analysis_uid"), layout)
+        uids_slots = filter(lambda us: us[0] not in existing, uids_slots)
+
         # If there are too many objects to process, split them in chunks to
         # prevent the task to take too much time to complete
-        chunks = api.get_chunks(task.name, uids_slots)
+        chunks = get_chunks_for(task, items=uids_slots)
 
         # Process the first chunk
         for uid, slot in chunks[0]:
@@ -95,10 +107,13 @@ class QueuedAssignAnalysesTaskAdapter(object):
             analysis = _api.get_object_by_uid(uid)
             worksheet.addAnalysis(analysis, slot)
 
+        # Reindex the worksheet
+        worksheet.reindexObject()
+
         if chunks[1]:
             # Unpack the remaining analyses-slots and add them to the queue
             uids, slots = zip(*chunks[1])
-            api.queue_assign_analyses(worksheet, analyses=uids, slots=slots)
+            api.add_assign_task(worksheet, analyses=uids, slots=slots)
 
 
 class QueueObjectSecurityAdapter(object):
@@ -115,7 +130,7 @@ class QueueObjectSecurityAdapter(object):
         """
         # If there are too many objects to process, split them in chunks to
         # prevent the task to take too much time to complete
-        chunks = api.chunks(task["uids"], 50)
+        chunks = get_chunks(task["uids"], 50)
 
         # Process the first chunk
         map(self.reindex_security, chunks[0])

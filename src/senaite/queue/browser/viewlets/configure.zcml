@@ -1,0 +1,39 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    i18n_domain="senaite.queue">
+
+  <!-- Queue server status viewlet -->
+  <browser:viewlet
+    for="*"
+    name="senaite.queue.server_status_viewlet"
+    class=".QueueServerStatusViewlet"
+    manager="plone.app.layout.viewlets.interfaces.IAboveContent"
+    template="templates/queue_server_status.pt"
+    permission="senaite.core.permissions.ManageBika"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer"
+  />
+
+  <!-- Analyses in queue: Worksheet -->
+  <browser:viewlet
+    for="bika.lims.interfaces.IWorksheet"
+    name="senaite.queue.worksheet_analyses_queue_viewlet"
+    class=".QueuedAnalysesViewlet"
+    manager="plone.app.layout.viewlets.interfaces.IAboveContent"
+    template="templates/queued_analyses_viewlet.pt"
+    permission="zope2.View"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer"
+  />
+
+  <!-- Analyses in queue: Sample -->
+  <browser:viewlet
+    for="bika.lims.interfaces.IAnalysisRequest"
+    name="senaite.queue.worksheet_analyses_sample_queue_viewlet"
+    class=".QueuedAnalysesSampleViewlet"
+    manager="plone.app.layout.viewlets.interfaces.IAboveContent"
+    template="templates/queued_analyses_sample_viewlet.pt"
+    permission="zope2.View"
+    layer="senaite.queue.interfaces.ISenaiteQueueLayer"
+  />
+
+</configure>
