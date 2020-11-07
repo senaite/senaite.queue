@@ -4,11 +4,10 @@ Tasks handling
 SENAITE QUEUE keeps a prioritized queue that contains the tasks to be processed.
 Each time the clock wakes-up (*clock-server* directive in *buildout*
 configuration, see :doc:`installation`), the system checks if the queue is
-currently locked by a tasks consumer. If locked, the system does nothing and
+currently locked by the tasks consumer. If locked, the system does nothing and
 returns to a neutral state, awaiting for the undergoing task to finish. If the
-queue is not locked, the consumer pops the next task from the queue. This task
-consumer starts in a new thread and is responsible of delivering the task to the
-suitable adapter for its processing.
+queue is not locked, the consumer pops the next task from the queue. The
+consumer then starts a new thread for processing the task.
 
 As soon as the processing of the task finishes, the consumer notifies the Queue
 so it can return to a neutral state and dispatch next task. This task is removed
@@ -84,6 +83,13 @@ to "unlocked" and therefore, next task becomes available for consumption. If the
 process does not succeed after maximum retries is reached, the task is discarded
 as failed again, but no further retries will take place.
 
+On each re-attempt, the queue sets a delay of 5 seconds, giving some time before
+the task is re-processed. This mechanism reduces the chance of failures and also
+makes room for other tasks to be processed before retries.
+
+Also, the number of items to process for that precise task is reduced in a half.
+This reduces the chance of both conflicts and timeouts.
+
 When a process does not complete successfully, the thread in charge of handling
 the task ends gracefully and the queue is immediately notified. This is the
 safest case, cause there is no risk that more threads the CPU can handle are
@@ -122,5 +128,6 @@ Transaction commit conflicts
 
 When a database transaction commit conflict takes place, the system retries the
 same transaction up to 3 times as per Zope's default. However, if the last
-transaction cannot be completed, the Queue discards the task as failed, for
-further re-attempts, up to the value defined in settings as *Maximum retries*.
+transaction attempt cannot be completed, the Queue re-queues the task for
+further attempts, up to the value defined in :ref:`QueueControlPanel`:
+*Maximum retries*.

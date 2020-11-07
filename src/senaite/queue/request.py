@@ -126,7 +126,7 @@ def handle_queue_errors(func):
             message = message.get("message", str(e))
             fail(status, message)
         except APIError as e:
-            fail(e.status, e.message)
+            raise e
         except Exception as e:
             traceback.print_exc()
             msg = "{}: {}".format(type(e).__name__, str(e))

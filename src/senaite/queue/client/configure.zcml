@@ -13,7 +13,7 @@
   -->
   <browser:page
     for="*"
-    name="queue_consumer"
+    name="queue_consume"
     class=".views.ConsumerView"
     permission="senaite.core.permissions.ManageBika"
     layer="senaite.queue.interfaces.ISenaiteQueueLayer" />

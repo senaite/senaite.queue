@@ -34,7 +34,8 @@ First, add this add-on in the `eggs` section of your buildout configuration file
         senaite.queue
 
 
-Then, add a new client in your buildout configuration:
+Then, add a two clients (a consumer and the server) in your buildout
+configuration:
 
 .. code-block:: ini
 
@@ -45,7 +46,8 @@ Then, add a new client in your buildout configuration:
 
     parts =
         ....
-        client_queue
+        queue_consumer
+        queue_server
 
 
 and configure two reserved clients:
@@ -59,7 +61,7 @@ and configure two reserved clients:
     http-address = 127.0.0.1:8089
     zope-conf-additional =
         <clock-server>
-            method /senaite/queue_dispatcher
+            method /senaite/queue_consume
             period 5
             user ${buildout:queue-user-name}
             password ${buildout:queue-user-password}

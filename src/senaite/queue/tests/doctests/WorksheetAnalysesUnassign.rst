@@ -18,12 +18,15 @@ Test Setup
 
 Needed imports:
 
+    >>> import transaction
     >>> from bika.lims import api as _api
+    >>> from plone import api as plone_api
     >>> from plone.app.testing import setRoles
     >>> from plone.app.testing import TEST_USER_ID
     >>> from plone.app.testing import TEST_USER_PASSWORD
     >>> from senaite.queue import api
     >>> from senaite.queue.tests import utils as test_utils
+    >>> from zope import globalrequest
 
 Functional Helpers:
 
@@ -38,6 +41,7 @@ Functional Helpers:
     ...         analyses.extend(sample.getAnalyses(full_objects=True))
     ...     worksheet = _api.create(portal.worksheets, "Worksheet")
     ...     worksheet.addAnalyses(analyses)
+    ...     transaction.commit()
     ...     return worksheet
 
 Variables:
@@ -45,6 +49,10 @@ Variables:
     >>> portal = self.portal
     >>> request = self.request
     >>> setup = _api.get_setup()
+    >>> browser = self.getBrowser()
+    >>> globalrequest.setRequest(request)
+    >>> setRoles(portal, TEST_USER_ID, ["LabManager", "Manager"])
+    >>> transaction.commit()
 
 Create some basic objects for the test:
 
@@ -57,167 +65,274 @@ Create some basic objects for the test:
     >>> category = _api.create(setup.bika_analysiscategories, "AnalysisCategory", title="Metals", Department=department)
     >>> Cu = _api.create(setup.bika_analysisservices, "AnalysisService", title="Copper", Keyword="Cu", Price="15", Category=category.UID(), Accredited=True)
 
-Disable the queue for `task_assign_analyses` so we can create Worksheets to test
-generic actions (`assign` action is not a generic one because involves handling
-a worksheet, slot positions, etc.).
+Setup the current instance as the queue server too:
 
-    >>> api.disable_queue("task_assign_analyses")
-    >>> api.is_queue_active("task_assign_analyses")
-    False
-
-Make the test a bit faster by reducing the min_seconds:
-
-    >>> test_utils.set_min_seconds(1)
+    >>> key = "senaite.queue.server"
+    >>> host = u'http://nohost/plone'
+    >>> plone_api.portal.set_registry_record(key, host)
+    >>> transaction.commit()
+    >>> api.get_queue()
+    <senaite.queue.server.utility.ServerQueueUtility object at...
 
 
 Unassign transition
 ~~~~~~~~~~~~~~~~~~~
 
-Set the number of analyses to be transitioned in a single queued task:
+Disable the queue first, so `assign` transitions is performed non-async:
 
-    >>> action = "unassign"
-    >>> api.set_chunk_size(action, 5)
-    >>> api.get_chunk_size(action)
-    5
+    >>> chunk_key = "senaite.queue.default"
+    >>> plone_api.portal.set_registry_record(chunk_key, 0)
+    >>> transaction.commit()
 
 Create a worksheet with some analyses:
 
     >>> worksheet = new_worksheet(15)
     >>> analyses = worksheet.getAnalyses()
 
+Enable the queue so we can trap the `unassign` transition:
+
+    >>> plone_api.portal.set_registry_record(chunk_key, 5)
+    >>> transaction.commit()
+
 Unassign analyses:
 
-    >>> test_utils.handle_action(worksheet, analyses, action)
+    >>> test_utils.handle_action(worksheet, analyses, "unassign")
 
-The worksheet is now queued:
+The worksheet is queued and the analyses as well:
 
     >>> api.is_queued(worksheet)
     True
 
-None of the analyses have been transitioned yet:
-
-    >>> transitioned = filter(lambda an: not an.getWorksheet(), analyses)
-    >>> len(transitioned)
+    >>> len(test_utils.filter_by_state(analyses, "unassigned"))
     0
-
-And all them are queued:
 
     >>> all(map(api.is_queued, analyses))
     True
 
-We manually trigger the queue dispatcher:
+And the queue contains one task:
 
-    >>> test_utils.dispatch()
-    "Task 'task_action_unassign' for ... processed"
+    >>> queue = api.get_queue()
+    >>> queue.is_empty()
+    False
 
-Only the first chunk of analyses has been transitioned non-async:
+    >>> len(queue)
+    1
 
-    >>> transitioned = filter(lambda an: not an.getWorksheet(), analyses)
+    >>> len(queue.get_tasks_for(worksheet))
+    1
+
+Pop a task and process:
+
+    >>> popped = queue.pop("http://nohost")
+    >>> test_utils.process(browser, popped.task_uid)
+    '{...Processed...}'
+
+The first chunk of analyses has been processed:
+
+    >>> transitioned = test_utils.filter_by_state(analyses, "unassigned")
     >>> len(transitioned)
     5
 
-And none of them are queued anymore:
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "assigned")
+    >>> len(non_transitioned)
+    10
 
     >>> any(map(api.is_queued, transitioned))
     False
 
-While the rest of analyses, not yet transitioned, are still queued:
-
-    >>> non_transitioned = filter(lambda an: an.getWorksheet(), analyses)
-    >>> len(non_transitioned)
-    10
     >>> all(map(api.is_queued, non_transitioned))
+    True
+
+And the worksheet is still queued:
+
+    >>> api.is_queued(worksheet)
     True
 
 As the queue confirms:
 
-    >>> queue = test_utils.get_queue_tool()
+    >>> queue.is_empty()
+    False
+
     >>> len(queue)
     1
 
-We manually trigger the queue dispatcher:
+    >>> queue.has_tasks_for(worksheet)
+    True
 
-    >>> test_utils.dispatch()
-    "Task 'task_action_unassign' for ... processed"
+Pop and process again:
 
-The next chunk of analyses has been processed and only those that have
-transitioned are still queued:
+    >>> popped = queue.pop("http://nohost")
+    >>> test_utils.process(browser, popped.task_uid)
+    '{...Processed...}'
 
-    >>> transitioned = filter(lambda an: not an.getWorksheet(), analyses)
+Next chunk of analyses has been processed:
+
+    >>> transitioned = test_utils.filter_by_state(analyses, "unassigned")
     >>> len(transitioned)
     10
-    >>> non_transitioned = filter(lambda an: an.getWorksheet(), analyses)
+
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "assigned")
     >>> len(non_transitioned)
     5
+
     >>> any(map(api.is_queued, transitioned))
     False
+
     >>> all(map(api.is_queued, non_transitioned))
     True
 
-Since there are still 5 analyses remaining, the Worksheet is still queued too:
+Since there are still 5 analyses remaining, the Worksheet is still queued:
 
     >>> api.is_queued(worksheet)
     True
 
-Change the number of items to process per task to 2:
+Pop and process again:
 
-    >>> api.set_chunk_size(action, 2)
-    >>> api.get_chunk_size(action)
-    2
+    >>> popped = queue.pop("http://nohost")
+    >>> test_utils.process(browser, popped.task_uid)
+    '{...Processed...}'
 
-And dispatch again:
+Last chunk of analyses is processed:
 
-    >>> test_utils.dispatch()
-    "Task 'task_action_unassign' for ... processed"
-
-Now, only 2 analyses have been transitioned:
-
-    >>> transitioned = filter(lambda an: not an.getWorksheet(), analyses)
-    >>> len(transitioned)
-    12
-    >>> non_transitioned = filter(lambda an: an.getWorksheet(), analyses)
-    >>> len(non_transitioned)
-    3
-    >>> any(map(api.is_queued, transitioned))
-    False
-    >>> all(map(api.is_queued, non_transitioned))
-    True
-    >>> api.is_queued(worksheet)
-    True
-
-As we've seen, the queue for this task is enabled:
-
-    >>> api.is_queue_active(action)
-    True
-
-But we can disable the queue for this task if we set the number of items to
-process per task to 0:
-
-    >>> api.disable_queue(action)
-    >>> api.is_queue_active(action)
-    False
-    >>> api.get_chunk_size(action)
-    0
-
-But still, if we manually trigger the dispatch with the queue being disabled,
-the action will take place. Thus, disabling the queue only prevents the system
-to add new tasks to the queue, but won't have effect to those that remain in
-the queue. Rather all remaining tasks will be processed in just one shot:
-
-    >>> test_utils.dispatch()
-    "Task 'task_action_unassign' for ... processed"
-    >>> queue.is_empty()
-    True
-    >>> transitioned = filter(lambda an: not an.getWorksheet(), analyses)
+    >>> transitioned = test_utils.filter_by_state(analyses, "unassigned")
     >>> len(transitioned)
     15
-    >>> non_transitioned = filter(lambda an: an.getWorksheet(), analyses)
+
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "assigned")
     >>> len(non_transitioned)
     0
+
     >>> any(map(api.is_queued, transitioned))
     False
 
-Since all analyses have been processed, the worksheet is no longer queued:
+The queue is now empty:
+
+    >>> queue.is_empty()
+    True
+
+And the worksheet is no longer queued:
 
     >>> api.is_queued(worksheet)
+    False
+
+
+Unassign transition (with ClientQueue)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Perform same test as before, but now using the `ClientQueueUtility`:
+
+    >>> queue = test_utils.get_client_queue(browser, self.request)
+
+Disable the queue first, so `submit` and `assign` transitions are performed
+non-async:
+
+    >>> chunk_key = "senaite.queue.default"
+    >>> plone_api.portal.set_registry_record(chunk_key, 0)
+    >>> transaction.commit()
+
+Create a worksheet with some analyses:
+
+    >>> worksheet = new_worksheet(15)
+    >>> analyses = worksheet.getAnalyses()
+
+Enable the queue so we can trap the `unassign` transition:
+
+    >>> plone_api.portal.set_registry_record(chunk_key, 5)
+    >>> transaction.commit()
+
+Unassign the analyses:
+
+    >>> test_utils.handle_action(worksheet, analyses, "unassign")
+
+The queue contains one task:
+
+    >>> queue.sync()
+    >>> queue.is_empty()
+    False
+
+    >>> len(queue)
+    1
+
+    >>> len(queue.get_tasks_for(worksheet))
+    1
+
+    >>> all(filter(queue.get_tasks_for, analyses))
+    True
+
+Pop a task and process:
+
+    >>> popped = queue.pop("http://nohost")
+    >>> test_utils.process(browser, popped.task_uid)
+    '{...Processed...}'
+
+The first chunk of analyses has been processed:
+
+    >>> transitioned = test_utils.filter_by_state(analyses, "unassigned")
+    >>> len(transitioned)
+    5
+
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "assigned")
+    >>> len(non_transitioned)
+    10
+
+    >>> queue.sync()
+    >>> any(map(queue.has_tasks_for, transitioned))
+    False
+
+    >>> all(map(queue.has_tasks_for, non_transitioned))
+    True
+
+    >>> queue.has_tasks_for(worksheet)
+    True
+
+Pop and process again:
+
+    >>> popped = queue.pop("http://nohost")
+    >>> test_utils.process(browser, popped.task_uid)
+    '{...Processed...}'
+
+Next chunk of analyses has been processed:
+
+    >>> transitioned = test_utils.filter_by_state(analyses, "unassigned")
+    >>> len(transitioned)
+    10
+
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "assigned")
+    >>> len(non_transitioned)
+    5
+
+    >>> queue.sync()
+    >>> any(map(queue.has_tasks_for, transitioned))
+    False
+
+    >>> all(map(queue.has_tasks_for, non_transitioned))
+    True
+
+    >>> queue.has_tasks_for(worksheet)
+    True
+
+Pop and process again:
+
+    >>> popped = queue.pop("http://nohost")
+    >>> test_utils.process(browser, popped.task_uid)
+    '{...Processed...}'
+
+Last chunk of analyses is processed:
+
+    >>> transitioned = test_utils.filter_by_state(analyses, "unassigned")
+    >>> len(transitioned)
+    15
+
+    >>> non_transitioned = test_utils.filter_by_state(analyses, "assigned")
+    >>> len(non_transitioned)
+    0
+
+    >>> queue.sync()
+    >>> any(map(queue.has_tasks_for, transitioned))
+    False
+
+    >>> queue.is_empty()
+    True
+
+    >>> queue.has_tasks_for(worksheet)
     False

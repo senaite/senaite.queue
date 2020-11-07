@@ -33,6 +33,7 @@ from senaite.queue import logger
 from senaite.queue.interfaces import IClientQueueUtility
 from senaite.queue.pasplugin import QueueAuth
 from senaite.queue.queue import get_task_uid
+from senaite.queue.queue import is_task
 from senaite.queue.queue import to_task
 from zope.interface import implements  # noqa
 
@@ -105,9 +106,11 @@ class ClientQueueUtility(object):
     def _sync_pull(self):
         """Updates the local tasks with those from the queue server
         """
-        # Tell the server the task uids we have in our local pool
+        # Tell the server the task uids we have in our local pool, but those
+        # with status running (always pull running tasks)
+        queued = filter(lambda t: t.status == "queued", self._tasks)
         query = {
-            "uids": map(lambda t: t.task_uid, self._tasks),
+            "uids": map(lambda t: t.task_uid, queued),
             "status": ["queued", "running"],
             "complete": True,
         }
@@ -145,25 +148,35 @@ class ClientQueueUtility(object):
         # Restore sync_frequency
         self._sync_frequency = 2
 
-        # Get the unknown and stale task uids from the response
-        unknown = filter(None, data.get("unknown", []))
+        # Get the stale task uids from the response
         stale = filter(None, data.get("stale", []))
 
+        # Get the new tasks retrieved from the server
+        new_tasks = filter(None, map(to_task, data.get("items", [])))
+
         def keep(task):
-            if task.task_uid in unknown:
-                return True
-            if task.get("offline"):
-                return True
             if task.task_uid in stale:
+                # This task is no longer valid
                 return False
+
+            if task in new_tasks:
+                # Server's task has priority over local's unless the local
+                # task is labeled with "offline" wildcard
+                if task.get("offline"):
+                    return True
+                return False
+
+            if task.status in "running":
+                # Always drop running tasks
+                return False
+
+            # In sync or unknown by server
             return True
 
-        # Keep unknowns, offline tasks and remove stales
+        # Keep unknowns and remove stales or more recent tasks
         self._tasks = filter(keep, self._tasks)
 
         # Extend with the new tasks retrieved from the server
-        new_tasks = data.get("items", [])
-        new_tasks = filter(None, map(to_task, new_tasks))
         self._tasks.extend(new_tasks)
 
         # Sort by priority + created
@@ -195,6 +208,23 @@ class ClientQueueUtility(object):
         :return: the added QueueTask object
         :rtype: queue.QueueTask
         """
+        # Only QueueTask type is supported
+        if not is_task(task):
+            raise ValueError("{} is not supported".format(repr(task)))
+
+        # Don't add to the queue if the task is already in there
+        if task in self._tasks:
+            logger.warn("Task {} ({}) in the queue already"
+                        .format(task.name, task.task_short_uid))
+            return None
+
+        # Do not add the task if unique and task for same context and name
+        if task.get("unique", False):
+            if self.get_tasks_for(task.context_uid, name=task.name):
+                logger.debug("Task {} for {} in the queue already".format(
+                        task.name, task.context_path))
+                return None
+
         # Add the task to the queue server
         err = None
         try:
@@ -233,30 +263,17 @@ class ClientQueueUtility(object):
 
     def pop(self, consumer_id):
         """Returns the next task to process, if any. Sends a POST to the queue
-        server and updates the task from the local pool as well
+        server and updates the local pool accordingly
         :param consumer_id: id of the consumer thread that will process the task
         :return: the task to be processed or None
         :rtype: queue.QueueTask
         """
-        # Pop the task from the queue server
         payload = {"consumer_id": consumer_id}
         task = self._post("pop", payload=payload)
         task = to_task(task)
-        if not task:
-            return None
-
-        # Update the task from our local pool or add
-        tasks = filter(lambda t: t == task, self._tasks)
-        if tasks:
-            tasks[0].update(task)
-        else:
-            self._tasks.append(task)
-
-            # Sort by priority + created
-            self._tasks.sort(key=lambda t: (t.created + (300 * t.priority)))
-
-        # Return the task
-        return copy.deepcopy(task)
+        # Always sync on pop (tasks might be purged by server)
+        self.sync()
+        return task
 
     def done(self, task):
         """Notifies the queue that the task has been processed successfully.
@@ -303,23 +320,25 @@ class ClientQueueUtility(object):
 
     def fail(self, task, error_message=None):
         """Notifies the queue that the processing of the task failed. Sends a
-        POST to the queue server, but keeps the local pool untouched
+        POST to the queue server and updates the local pool accordingly
         :param task: task's unique id (task_uid) or QueueTask object
         :param error_message: (Optional) the error/traceback
         """
-        payload = {
-            "task_uid": get_task_uid(task),
-            "error_message": error_message or ""
-        }
+        task_uid = get_task_uid(task)
+        payload = {"task_uid": task_uid, "error_message": error_message or ""}
         self._post("fail", payload=payload)
+        # Always sync on fail (task might be re-queued or failed by server)
+        self.sync()
 
     def timeout(self, task):
         """Notifies the queue that the processing of the task timed out. Sends a
-        POST to the queue server, but keeps the local pool untouched
+        POST to the queue server and updates the local pool accordingly
         :param task: task's unique id (task_uid) or QueueTask object
         """
         payload = {"task_uid": get_task_uid(task)}
         self._post("timeout", payload=payload)
+        # Always sync on timeout (task might be re-queued or failed by server)
+        self.sync()
 
     def delete(self, task):
         """Removes a task from the queue. Sends a POST to the queue server and
@@ -328,7 +347,13 @@ class ClientQueueUtility(object):
         """
         task_uid = get_task_uid(task)
         payload = {"task_uid": task_uid}
-        self._post("delete", payload=payload)
+        try:
+            self._post("delete", payload=payload)
+        except HTTPError as e:
+            # If not found (404), return None instead of exception to make this
+            # client utility to behave as server's
+            if e.response.status_code != 404:
+                raise e
 
         # Remove from our pool
         self._tasks = filter(lambda t: t.task_uid != task_uid, self._tasks)
@@ -336,7 +361,7 @@ class ClientQueueUtility(object):
     def get_task(self, task_uid):
         """Returns the task with the given task uid. Retrieves the task from
         the local pool if exists. Otherwise, fetches the task from the Queue
-        server via POST and updates the local pool
+        server via POST
         :param task_uid: task's unique id
         :return: the task from the queue
         :rtype: queue.QueueTask
@@ -349,7 +374,15 @@ class ClientQueueUtility(object):
 
         # Ask the queue server (maybe we are searching for a failed)
         task_uid = get_task_uid(task_uid)
-        task = self._post(task_uid)
+        try:
+            task = self._post(task_uid)
+        except HTTPError as e:
+            # If not found (404), return None instead of exception to make this
+            # utility to behave as server's
+            if e.response.status_code != 404:
+                raise e
+        except Exception as e:
+            raise e
         if not task:
             return None
         return to_task(task)

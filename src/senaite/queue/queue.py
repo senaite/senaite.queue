@@ -46,52 +46,43 @@ class QueueTask(dict):
         else:
             raise TypeError("No valid context object")
 
-        kw = kw or {}
         # Set defaults
+        kw = kw or {}
+        task_uid = str(kw.get("task_uid", tmpID()))
+        uids = map(str, kw.get("uids", []))
+        created = api.to_float(kw.get("created"), default=time.time())
+        status = kw.get("status", None)
+        min_sec = api.to_int(kw.get("min_seconds"), default=get_min_seconds())
+        max_sec = api.to_int(kw.get("max_seconds"), default=get_max_seconds())
+        priority = api.to_int(kw.get("priority"), default=10)
+        retries = api.to_int(kw.get("retries"), default=get_max_retries())
+        unique = self._is_true(kw.get("unique", False))
+        chunks = api.to_int(kw.get("chunk_size"), default=get_chunk_size(name))
+        username = kw.get("username", self._get_authenticated_user(request))
+        err_message = kw.get("error_message", None)
+
         self.update({
-            "task_uid": kw.get("task_uid") or tmpID(),
+            "task_uid": task_uid,
             "name": name,
-            "request": self._get_request_data(request),
             "context_uid": context_uid,
             "context_path": context_path,
-            "uids": kw.get("uids", []),
-            "created": kw.get("created", time.time()),
-            "status": kw.get("status", None),
-            "error_message": kw.get("error_message", None),
-            "min_seconds": kw.get("min_seconds", get_min_seconds()),
-            "max_seconds": kw.get("max_seconds", get_max_seconds()),
-            "priority": api.to_int(kw.get("priority"), default=10),
-            "retries": kw.get("retries", get_max_retries()),
-            "unique": kw.get("unique", False),
-            "chunk_size": kw.get("chunk_size", get_chunk_size(name))
+            "uids": uids,
+            "created": created,
+            "status": status and str(status) or None,
+            "error_message": err_message and str(err_message) or None,
+            "min_seconds": min_sec,
+            "max_seconds": max_sec,
+            "priority": priority,
+            "retries": retries,
+            "unique": unique,
+            "chunk_size": chunks,
+            "username": str(username),
         })
 
-    def _get_request_data(self, request):
-        # TODO All this is no longer required!
-        data = {
-            "__ac": request.get("__ac") or "",
-            "_orig_env": self._get_orig_env(request),
-            "_ZopeId": request.get("_ZopeId") or "",
-            "X_FORWARDED_FOR": request.get("X_FORWARDED_FOR") or "",
-            "X_REAL_IP": request.get("X_REAL_IP") or "",
-            "REMOTE_ADDR": request.get("REMOTE_ADDR") or "",
-            "HTTP_USER_AGENT": request.get("HTTP_USER_AGENT") or "",
-            "HTTP_REFERER": request.get("HTTP_REFERER") or "",
-            "AUTHENTICATED_USER": self._get_authenticated_user(request),
-        }
-        return data
-
-    def _get_orig_env(self, request):
-        env = {}
-        if hasattr(request, "_orig_env"):
-            env = getattr(request, "_orig_env", {})
-            if not env and hasattr(request, "__dict__"):
-                env = self._get_orig_env(request.__dict__)
-        elif isinstance(request, dict):
-            env = request.get("_orig_env", {})
-        elif hasattr(request, "__dict__"):
-            env = self._get_orig_env(request.__dict__)
-        return env
+    def _is_true(self, val):
+        """Returns whether the value passed in evaluates to True
+        """
+        return str(val).lower() in ["y", "yes", "1", "true"]
 
     def _get_authenticated_user(self, request):
         authenticated_user = request.get("AUTHENTICATED_USER")
@@ -151,11 +142,11 @@ class QueueTask(dict):
 
     @property
     def username(self):
-        return self.request["AUTHENTICATED_USER"]
+        return self["username"]
 
     @username.setter
     def username(self, value):
-        self["request"]["AUTHENTICATED_USER"] = value
+        self["username"] = value
 
     @property
     def context_path(self):
@@ -204,10 +195,9 @@ def to_task(task_dict):
     :rtype: QueueTask
     """
     name = task_dict.get("name")
-    request = task_dict.get("request")
     context_uid = task_dict.get("context_uid")
     context_path = task_dict.get("context_path")
-    if not all([name, request, context_uid, context_path]):
+    if not all([name, context_uid, context_path]):
         return None
 
     # Skip attrs that are assigned when the QueueTask is instantiated
@@ -216,11 +206,7 @@ def to_task(task_dict):
     kwargs = dict(map(lambda k: (k, task_dict[k]), out_keys))
 
     # Create the Queue Task
-    task = QueueTask(name, api.get_request(), context_uid, **kwargs)
-
-    # Update with the original request
-    task.update({"request": request})
-    return task
+    return QueueTask(name, api.get_request(), context_uid, **kwargs)
 
 
 def is_task(task):
@@ -278,11 +264,14 @@ def get_chunk_size(name_or_action=None):
     return chunk_size
 
 
-def get_chunks_for(task_name, items):
+def get_chunks_for(task, items=None):
     """Returns the items splitted into a list. The first element contains the
     first chunk and the second element contains the rest of the items
     """
-    chunk_size = get_chunk_size(task_name)
+    if items is None:
+        items = task.get("uids", [])
+
+    chunk_size = task.get("chunk_size", get_chunk_size(task.name))
     return get_chunks(items, chunk_size)
 
 

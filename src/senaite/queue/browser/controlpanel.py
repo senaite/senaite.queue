@@ -103,7 +103,7 @@ class IQueueControlPanel(Interface):
             "Default value: 3"
         ),
         min=0,
-        max=5,
+        max=10,
         default=3,
         required=True,
     )

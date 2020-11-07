@@ -64,8 +64,7 @@ def is_queue_server():
         return False
 
     # Compare with the base url of the current zeo client
-    zeo_url = get_zeo_site_url().lower()
-    return zeo_url.lower() == server_url
+    return server_url.lower() in get_zeo_site_url().lower()
 
 
 def is_queue_enabled(name_or_action=None):
@@ -153,11 +152,10 @@ def add_task(name, context, **kwargs):
         action_prefix = "task_action_"
         if name.startswith(action_prefix):
             kwargs.update({
-                "name": "task_generic_action",
                 "action": name[len(action_prefix):],
                 "uids": kwargs.get("uids", [_api.get_uid(context)])
             })
-            return add_task(name, context, **kwargs)
+            return add_task("task_generic_action", context, **kwargs)
 
         raise ValueError(
             "No IQueuedTaskAdapter for task '{}' and context '{}'".format(

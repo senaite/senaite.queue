@@ -46,7 +46,7 @@ class QueuedActionTaskAdapter(object):
         """
         # If there are too many objects to process, split them in chunks to
         # prevent the task to take too much time to complete
-        chunks = get_chunks_for(task.name, task["uids"])
+        chunks = get_chunks_for(task)
 
         # Process the first chunk
         objects = map(_api.get_object_by_uid, chunks[0])
@@ -98,7 +98,7 @@ class QueuedAssignAnalysesTaskAdapter(object):
 
         # If there are too many objects to process, split them in chunks to
         # prevent the task to take too much time to complete
-        chunks = get_chunks_for(task.name, uids_slots)
+        chunks = get_chunks_for(task, items=uids_slots)
 
         # Process the first chunk
         for uid, slot in chunks[0]:

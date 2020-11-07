@@ -5,7 +5,7 @@ Update from 1.0.1 to 1.0.2
 --------------------------
 
 With version 1.0.2, the legacy storage for queued tasks has changed and helper
-storages (e.g. for Worksheets) are no longer required. `IQueued` marker
+storages (e.g. for Worksheets) are no longer required. ``IQueued`` marker
 interface is no longer used neither. Most of the base code has been refactored
 keeping in mind the following objectives:
 
@@ -18,5 +18,10 @@ downside is that old legacy storage is no longer used and therefore, tasks that
 were queued before the upgrade will be discarded.
 
 * Be sure there are no remaining tasks in the queue before the upgrade
-* If you have your own add-on extending `senaite.queue`, please review the changes
+* If you have your own add-on extending ``senaite.queue``, please review the changes
   and check if some parts of your add-on require modifications
+
+In this version, a queue server has been introduced. Therefore, two zeo clients
+are recommended: one that acts as the server and at least another one in charge
+of consuming tasks. Please check the installation instructions for further
+details.

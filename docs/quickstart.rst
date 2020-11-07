@@ -103,6 +103,7 @@ cannot complete. In order to provide insights about the reason/s behind a
 failure, the monitor listing displays also the error trace raised by the system
 when trying to process the task.
 
+
 Queued task details
 -------------------
 
@@ -128,25 +129,7 @@ above is a link to the full detail of the task:
         ],
         "created": 1598626797.74663,
         "error_message": null,
-        "request": {
-            "__ac": "ol4yjEYYg82gR14ZIbh1vI2zrD3i+LfBp30+G6MyyPw1ZjQ5MTMzOWFpYnN0IQ==",
-            "HTTP_USER_AGENT": "Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0",
-            "X_REAL_IP": "",
-            "_orig_env": {
-                "SERVER_SOFTWARE": "Zope/(2.13.28, python 2.7.16, linux2) ZServer/1.1",
-                "REQUEST_METHOD": "POST",
-                "PATH_INFO": "/senaite/worksheets/WS-018/workflow_action",
-                "SERVER_PROTOCOL": "HTTP/1.1",
-                ...
-                "CONTENT_TYPE": "application/x-www-form-urlencoded",
-                "HTTP_ACCEPT_ENCODING": "gzip, deflate"
-            },
-            "HTTP_REFERER": "http://localhost:8080/senaite/worksheets/WS-018/manage_results",
-            "REMOTE_ADDR": "127.0.0.1",
-            "AUTHENTICATED_USER": "analyst1",
-            "X_FORWARDED_FOR": "",
-            "_ZopeId": "68044235A9oxFuzwE6o"
-        },
+        "username": "analyst1",
         "priority": 10,
         "max_seconds": 60,
         "task_uid": "2bb771e4bb7cbcf9625bf761377292d8",
@@ -158,10 +141,9 @@ The fields displayed might vary depending on the type of task (the "name" field
 defines the type of the task). In the example above, the task refers to the
 submission (field `action`) of results for 6 analyses from worksheet with id
 "WS-018" (field `context_path`). This action has been triggered by the user
-with id "analyst1" (field `AUTHENTICATED_USER`). The field `uids`
-contains the unique identifiers of the analyses to be submitted, and the
-`context_uid` indicates the unique identifier of the object from which the
-action/task was triggered.
+with id "analyst1" (field `username`). The field `uids` contains the unique
+identifiers of the analyses to be submitted, and the `context_uid` indicates the
+unique identifier of the object from which the action/task was triggered.
 
 
 .. note:: There are plenty of add-ons for browsers that beautify the generated
