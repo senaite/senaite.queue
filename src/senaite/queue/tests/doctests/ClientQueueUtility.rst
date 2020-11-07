@@ -140,7 +140,7 @@ The server queue contains the task as well:
 
 Only tasks from ``QueueTask`` type are supported:
 
-    >> utility.add("dummy")
+    >>> utility.add("dummy")
     Traceback (most recent call last):
     [...]
     ValueError: 'dummy' is not supported

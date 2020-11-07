@@ -99,7 +99,7 @@ Add the new task to the utility
 
 Only tasks from ``QueueTask`` type are supported:
 
-    >> utility.add("dummy")
+    >>> utility.add("dummy")
     Traceback (most recent call last):
     [...]
     ValueError: 'dummy' is not supported
