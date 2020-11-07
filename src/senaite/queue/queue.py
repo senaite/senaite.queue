@@ -271,7 +271,7 @@ def get_chunks_for(task, items=None):
     if items is None:
         items = task.get("uids", [])
 
-    chunk_size = task.get("chunk_size", get_chunk_size(task.name))
+    chunk_size = get_chunk_size(task.name)
     return get_chunks(items, chunk_size)
 
 
