@@ -17,4 +17,11 @@
      handler="senaite.queue.upgrade.v01_00_002.upgrade"
      profile="senaite.queue:default"/>
 
+ <genericsetup:upgradeStep
+     title="Upgrade to SENAITE.QUEUE 1.0.3"
+     source="1.0.2"
+     destination="1.0.3"
+     handler="senaite.queue.upgrade.v01_00_003.upgrade"
+     profile="senaite.queue:default"/>
+
 </configure>
