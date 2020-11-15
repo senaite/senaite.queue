@@ -27,9 +27,9 @@ setup(
     version=version,
     description="Asynchronous tasks add-on for SENAITE",
     long_description=open("README.rst").read() + "\n" +
-    open("docs/installation.rst").read() + "\n" +
     open("docs/release_notes.rst").read() + "\n" +
-    open("CHANGES.rst").read() + "\n",
+    open("docs/installation.rst").read() + "\n" +
+    open("docs/changelog.rst").read() + "\n",
     # Get more strings from
     # http://pypi.python.org/pypi?:action=list_classifiers
     classifiers=[
@@ -53,6 +53,7 @@ setup(
         "setuptools",
         "senaite.jsonapi",
         "senaite.lims>=1.3.4",
+        "senaite.lims<2.0.0",
         "requests",
     ],
     extras_require={
