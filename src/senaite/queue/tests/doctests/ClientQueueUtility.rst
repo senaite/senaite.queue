@@ -408,17 +408,41 @@ from the server's queue:
     >>> all(map(s_utility.has_task, utility.get_tasks()))
     True
 
-Delete the newly added task, so we keep only one task in the queue for testing:
+When the task status in the server is "running", the corresponding task of the
+local pool is always updated on synchronization:
 
-    >>> utility.delete(server_task)
+    >>> consumer_id = u'http://nohost'
+    >>> running = s_utility.pop(consumer_id)
+    >>> running.status
+    'running'
+
+    >>> local_task = utility.get_task(running.task_uid)
+    >>> local_task.status
+    'queued'
+
+    >>> utility.sync()
+    >>> local_task = utility.get_task(running.task_uid)
+    >>> local_task.status
+    'running'
+
+Flush the queue:
+
+    >>> deleted = map(utility.delete, utility.get_tasks())
     >>> len(utility)
-    1
+    0
     >>> len(s_utility)
-    1
+    0
 
 
 Pop a task
 ~~~~~~~~~~
+
+Add a new task to the queue:
+
+    >>> kwargs = {"action": "receive"}
+    >>> task = new_task("task_action_receive", sample, **kwargs)
+    >>> utility.add(task) == task
+    True
 
 When a task is popped, the utility changes the status of the task to "running",
 cause expects that the task has been popped for consumption:

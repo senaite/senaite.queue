@@ -99,12 +99,22 @@ def diff(context, request):
     server_uids = map(lambda t: t.task_uid, items)
     stale_uids = filter(lambda uid: uid not in server_uids, client_uids)
 
-    # Remove the tasks the client has already
-    items = filter(lambda t: t.task_uid not in client_uids, items)
+    def keep(task):
+        # Skip ghosts unless explicitly asked
+        if "ghost" not in status:
+            if task.get("ghost"):
+                return False
 
-    # Skip ghosts unless explicitly asked
-    if "ghost" not in status:
-        items = filter(lambda t: not t.get("ghost"), items)
+        # Always include tasks that are running (client might have this task
+        # already, but in queued status)
+        if task.status in "running":
+            return True
+
+        # Skip the task if client has it
+        return task.task_uid not in client_uids
+
+    # Keep the tasks that matter
+    items = filter(keep, items)
 
     # Convert to the dict representation
     complete = request_data.get("complete") or False
