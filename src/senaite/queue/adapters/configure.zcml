@@ -16,6 +16,13 @@
     provides="senaite.queue.interfaces.IQueuedTaskAdapter"
     for="*" />
 
+  <!-- Adapter for sample's workflow verify action -->
+  <adapter
+    name="task_action_verify"
+    factory=".QueuedActionTaskAdapter"
+    provides="senaite.queue.interfaces.IQueuedTaskAdapter"
+    for="bika.lims.interfaces.IAnalysisRequestsFolder" />
+
   <!-- Adapter for analyses action queue task -->
   <adapter
     name="task_action_submit"
@@ -103,6 +110,26 @@
   <adapter
     name="workflow_action_verify"
     for="bika.lims.interfaces.IWorksheet
+         senaite.queue.interfaces.ISenaiteQueueLayer"
+    factory=".actions.WorkflowActionGenericQueueAdapter"
+    provides="bika.lims.interfaces.IWorkflowActionAdapter"
+    permission="zope.Public" />
+
+  <!-- Samples folder: "receive"
+  Receive the selected samples by using the queue -->
+  <adapter
+    name="workflow_action_receive"
+    for="bika.lims.interfaces.IAnalysisRequestsFolder
+         senaite.queue.interfaces.ISenaiteQueueLayer"
+    factory=".actions.WorkflowActionGenericQueueAdapter"
+    provides="bika.lims.interfaces.IWorkflowActionAdapter"
+    permission="zope.Public" />
+
+  <!-- Samples folder: "verify"
+  Verify the selected samples by using the queue -->
+  <adapter
+    name="workflow_action_verify"
+    for="bika.lims.interfaces.IAnalysisRequestsFolder
          senaite.queue.interfaces.ISenaiteQueueLayer"
     factory=".actions.WorkflowActionGenericQueueAdapter"
     provides="bika.lims.interfaces.IWorkflowActionAdapter"

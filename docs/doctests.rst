@@ -11,3 +11,4 @@ Doctests
 .. include:: ../src/senaite/queue/tests/doctests/WorksheetAnalysesRetract.rst
 .. include:: ../src/senaite/queue/tests/doctests/WorksheetAnalysesVerify.rst
 .. include:: ../src/senaite/queue/tests/doctests/SampleWithQueuedAnalyses.rst
+.. include:: ../src/senaite/queue/tests/doctests/SamplesReceive.rst

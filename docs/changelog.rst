@@ -4,7 +4,8 @@ Changelog
 1.0.3 (unreleased)
 ------------------
 
-- Fix client's queue tasks in "queued" status are not updated when "running"
+- #10 Support "receive" transition from samples' main listing
+- #9 Fix client's queue tasks in "queued" status are not updated when "running"
 
 
 1.0.2 (2020-11-15)
