@@ -4,6 +4,7 @@ Changelog
 1.0.3 (unreleased)
 ------------------
 
+- Fix client's queue tasks in "queued" status are not updated when "running"
 
 
 1.0.2 (2020-11-15)
