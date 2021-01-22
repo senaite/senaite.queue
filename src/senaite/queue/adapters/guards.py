@@ -18,6 +18,8 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
+import threading
+
 from zope.interface import implements
 
 from bika.lims.interfaces import IGuardAdapter
@@ -33,6 +35,11 @@ class SampleGuardAdapter(object):
     def guard(self, action):
         """Returns False if the sample is queued or contains queued analyses
         """
+        # If current thread is a consumer leave it do whatever needed
+        t = threading.currentThread()
+        if t.getName().startswith("queue.consumer."):
+            return True
+
         # Don't do anything if senaite.queue is not enabled
         if not api.is_queue_enabled():
             return True
