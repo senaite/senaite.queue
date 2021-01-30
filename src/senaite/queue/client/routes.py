@@ -83,10 +83,14 @@ def process(context, request, task_uid=None):  # noqa
         task.task_short_uid, task.name, capi.get_id(task_context),
         task.context_uid))
 
+    # Inject the queue_consumer marker to the request so guards skip checks
+    # against the queue
+    request = capi.get_request()
+    request.set("queue_tuid", task_uid)
+
     # If the task refers to a worksheet, inject (ws_id) in params to make
     # sure guards (assign, un-assign) return True
     if IWorksheet.providedBy(task_context):
-        request = capi.get_request()
         request.set("ws_uid", capi.get_uid(task_context))
 
     # Process the task

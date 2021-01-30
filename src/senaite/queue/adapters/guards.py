@@ -18,12 +18,12 @@
 # Copyright 2019-2020 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-import threading
-
+from senaite.queue import api
+from senaite.queue import logger
 from zope.interface import implements
 
+from bika.lims import api as capi
 from bika.lims.interfaces import IGuardAdapter
-from senaite.queue import api
 
 
 class SampleGuardAdapter(object):
@@ -35,9 +35,12 @@ class SampleGuardAdapter(object):
     def guard(self, action):
         """Returns False if the sample is queued or contains queued analyses
         """
-        # If current thread is a consumer leave it do whatever needed
-        t = threading.currentThread()
-        if t.getName().startswith("queue.consumer."):
+        # Check if this current request life-cycle is handled by a consumer
+        request = capi.get_request()
+        queue_task_uid = request.get("queue_tuid", "")
+        if capi.is_uid(queue_task_uid):
+            ctx_id = capi.get_id(self.context)
+            logger.info("Skip guard for {}: {}".format(ctx_id, action))
             return True
 
         # Don't do anything if senaite.queue is not enabled
