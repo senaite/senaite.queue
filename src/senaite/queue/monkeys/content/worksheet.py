@@ -81,6 +81,14 @@ def _apply_worksheet_template_routine_analyses(self, wst):
     new_analyses = []
 
     for analysis in analyses:
+        sample_id = analysis.getRequestID
+        sample_uid = analysis.getParentUID
+        if len(available_slots) == 0:
+            # No slots available. Skip this analysis unless it belongs to a
+            # sample with an allocated slot
+            if sample_uid not in samples_slots:
+                continue
+
         if api.is_queued(analysis):
             continue
 
@@ -99,8 +107,6 @@ def _apply_worksheet_template_routine_analyses(self, wst):
             continue
 
         # Get the slot where analyses from this sample are located
-        sample = analysis.getRequest()
-        sample_uid = _api.get_uid(sample)
         slot = samples_slots.get(sample_uid)
         if not slot:
             if len(available_slots) == 0:
@@ -117,7 +123,7 @@ def _apply_worksheet_template_routine_analyses(self, wst):
         analysis_info = {
             "analysis": analysis,
             "sample_uid": sample_uid,
-            "sample_id": _api.get_id(sample),
+            "sample_id": sample_id,
             "slot": slot,
         }
         new_analyses.append(analysis_info)
