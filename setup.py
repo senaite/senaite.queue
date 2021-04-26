@@ -49,7 +49,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        "cryptography",
+        "cryptography==3.1",
         "setuptools",
         "senaite.jsonapi",
         "senaite.lims>=1.3.4",
