@@ -20,10 +20,9 @@
 
 from Products.Archetypes.interfaces.base import IBaseObject
 from senaite.queue import api
+from senaite.queue import logger
 from senaite.queue.interfaces import IQueuedTaskAdapter
-from senaite.queue.queue import get_chunks
 from senaite.queue.queue import get_chunks_for
-from senaite.queue.queue import QueueTask
 from zope.component import adapts
 from zope.interface import implements
 
@@ -128,27 +127,34 @@ class QueueObjectSecurityAdapter(object):
     def process(self, task):
         """Process the task from the queue
         """
-        # If there are too many objects to process, split them in chunks to
-        # prevent the task to take too much time to complete
-        chunks = get_chunks(task["uids"], 50)
+        # Reindex the objects
+        uids = task["uids"]
+        if not uids:
+            return
 
-        # Process the first chunk
-        map(self.reindex_security, chunks[0])
+        # Get the UID of the oldest object to reindex
+        oldest_uid = uids[-1]
 
-        # Add remaining objects to the queue
-        if chunks[1]:
-            request = _api.get_request()
-            context = task.get_context()
+        # UID of the top-level node from the tree hierarchy to reindex
+        top_uid = task.get("top_uid", oldest_uid)
+
+        # Reindex the objects
+        map(self.reindex_security, uids)
+
+        if oldest_uid != top_uid:
+            # We have not processed yet the top-level node, keep reindexing
+            # further objects from the hierarchy tree
             kwargs = {
-                "uids": chunks[1],
+                "top_uid": top_uid,
                 "priority": task.priority,
             }
-            new_task = QueueTask(task.name, request, context, **kwargs)
-            api.get_queue().add(new_task)
+            api.add_reindex_obj_security_task(oldest_uid, **kwargs)
 
     def reindex_security(self, uid):
         """Reindex object security for the object passed-in
         """
         obj = _api.get_object(uid, None)
         if obj:
+            obj_path = _api.get_path(obj)
+            logger.info("Reindex security: {}".format(obj_path))
             obj.reindexObject(idxs=["allowedRolesAndUsers", ])
