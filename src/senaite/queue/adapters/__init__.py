@@ -141,7 +141,7 @@ class QueueObjectSecurityAdapter(object):
         # Reindex the objects
         map(self.reindex_security, uids)
 
-        if oldest_uid != top_uid:
+        if top_uid not in uids:
             # We have not processed yet the top-level node, keep reindexing
             # further objects from the hierarchy tree
             kwargs = {

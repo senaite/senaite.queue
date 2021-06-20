@@ -271,7 +271,7 @@ def add_reindex_obj_security_task(brain_object_uid, **kwargs):
                 if len(previous) >= max:
                     return previous
 
-        previous.append(_api.get_uid(parent))
+        previous = walk_up(parent, max=max, previous=previous)
         return previous[:max]
 
     # Get the object
