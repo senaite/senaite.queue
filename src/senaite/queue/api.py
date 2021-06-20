@@ -266,7 +266,7 @@ def add_reindex_obj_security_task(brain_object_uid, **kwargs):
             # younger siblings
             younger = ids[:obj_idx][::-1]
             for sibling_id in younger:
-                sibling = parent._getObj(sibling_id)
+                sibling = parent._getOb(sibling_id)
                 previous = walk_down(sibling, max=max, previous=previous)
                 if len(previous) >= max:
                     return previous
