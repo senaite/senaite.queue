@@ -229,7 +229,7 @@ def add_reindex_obj_security_task(brain_object_uid, **kwargs):
         if previous is None:
             previous = []
 
-        if len(previous >= max):
+        if len(previous) >= max:
             return previous
 
         # Get the ids of the children and sort them from newest to oldest
