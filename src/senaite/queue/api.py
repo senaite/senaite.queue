@@ -296,7 +296,7 @@ def add_reindex_obj_security_task(brain_object_uid, **kwargs):
     task_name = "task_reindex_object_security"
     kwargs.update({
         "uids": uids,
-        "priority": kwargs.get("priority", 20),
+        "priority": kwargs.get("priority", 50),
         "chunk_size": chunk_size,
         "ghost": True,
     })
