@@ -225,33 +225,80 @@ def add_reindex_obj_security_task(brain_object_uid, **kwargs):
     :return: the task added to the queue
     :rtype: senaite.queue.queue.QueueTask
     """
-    def get_children_uids(base_obj):
-        """Returns the uids from the obj hierarchy
-        """
-        if not hasattr(aq_base(base_obj), "objectValues"):
-            return []
+    def walk_down(obj, max=10, previous=None):
+        if previous is None:
+            previous = []
 
-        all_children = []
-        for child_obj in base_obj.objectValues():
-            all_children.extend(get_children_uids(child_obj))
-            all_children.append(_api.get_uid(child_obj))
+        if len(previous) >= max:
+            return previous
 
-        return all_children
+        # Get the ids of the children and sort them from newest to oldest
+        child_ids = obj.objectIds()[::-1]
+
+        # We do not want more than the max number of objects specified
+        for child_id in child_ids:
+            child_obj = obj._getOb(child_id)
+            previous = walk_down(child_obj, max=max, previous=previous)
+            if len(previous) >= max:
+                return previous
+
+        previous.append(_api.get_uid(obj))
+        return previous[:max]
+
+    def walk_up(obj, max=10, previous=None):
+        if previous is None:
+            previous = []
+
+        if len(previous) >= max:
+            return previous
+
+        previous.append(_api.get_uid(obj))
+
+        # Navigate to parent node
+        parent = _api.get_parent(obj)
+
+        # Check if this parent node has children not yet processed
+        ids = parent.objectIds()
+        obj_id = _api.get_id(obj)
+        obj_idx = ids.index(obj_id)
+        if obj_idx > 0:
+            # Current obj is not the oldest. Extract the items to process from
+            # younger siblings
+            younger = ids[:obj_idx][::-1]
+            for sibling_id in younger:
+                sibling = parent._getOb(sibling_id)
+                previous = walk_down(sibling, max=max, previous=previous)
+                if len(previous) >= max:
+                    return previous
+
+        previous = walk_up(parent, max=max, previous=previous)
+        return previous[:max]
 
     # Get the object
     obj = _api.get_object(brain_object_uid)
+    obj_uid = _api.get_uid(obj)
 
-    # Get all children reversed, and append current one
-    uids = get_children_uids(obj)
-    uids.append(_api.get_uid(obj))
+    chunk_size = kwargs.get("chunk_size", 10)
+    top_uid = kwargs.get("top_uid")
+    if not top_uid:
+        kwargs.update({
+            "top_uid": _api.get_uid(obj)
+        })
 
-    # Get all reversed, so recent objects are processed first
-    uids = uids[::-1]
+        # Pick the newest and deepest leaf
+        leaves = walk_down(obj, max=1) or [obj_uid]
+        obj = _api.get_object_by_uid(leaves[0])
+
+    # We assume obj is the last deepest object not yet processed, extract the
+    # next objects to process that are above this obj from the tree hierarchy
+    uids = walk_up(obj, max=chunk_size)
 
     task_name = "task_reindex_object_security"
     kwargs.update({
         "uids": uids,
-        "priority": kwargs.get("priority", 20)
+        "priority": kwargs.get("priority", 50),
+        "chunk_size": chunk_size,
+        "ghost": True,
     })
     return add_task(task_name, obj, **kwargs)
 
