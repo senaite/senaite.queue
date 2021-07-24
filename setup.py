@@ -15,7 +15,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51
 # Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
-# Copyright 2018-2019 by it's authors.
+# Copyright 2018-2021 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
 from setuptools import setup, find_packages
@@ -49,11 +49,10 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        "cryptography==3.1.1",
-        "setuptools",
-        "senaite.jsonapi",
-        "senaite.lims>=1.3.4",
-        "senaite.lims<2.0.0",
+        "senaite.lims>=1.3.5",
+        "senaite.lims<1.4.0",
+        # cryptography >= 3.4 does not support Python 2.x anymore
+        "cryptography<3.4",
         "requests",
     ],
     extras_require={

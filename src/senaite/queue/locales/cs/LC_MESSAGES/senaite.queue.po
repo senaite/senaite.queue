@@ -1,12 +1,15 @@
 # --- PLEASE EDIT THE LINES BELOW CORRECTLY ---
 # SOME DESCRIPTIVE TITLE.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# Translators:
+# trendspotter, 2021
+#
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
-"POT-Creation-Date: 2020-08-29 11:02+0000\n"
+"POT-Creation-Date: 2021-07-23 22:23+0000\n"
 "PO-Revision-Date: 2019-11-10 12:48+0000\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Last-Translator: trendspotter, 2021\n"
 "Language-Team: Czech (https://www.transifex.com/senaite/teams/104679/cs/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -18,183 +21,176 @@ msgstr ""
 "Domain: senaite.queue\n"
 "Language: cs\n"
 
-#: senaite/queue/browser/views/worksheet.py:81
-msgid "Analyses for {} have been queued"
+#: senaite/queue/browser/views/tasks.py:104
+msgid "Active tasks"
 msgstr ""
 
-#: senaite/queue/browser/views/worksheet.py:45
-msgid "Analyst must be specified."
-msgstr ""
-
-#: senaite/queue/configure.zcml:45
-msgid "Asynchronous tasks for SENAITE"
-msgstr ""
-
-#: senaite/queue/browser/views/templates/tasks.pt:65
-msgid "Context"
-msgstr ""
-
-#: senaite/queue/browser/views/templates/tasks.pt:62
-msgid "Created"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:35
-msgid "Default number of objects that will be handled in a single task. A value of 0 disables queuing of tasks functionality at all, specific tasks below included. Default value: 10"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:34
-msgid "Default number of objects to process per task"
-msgstr ""
-
-#: senaite/queue/browser/views/templates/tasks.pt:68
-msgid "Error message"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:46
-msgid "Maximum retries"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:58
-msgid "Minimum number of seconds to book per task. If the task is performed very rapidly, it will have priority over a transaction done from userland. In case of conflict, the transaction from userland will fail and will be retried up to 3 times. This setting makes the thread that handles the task to take some time to complete, thus preventing threads from userland to be delayed or fail. Default value: 3"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:57
-msgid "Minimum seconds per task"
+#: senaite/queue/browser/views/tasks.py:138
+msgid "All tasks +ghosts"
 msgstr ""
 
 #: senaite/queue/browser/views/worksheet.py:86
-msgid "No analyses were added"
-msgstr ""
+msgid "Analyses for {} have been queued"
+msgstr "Analýzy pro {} byly zařazeny do fronty"
 
-#: senaite/queue/browser/controlpanel.py:73
-msgid "Number of analyses that will be handled in a single task when assigned to a worksheet. Overrides default's for action 'assign'. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr ""
+#: senaite/queue/browser/views/worksheet.py:50
+msgid "Analyst must be specified."
+msgstr "Musí být uveden analytik."
 
-#: senaite/queue/browser/controlpanel.py:97
-msgid "Number of analyses that will be handled in a single task when results are submitted. Overrides default's for 'submit' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:133
-msgid "Number of analyses that will be handled in a single task when the analysis is rejected. Overrides default's for 'reject' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:121
-msgid "Number of analyses that will be handled in a single task when the analysis is retracted. Overrides default's for 'retract' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:109
-msgid "Number of analyses that will be handled in a single task when the analysis is verified. Overrides default's for 'reject' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:85
-msgid "Number of analyses that will be handled in a single task when unassigned from a worksheet. Overrides default's for 'unassign' action. A value of 0 disables the queue for this specific action. Default value: 10"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:72
-msgid "Number of analyses to assign per task"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:132
-msgid "Number of analyses to reject per task"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:120
-msgid "Number of analyses to retract per task"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:96
-msgid "Number of analyses to submit per task"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:84
-msgid "Number of analyses to unassign per task"
-msgstr ""
-
-#: senaite/queue/browser/controlpanel.py:108
-msgid "Number of analyses to verify per task"
-msgstr ""
+#: senaite/queue/configure.zcml:41
+msgid "Asynchronous tasks for SENAITE"
+msgstr "Asynchronní úkoly pro SENAITE"
 
 #: senaite/queue/browser/controlpanel.py:145
-msgid "Number of seconds to wait for a process in queue to be finished before being considered as failed. Failed processes will be enqueued again. Minimum value: 30, Default value: 120"
+msgid "Auth secret key"
 msgstr ""
 
-#: senaite/queue/browser/controlpanel.py:47
+#: senaite/queue/browser/views/tasks.py:87
+msgid "Context"
+msgstr "Kontext"
+
+#: senaite/queue/browser/views/tasks.py:79
+msgid "Created"
+msgstr "Vytvořeno"
+
+#: senaite/queue/browser/controlpanel.py:78
+msgid "Default number of objects to process in a single request when the task contains multiple items. The items from a task are processed in chunks, and remaining are re-queued for later. For instance, when a user selects multiple analyses for their assignment to a worksheet, only one task is generated. If the value defined is 5, the analyses will be assigned in chunks of this size, and the system will keep generating tasks for the remaining analyses all them are finally assigned. Higher values increment the chance of transaction commit conflicts, while lower values tend to slow down the completion of the whole task. A value of 0 disables queueing if tasks functionality at all. Default value: {}"
+msgstr ""
+
+#: senaite/queue/browser/views/tasks.py:121
+msgid "Failed tasks"
+msgstr ""
+
+#: senaite/queue/browser/controlpanel.py:99
+msgid "Maximum retries"
+msgstr "Maximální počet pokusů"
+
+#: senaite/queue/browser/controlpanel.py:129
+msgid "Maximum seconds"
+msgstr ""
+
+#: senaite/queue/browser/controlpanel.py:113
+msgid "Minimum number of seconds to book per task. If the task is performed very rapidly, it will have priority over a transaction done from userland. In case of conflict, the transaction from userland will fail and will be retried up to 3 times. This setting makes the thread that handles the task to take some time to complete, thus preventing threads from userland to be delayed or fail. Default value: 3"
+msgstr "Minimální počet sekund k rezervaci na úkol. Pokud je úkol proveden velmi rychle, bude mít přednost před transakcí provedenou z uživatelské země. V případě konfliktu transakce z uživatelské země selže a bude znovu vyzkoušena až třikrát. Toto nastavení způsobí, že vlákno, které zpracovává úkol, bude nějakou dobu trvat, čímž zabrání zpoždění nebo selhání vláken z uživatelské země. Výchozí hodnota: 3"
+
+#: senaite/queue/browser/controlpanel.py:112
+msgid "Minimum seconds"
+msgstr ""
+
+#: senaite/queue/browser/views/tasks.py:83
+msgid "Name"
+msgstr ""
+
+#: senaite/queue/browser/views/worksheet.py:91
+msgid "No analyses were added"
+msgstr "Nebyly přidány žádné analýzy"
+
+#: senaite/queue/browser/controlpanel.py:77
+msgid "Number of objects to process per task"
+msgstr ""
+
+#: senaite/queue/browser/controlpanel.py:130
+msgid "Number of seconds to wait for a task to finish before being re-queued or considered as failed. System will keep retrying the task until the value set in 'Maximum retries' is reached, atwhich point the task will be definitely considered as failed and no further actions will take place. Minimum value: 30, Default value: 120"
+msgstr ""
+
+#: senaite/queue/browser/controlpanel.py:100
 msgid "Number of times a task will be re-queued before being considered as failed. A value of 0 disables the re-queue of failing tasks. Default value: 3"
+msgstr "Kolikrát bude úkol znovu zařazen do fronty, než bude považován za neúspěšný. Hodnota 0 zakáže znovu zařadit do fronty selhávající úkoly. Výchozí hodnota: 3"
+
+#: senaite/queue/browser/views/tasks.py:75
+msgid "Priority"
+msgstr ""
+
+#: senaite/queue/browser/viewlets/templates/queue_server_status.pt:14
+msgid "Queue Server is not configured properly. Please, check that the URL of the zeo client to act as the server is configured properly:"
+msgstr ""
+
+#: senaite/queue/browser/viewlets/templates/queue_server_status.pt:22
+msgid "Queue Server is not responding"
 msgstr ""
 
 #: senaite/queue/profiles/default/actionicons.xml
 #: senaite/queue/profiles/default/controlpanel.xml
 msgid "Queue Settings"
+msgstr "Nastavení fronty"
+
+#: senaite/queue/browser/views/tasks.py:65
+#: senaite/queue/browser/views/templates/tasks.pt:23
+msgid "Queue monitor"
 msgstr ""
 
-#: senaite/queue/adapters/listing.py:50
+#: senaite/queue/browser/controlpanel.py:63
+msgid "Queue server"
+msgstr ""
+
+#: senaite/queue/adapters/listing.py:75
 msgid "Queued"
-msgstr ""
+msgstr "Ve frontě"
 
-#: senaite/queue/browser/views/templates/tasks.pt:51
-msgid "Queued tasks"
-msgstr ""
-
-#: senaite/queue/browser/views/templates/tasks.pt:64
-msgid "Remote Addr"
-msgstr ""
-
-#: senaite/queue/browser/views/templates/tasks.pt:90
+#: senaite/queue/browser/views/tasks.py:113
 msgid "Remove"
-msgstr ""
+msgstr "Odstranit"
 
-#: senaite/queue/browser/views/templates/tasks.pt:94
+#: senaite/queue/browser/views/tasks.py:110
 msgid "Requeue"
-msgstr ""
+msgstr "Znovu zařadit"
 
-#: senaite/queue/browser/views/templates/tasks.pt:69
-msgid "Retries"
-msgstr ""
-
-#: senaite/queue/configure.zcml:45
+#: senaite/queue/configure.zcml:41
 msgid "SENAITE QUEUE"
-msgstr ""
+msgstr "SENAITE QUEUE"
 
-#: senaite/queue/configure.zcml:61
+#: senaite/queue/configure.zcml:57
 msgid "SENAITE QUEUE (uninstall)"
-msgstr ""
+msgstr "SENAITE QUEUE (odinstalovat)"
 
-#: senaite/queue/browser/controlpanel.py:159
+#: senaite/queue/browser/controlpanel.py:161
 msgid "SENAITE QUEUE Settings"
-msgstr ""
+msgstr "SENAITE QUEUE Nastavení"
 
-#: senaite/queue/browser/controlpanel.py:144
-msgid "Seconds to wait before unlock"
-msgstr ""
-
-#: senaite/queue/browser/views/templates/tasks.pt:67
+#: senaite/queue/browser/views/tasks.py:95
 msgid "Status"
+msgstr "Status"
+
+#: senaite/queue/browser/views/tasks.py:71
+msgid "Task UID"
 msgstr ""
 
-#: senaite/queue/browser/views/templates/tasks.pt:61
-msgid "TUID"
+#: senaite/queue/browser/controlpanel.py:146
+msgid "This secret key is used by senaite.queue to generate an encrypted token (symmetric encryption) for the authentication of requests sent by queue clients and workers to the Queue's server API. Must be 32 url-safe base64-encoded bytes"
 msgstr ""
 
-#: senaite/queue/browser/views/templates/tasks.pt:66
-msgid "Type"
+#: senaite/queue/browser/controlpanel.py:64
+msgid "URL of the zeo client that will act as the queue server. This is, the zeo client others will rely on regarding tasks addition, retrieval and removal. An empty value or a non-reachable queue server disables the asynchronous processing of tasks. In such case, system will behave as if senaite.queue was not installed"
 msgstr ""
 
-#: senaite/queue/browser/views/templates/tasks.pt:63
-msgid "User"
+#: senaite/queue/browser/views/tasks.py:91
+msgid "Username"
 msgstr ""
 
 #: senaite/queue/browser/viewlets/templates/queued_analyses_sample_viewlet.pt:17
 msgid "analyses are being processed in background"
-msgstr ""
+msgstr "analýzy jsou zpracovávány na pozadí"
 
 #: senaite/queue/browser/viewlets/templates/queued_analyses_viewlet.pt:17
 msgid "analyses are being processed in background."
-msgstr ""
+msgstr "analýzy jsou zpracovávány na pozadí."
 
 #: senaite/queue/browser/viewlets/templates/queued_analyses_sample_viewlet.pt:16
 msgid "analysis is being processed in background"
-msgstr ""
+msgstr "analýza se zpracovává na pozadí"
 
 #: senaite/queue/browser/viewlets/templates/queued_analyses_viewlet.pt:16
 msgid "analysis is being processed in background."
+msgstr "analýza se zpracovává na pozadí."
+
+#: senaite/queue/browser/views/tasks.py:204
+msgid "ghost"
+msgstr ""
+
+#: senaite/queue/browser/viewlets/templates/queue_server_status.pt:25
+msgid "please verify is up and running"
+msgstr ""
+
+#: senaite/queue/browser/views/tasks.py:200
+msgid "status"
 msgstr ""

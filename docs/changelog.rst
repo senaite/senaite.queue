@@ -1,9 +1,13 @@
 Changelog
 =========
 
-1.0.3 (unreleased)
+1.0.3 (2021-07-24)
 ------------------
 
+- #21 Improve the reindex security objects process
+- Skip guard checks when current thread is a consumer
+- Make the creation of WS with WST assignment more efficient
+- Pin cryptography==3.1.1
 - Fix client's queue tasks in "queued" status are not updated when "running"
 
 
