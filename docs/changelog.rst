@@ -1,6 +1,13 @@
 Changelog
 =========
 
+
+1.0.4 (unreleased)
+------------------
+
+- #14 Use intial task's default chunk size when creating subsequent tasks
+
+
 1.0.3 (2021-07-24)
 ------------------
 
