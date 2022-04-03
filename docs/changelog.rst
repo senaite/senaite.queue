@@ -5,6 +5,7 @@ Changelog
 1.0.4 (unreleased)
 ------------------
 
+- #15 Fix traceback on tasks for the reindex of objects security
 - #14 Use intial task's default chunk size when creating subsequent tasks
 
 
