@@ -127,28 +127,27 @@ class QueueObjectSecurityAdapter(object):
     def process(self, task):
         """Process the task from the queue
         """
-        # Reindex the objects
-        uids = task["uids"]
+        uids = task.get("uids", [])
         if not uids:
             return
-
-        # Get the UID of the oldest object to reindex
-        oldest_uid = uids[-1]
-
-        # UID of the top-level node from the tree hierarchy to reindex
-        top_uid = task.get("top_uid", oldest_uid)
 
         # Reindex the objects
         map(self.reindex_security, uids)
 
-        if top_uid not in uids:
-            # We have not processed yet the top-level node, keep reindexing
-            # further objects from the hierarchy tree
-            kwargs = {
-                "top_uid": top_uid,
-                "priority": task.priority,
-            }
-            api.add_reindex_obj_security_task(oldest_uid, **kwargs)
+        # UID of the top-level node from the tree hierarchy to reindex
+        obj_uid = task.get("top_uid", task.context_uid)
+        if obj_uid in uids:
+            # We've processed the top-level node already, do nothing
+            return
+
+        # We have not processed yet the top-level node, keep reindexing
+        # further objects from the hierarchy tree, starting after the last
+        # object we've reindexed
+        kwargs = {
+            "priority": task.priority,
+            "start_after": uids[-1],
+        }
+        api.add_reindex_obj_security_task(obj_uid, **kwargs)
 
     def reindex_security(self, uid):
         """Reindex object security for the object passed-in
