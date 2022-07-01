@@ -398,7 +398,7 @@ class ClientQueueUtility(object):
             status = [status]
         status = filter(None, status)
         if not status:
-            return copy.deepcopy(self._tasks)
+            status = ["running", "queued"]
 
         # "ghost" and "failed" statuses require a POST to queue server, cause
         # we only keep running and queued tasks in our local pool
