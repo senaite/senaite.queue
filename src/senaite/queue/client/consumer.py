@@ -32,6 +32,7 @@ from senaite.queue.request import is_valid_zeo_host
 from bika.lims import api as _api
 from bika.lims.decorators import synchronized
 from requests.exceptions import Timeout
+from requests.exceptions import HTTPError
 
 
 CONSUMER_THREAD_PREFIX = "queue.consumer."
@@ -116,8 +117,24 @@ def process_task(task_uid, task_username, consumer_id, base_url, server_url,
         payload = payload or {}
         response = requests.post(url, json=payload, auth=auth, timeout=timeout)
 
-        # Check the request was successful. Raise exception otherwise
-        response.raise_for_status()
+        # Check if success
+        if not response.ok:
+            try:
+                resp = response.json()
+                success = resp.get("success", True)
+                err_msg = resp.get("message", None)
+            except ValueError:
+                # Fallback to request's default error handling
+                response.raise_for_status()
+                return
+
+            # Extract the message coming from senaite's instance
+            if not success and err_msg:
+                err_msg = u'{} {}'.format(response.status_code, err_msg)
+                raise HTTPError(err_msg, response=response)
+
+            # Fallback to request's default error handling
+            response.raise_for_status()
 
     data = {
         "task_uid": task_uid,
