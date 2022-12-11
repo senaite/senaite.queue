@@ -5,8 +5,9 @@ Changelog
 1.0.4 (unreleased)
 ------------------
 
+- #16 Preserve task properties when requeueing chunks of action tasks
 - #15 Fix traceback on tasks for the reindex of objects security
-- #14 Use intial task's default chunk size when creating subsequent tasks
+- #14 Use initial task's default chunk size when creating subsequent tasks
 
 
 1.0.3 (2021-07-24)
