@@ -5,6 +5,7 @@ Changelog
 1.0.4 (unreleased)
 ------------------
 
+- #17 Fix task splits are not being generated for generic actions
 - #16 Preserve task properties when requeueing chunks of action tasks
 - #15 Fix traceback on tasks for the reindex of objects security
 - #14 Use initial task's default chunk size when creating subsequent tasks
