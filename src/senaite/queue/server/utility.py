@@ -384,10 +384,16 @@ class ServerQueueUtility(object):
                         .format(task.name, task.task_short_uid))
             return None
 
-        # Do not add the task if unique and task for same context and name
+        # Do not add the task if unique and task for same context and name,
+        # but do not consider tasks that are either failed or are currently
+        # running. Otherwise, system won't be able to add task splits within
+        # the same queue process life-cycle
         if task.get("unique", False):
+            skip = ["failed", "running"]
             query = {"context_uid": task.context_uid, "name": task.name}
-            if self.search(query):
+            existing = self.search(query)
+            existing = filter(lambda t: t.status not in skip, existing)
+            if existing:
                 logger.debug("Task {} for {} in the queue already".format(
                         task.name, task.context_path))
                 return None
