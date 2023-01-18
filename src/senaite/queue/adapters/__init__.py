@@ -52,11 +52,7 @@ class QueuedActionTaskAdapter(object):
         map(lambda obj: doActionFor(obj, task["action"]), objects)
 
         # Add remaining objects to the queue and keep properties
-        keep = ["min_seconds", "max_seconds", "priority", "unique",
-                "chunk_size", "username", "ghost", "delay"]
-        keep = filter(lambda key: key in keep, task.keys())
-        kwargs = dict([(key, task[key]) for key in keep])
-        api.add_action_task(chunks[1], task["action"], self.context, **kwargs)
+        api.add_copy(task, context=self.context, uids=chunks[1], unique=False)
 
 
 class QueuedAssignAnalysesTaskAdapter(object):

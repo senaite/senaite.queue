@@ -170,6 +170,44 @@ def add_task(name, context, **kwargs):
     return get_queue().add(task)
 
 
+def add_copy(source_task, **kwargs):
+    """Adds a copy of the given task to the queue, but with attributes
+    overwritten by those from **kwargs
+    :param source_task: task to create a copy from
+    :param min_seconds: (optional) int, minimum seconds to book for the task
+    :param max_seconds: (optional) int, maximum seconds to wait for the task
+    :param retries: (optional) int, maximum number of retries on failure
+    :param username: (optional) str, the name of the user assigned to the task
+    :param priority: (optional) int, the priority value for this task
+    :param unique: (optional) bool, if True, the task will only be added if
+            there is no other task with same name and for same context. This
+            setting is set to False by default
+    :param chunk_size: (optional) the number of items to process asynchronously
+            at once from this task (if it contains multiple elements)
+    :param ghost: (optional) if True, clients won't get notified about the task
+            but consumers only. This setting is set to False by default
+    :param delay: (optional) delay in seconds before the task becomes available
+            for processing to consumers. Default: 0
+    :return: the QueueTask object added to the queue, if any
+    :rtype: senaite.queue.queue.QueueTask
+    :return: senaite.queue.queue.QueueTask
+    """
+    # update with additional attributes
+    source = dict(source_task)
+    source.update(kwargs)
+
+    # create the task
+    name = source.pop("name")
+    uid = source.pop("context_uid", None)
+    context = source.pop("context", None)
+    if not context:
+        context = _api.get_object_by_uid(uid)
+    task = new_task(name, context, **source)
+
+    # add the task to the queue and return
+    return get_queue().add(task)
+
+
 def add_action_task(brain_object_uid, action, context=None, **kwargs):
     """Adds an action-type task to the queue for async processing.
     :param brain_object_uid: object(s) to perform the action against
