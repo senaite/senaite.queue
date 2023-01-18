@@ -5,6 +5,7 @@ Changelog
 1.0.4 (unreleased)
 ------------------
 
+- #18 New `add_copy` function to add copies of existing tasks
 - #17 Fix task splits are not being generated for generic actions
 - #16 Preserve task properties when requeueing chunks of action tasks
 - #15 Fix traceback on tasks for the reindex of objects security

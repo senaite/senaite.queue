@@ -175,13 +175,14 @@ def new_task(name, context, **kw):
     :return: :class:`QueueTask <QueueTask>`
     :rtype: senaite.queue.queue.QueueTask
     """
-    # Skip attrs that are assigned when the QueueTask is instantiated
-    exclude = ["task_uid", "name", "request", "context_uid", "context_path"]
-    out_keys = filter(lambda k: k not in exclude, kw.keys())
-    kwargs = dict(map(lambda k: (k, kw[k]), out_keys))
+    # skip attrs that are assigned on creation or belong to queue workflow
+    skip = ["task_uid", "name", "request", "context_uid", "context_path",
+            "created", "status", "error_message"]
+    for attr_name in skip:
+        kw.pop(attr_name, None)
 
     # Create the Queue Task
-    task = QueueTask(name, api.get_request(), context, **kwargs)
+    task = QueueTask(name, api.get_request(), context, **kw)
 
     # Set the username (if provided in kw)
     task.username = kw.get("username", task.username)
