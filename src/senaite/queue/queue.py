@@ -178,11 +178,12 @@ def new_task(name, context, **kw):
     # skip attrs that are assigned on creation or belong to queue workflow
     skip = ["task_uid", "name", "request", "context_uid", "context_path",
             "created", "status", "error_message"]
+    kwargs = dict(kw)
     for attr_name in skip:
-        kw.pop(attr_name, None)
+        kwargs.pop(attr_name, None)
 
     # Create the Queue Task
-    task = QueueTask(name, api.get_request(), context, **kw)
+    task = QueueTask(name, api.get_request(), context, **kwargs)
 
     # Set the username (if provided in kw)
     task.username = kw.get("username", task.username)
