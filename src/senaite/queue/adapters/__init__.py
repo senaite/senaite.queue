@@ -52,7 +52,9 @@ class QueuedActionTaskAdapter(object):
         map(lambda obj: doActionFor(obj, task["action"]), objects)
 
         # Add remaining objects to the queue and keep properties
-        api.add_copy(task, context=self.context, uids=chunks[1], unique=False)
+        due = chunks[1]
+        if due:
+            api.add_copy(task, context=self.context, uids=due, unique=False)
 
 
 class QueuedAssignAnalysesTaskAdapter(object):
