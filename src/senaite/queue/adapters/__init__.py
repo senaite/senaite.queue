@@ -48,7 +48,8 @@ class QueuedActionTaskAdapter(object):
         chunks = get_chunks_for(task)
 
         # Process the first chunk
-        objects = map(_api.get_object_by_uid, chunks[0])
+        objects = [_api.get_object_by_uid(uid, None) for uid in chunks[0]]
+        objects = filter(None, objects)
         map(lambda obj: doActionFor(obj, task["action"]), objects)
 
         # Add remaining objects to the queue and keep properties
