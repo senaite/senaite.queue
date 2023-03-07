@@ -5,6 +5,7 @@ Changelog
 1.0.4 (unreleased)
 ------------------
 
+- #19 Fix APIError when processing orphan UIDs
 - #18 New `add_copy` function to add copies of existing tasks
 - #17 Fix task splits are not being generated for generic actions
 - #16 Preserve task properties when requeueing chunks of action tasks
