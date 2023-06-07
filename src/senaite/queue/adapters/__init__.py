@@ -115,7 +115,7 @@ class QueuedAssignAnalysesTaskAdapter(object):
         if chunks[1]:
             # Unpack the remaining analyses-slots and add them to the queue
             uids, slots = zip(*chunks[1])
-            api.add_assign_task(worksheet, analyses=uids, slots=slots)
+            api.add_copy(task, context=self.context, uids=uids, slots=slots)
 
 
 class QueueObjectSecurityAdapter(object):

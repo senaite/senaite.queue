@@ -403,6 +403,8 @@ class ServerQueueUtility(object):
         self._tasks.append(task)
 
         # Sort by priority + created reverse
+        self._tasks = sorted(self._tasks, cmp=self.cmp_tasks)
+
         # We multiply the priority for 300 sec. (5 minutes) and then we sum the
         # result to the time the task was created. This way, we ensure tasks
         # priority at the same time we guarantee older, with low priority
@@ -427,3 +429,29 @@ class ServerQueueUtility(object):
             return True
 
         return copy.deepcopy(filter(is_match, self._tasks))
+
+    def cmp_tasks(self, t1, t2):
+        """Compare two tasks based on their creation time reverse, priority and
+        id of the context
+        """
+        # Sort by priority + created reverse
+        # We multiply the priority for 300 sec. (5 minutes) and then we sum the
+        # result to the time the task was created. This way, we ensure tasks
+        # priority at the same time we guarantee older, with low priority
+        # tasks don't fall through the cracks.
+        # TODO: Make this 300 sec. configurable?
+        t1_num = t1.created + (300 * t1.priority)
+        t2_num = t2.created + (300 * t2.priority)
+        if t1_num > t2_num:
+            return -1
+        elif t1_num < t2_num:
+            return 1
+
+        # Seems they were create at same second?
+        t1_context_uid = t1.context_uid
+        t2_context_uid = t2.context_uid
+        if t1_context_uid > t2_context_uid:
+            return -1
+        elif t1_context_uid < t2_context_uid:
+            return 1
+        return 0

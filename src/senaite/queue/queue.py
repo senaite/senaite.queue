@@ -177,7 +177,7 @@ def new_task(name, context, **kw):
     """
     # skip attrs that are assigned on creation or belong to queue workflow
     skip = ["task_uid", "name", "request", "context_uid", "context_path",
-            "created", "status", "error_message"]
+            "status", "error_message"]
     kwargs = dict(kw)
     for attr_name in skip:
         kwargs.pop(attr_name, None)
