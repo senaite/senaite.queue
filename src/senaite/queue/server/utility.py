@@ -405,13 +405,6 @@ class ServerQueueUtility(object):
         # Sort by priority + created reverse
         self._tasks = sorted(self._tasks, cmp=self.cmp_tasks)
 
-        # We multiply the priority for 300 sec. (5 minutes) and then we sum the
-        # result to the time the task was created. This way, we ensure tasks
-        # priority at the same time we guarantee older, with low priority
-        # tasks don't fall through the cracks.
-        # TODO: Make this 300 sec. configurable?
-        self._tasks.sort(key=lambda t: (t.created + (300 * t.priority)))
-
         # Update the since time
         if self._since_time < 0 or self._since_time > task.created:
             self._since_time = task.created
