@@ -165,10 +165,9 @@ class IQueueControlPanel(Interface):
         value_type=schema.ASCIILine(title=u"Column"),
         required=False,
         default=[
-            "task_unassign",
+            "task_action_unassign",
             "task_assign_analyses",
-            "receive_inbound_sample",
-            "task_submit",
+            "task_action_submit",
             "task_action_verify",
         ],
     )
