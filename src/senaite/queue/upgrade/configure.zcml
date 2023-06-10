@@ -3,6 +3,9 @@
     xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
     i18n_domain="senaite.queue">
 
+  <!-- Include all upgrade steps for 1.0.3 -->
+  <include file="v01_00_003.zcml"/>
+
  <genericsetup:upgradeStep
      title="Upgrade to SENAITE.QUEUE 1.0.1"
      source="1.0.0"
@@ -15,13 +18,6 @@
      source="1.0.1"
      destination="1.0.2"
      handler="senaite.queue.upgrade.v01_00_002.upgrade"
-     profile="senaite.queue:default"/>
-
- <genericsetup:upgradeStep
-     title="Upgrade to SENAITE.QUEUE 1.0.3"
-     source="1.0.2"
-     destination="1.0.3"
-     handler="senaite.queue.upgrade.v01_00_003.upgrade"
      profile="senaite.queue:default"/>
 
 </configure>

@@ -1,0 +1,21 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    i18n_domain="senaite.queue">
+
+  <genericsetup:upgradeStep
+      title="SENAITE QUEUE 1.0.3: Setup top-priority tasks"
+      description="Setup top-priority tasks"
+      source="1.0.3"
+      destination="10301"
+      handler=".v01_00_003.setup_top_priority_tasks"
+      profile="senaite.queue:default"/>
+
+  <genericsetup:upgradeStep
+      title="Upgrade to SENAITE.QUEUE 1.0.3"
+      source="1.0.2"
+      destination="1.0.3"
+      handler=".v01_00_003.upgrade"
+      profile="senaite.queue:default"/>
+
+</configure>

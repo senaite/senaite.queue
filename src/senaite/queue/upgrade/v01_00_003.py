@@ -20,6 +20,7 @@
 
 from senaite.queue import logger
 from senaite.queue import PRODUCT_NAME
+from senaite.queue import PROFILE_ID
 
 from bika.lims.upgrade import upgradestep
 from bika.lims.upgrade.utils import UpgradeUtils
@@ -43,3 +44,15 @@ def upgrade(tool):
 
     logger.info("{0} upgraded to version {1}".format(PRODUCT_NAME, version))
     return True
+
+
+def setup_top_priority_tasks(tool):
+    """Re-imports the registry for the new field "top_priority_tasks" from
+    Queue control panel to take effect
+    """
+    logger.info("Setup tasks with top priority ...")
+    portal = tool.aq_inner.aq_parent
+    setup = portal.portal_setup
+    setup.runImportStepFromProfile(PROFILE_ID, "controlpanel")
+    setup.runImportStepFromProfile(PROFILE_ID, "plone.app.registry")
+    logger.info("Setup tasks with top priority [DONE]")

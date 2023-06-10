@@ -154,6 +154,25 @@ class IQueueControlPanel(Interface):
         required=True,
     )
 
+    top_priority_tasks = schema.List(
+        title=_(u"Tasks with top-priority"),
+        description=_(
+            u"List of task names or actions. System gives top priority to "
+            u"the tasks listed here, regardless of their creation time and "
+            u"priorities assigned by default. These top-prioritized "
+            u"tasks will be processed following the same order as this list"
+        ),
+        value_type=schema.ASCIILine(title=u"Column"),
+        required=False,
+        default=[
+            "task_unassign",
+            "task_assign_analyses",
+            "receive_inbound_sample",
+            "task_submit",
+            "task_action_verify",
+        ],
+    )
+
 
 class QueueControlPanelForm(RegistryEditForm):
     schema = IQueueControlPanel

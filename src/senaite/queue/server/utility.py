@@ -423,10 +423,40 @@ class ServerQueueUtility(object):
 
         return copy.deepcopy(filter(is_match, self._tasks))
 
+    def get_top_priority_tasks(self):
+        """Returns the list of task names or actions that have top-priority
+        """
+        key = "senaite.queue.top_priority_tasks"
+        return capi.get_registry_record(key, default=[])
+
     def cmp_tasks(self, t1, t2):
         """Compare two tasks based on their creation time reverse, priority and
         id of the context
         """
+        # Lower values first
+        def cmp(a, b):
+            return (a > b) - (a < b)
+
+        # Find out the top priority tasks
+        top_tasks = self.get_top_priority_tasks()
+
+        def get_task_index(task):
+            name = task.name
+            if name in top_tasks:
+                return top_tasks.index(name)
+            action = task.get("action")
+            if action in top_tasks:
+                return top_tasks.index(action)
+            return len(top_tasks)
+
+        # Give priority to top-priority tasks defined by the user in control
+        # panel. Tasks defined in "top_priority_tasks" have priority over the
+        # rest ot tasks, regardless of creation time
+        t1_idx = get_task_index(t1)
+        t2_idx = get_task_index(t2)
+        if t1_idx != t2_idx:
+            return cmp(t1_idx, t2_idx)
+
         # Sort by priority + created reverse
         # We multiply the priority for 300 sec. (5 minutes) and then we sum the
         # result to the time the task was created. This way, we ensure tasks
@@ -435,16 +465,9 @@ class ServerQueueUtility(object):
         # TODO: Make this 300 sec. configurable?
         t1_num = t1.created + (300 * t1.priority)
         t2_num = t2.created + (300 * t2.priority)
-        if t1_num > t2_num:
-            return -1
-        elif t1_num < t2_num:
-            return 1
+        if t1_num != t2_num:
+            return cmp(t1_num, t2_num)
 
-        # Seems they were create at same second?
-        t1_context_uid = t1.context_uid
-        t2_context_uid = t2.context_uid
-        if t1_context_uid > t2_context_uid:
-            return -1
-        elif t1_context_uid < t2_context_uid:
-            return 1
-        return 0
+        # Created at same second. Ensure the system don't start with another
+        # until first for same context is finished
+        return cmp(t1.context_uid, t2.context_uid)
